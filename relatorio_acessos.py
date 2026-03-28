@@ -1,5 +1,5 @@
 import streamlit as st
-from funcoes_auxiliares import conectar_mongo_cepf_gestao  
+from funcoes_auxiliares import conectar_mongo_coruja  
 import pandas as pd
 import plotly.express as px
 from datetime import datetime, timedelta
@@ -15,7 +15,7 @@ st.set_page_config(page_title="Relatório de acessos", page_icon=":material/bar_
 ###########################################################################################################
 
 
-db = conectar_mongo_cepf_gestao()
+db = conectar_mongo_coruja()
 
 
 
@@ -26,7 +26,7 @@ db = conectar_mongo_cepf_gestao()
 
 
 # Logo do sidebar
-st.logo("images/ieb_logo.svg", size='large')
+st.logo("images/logo_fundo_ecos.png", size='large')
 
 st.header('Relatório de acessos')
 

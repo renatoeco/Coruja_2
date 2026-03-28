@@ -4,7 +4,7 @@ import time
 import random  
 import smtplib  
 from email.mime.text import MIMEText  
-from funcoes_auxiliares import conectar_mongo_cepf_gestao  # Função personalizada para conectar ao MongoDB
+from funcoes_auxiliares import conectar_mongo_coruja  # Função personalizada para conectar ao MongoDB
 import bcrypt
 import textwrap
 
@@ -19,7 +19,7 @@ st.set_page_config(layout="wide", page_title="Veredas - IEB", page_icon=":materi
 
 
 # Conecta ao banco de dados MongoDB usando função importada (com cache para otimizar desempenho)
-db = conectar_mongo_cepf_gestao()
+db = conectar_mongo_coruja()
 
 # Define a coleção a ser utilizada
 col_pessoas = db["pessoas"]
@@ -226,6 +226,7 @@ def recuperar_senha_dialog():
 
     if st.session_state.codigo_validado:
         with conteudo_dialogo.form("nova_senha_form", border=True):
+            
             st.markdown("### Defina sua nova senha")
             nova_senha = st.text_input("Nova senha", type="password")
             confirmar_senha = st.text_input("Confirme a senha", type="password")
@@ -257,8 +258,12 @@ def recuperar_senha_dialog():
                                     st.session_state.pop(key, None)
 
                                 # Inicializa tipo de usuário
-                                tipo_usuario = [x.strip() for x in usuario.get("tipo de usuário", "").split(",")]
+                                tipo_usuario = usuario.get("tipo_usuario", "")
+
+                                # tipo_usuario = [x.strip() for x in usuario.get("tipo_usuario", "").split(",")]
                                 st.session_state["tipo_usuario"] = tipo_usuario
+
+
 
                                 # Marca usuário como logado e reinicia
                                 st.session_state.logged_in = True
@@ -288,7 +293,7 @@ def login():
     
     # Exibe o logo
     container_logo = st.container(horizontal=True, horizontal_alignment="center")
-    container_logo.image("images/ieb_logo.svg", width=300)
+    container_logo.image("images/logo_fundo_ecos.png", width=300)
 
     st.write('')
     st.write('')
@@ -300,8 +305,9 @@ def login():
     st.markdown(
         """
         <h2 style='text-align: center; color: slategray; font-size: 3rem'>
-            Veredas - Gestão de Projetos
+            CORUJA 2
         </h2>
+        <p style='text-align: center; color: slategray; font-size: 1.5rem'>em desenvolvimento ...</p>
         """,
         unsafe_allow_html=True
     )
@@ -396,6 +402,7 @@ if "logged_in" not in st.session_state or not st.session_state["logged_in"]:
 
 # Logado:
 else:
+
 
 
     # Define as páginas disponíveis para cada tipo de usuário (com seções)
@@ -499,9 +506,6 @@ else:
 
 
 
-# ????????????????
-    # st.write(st.session_state)
-
     # Garante que tipo_usuario existe
     # tipo_usuario = set(st.session_state.get("tipo_usuario", []))
     tipo_usuario = st.session_state.get("tipo_usuario", "")
@@ -511,6 +515,9 @@ else:
     if tipo_usuario == "admin":
         
         # Página inicial do admin 
+
+
+
 
         # Primeira execução: 
         # se pagina_atual == None, a pagina atual será home_admin

@@ -6,7 +6,7 @@ import folium
 from streamlit_folium import st_folium
 
 from funcoes_auxiliares import (
-    conectar_mongo_cepf_gestao,
+    conectar_mongo_coruja,
     sidebar_projeto,
     # ajustar_altura_data_editor,
 
@@ -80,7 +80,7 @@ section[data-testid="stFileUploaderDropzone"] button[data-testid="stBaseButton-s
 ###########################################################################################################
 
 # Conecta-se ao banco de dados MongoDB (usa cache automático para melhorar performance)
-db = conectar_mongo_cepf_gestao()
+db = conectar_mongo_coruja()
 
 # Coleção de projetos
 col_projetos = db["projetos"]
@@ -931,7 +931,7 @@ def dialog_mapas():
 
 
 # Logo do sidebar
-st.logo("images/ieb_logo.svg", size='large')
+st.logo("images/logo_fundo_ecos.png", size='large')
 
 # Título da página e identificação
 col_titulo, col_identificacao = st.columns([3, 2])

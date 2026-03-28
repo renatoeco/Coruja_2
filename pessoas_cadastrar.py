@@ -1,5 +1,5 @@
 import streamlit as st
-from funcoes_auxiliares import conectar_mongo_cepf_gestao # Funções personalizadas
+from funcoes_auxiliares import conectar_mongo_coruja # Funções personalizadas
 import pandas as pd
 import locale
 import re
@@ -22,7 +22,7 @@ st.set_page_config(page_title="Convidar", page_icon=":material/person_add:")
 ###########################################################################################################
 
 # Conecta-se ao banco de dados MongoDB (usa cache automático para melhorar performance)
-db = conectar_mongo_cepf_gestao()
+db = conectar_mongo_coruja()
 
 # Importa coleções e cria dataframes
 col_pessoas = db["pessoas"]
@@ -111,8 +111,19 @@ def validar_email(email):
 tipo_usuario = st.session_state.get("tipo_usuario", "")
 
 
+# ---------------------------------------------------------------------------------------------------------
+# Garante que a lista de projetos seja sempre válida, mesmo quando não houver dados no banco
+# ---------------------------------------------------------------------------------------------------------
 
-projetos = df_projetos["codigo"].unique().tolist()
+if df_projetos.empty or "codigo" not in df_projetos.columns:
+    # Caso não existam projetos cadastrados ou a coluna não exista,
+    # define uma lista vazia para evitar erro no Streamlit
+    projetos = []
+else:
+    # Caso existam dados válidos, extrai os códigos únicos normalmente
+    projetos = df_projetos["codigo"].dropna().astype(str).unique().tolist()
+
+# projetos = df_projetos["codigo"].unique().tolist()
 
 ###########################################################################################################
 # INTERFACE PRINCIPAL DA PÁGINA
@@ -120,7 +131,7 @@ projetos = df_projetos["codigo"].unique().tolist()
 
 
 # Logo do sidebar
-st.logo("images/ieb_logo.svg", size='large')
+st.logo("images/logo_fundo_ecos.pngsvg", size='large')
 
 # Título da página
 st.header("Convidar pessoa")

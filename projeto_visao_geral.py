@@ -1,5 +1,5 @@
 import streamlit as st
-from funcoes_auxiliares import conectar_mongo_cepf_gestao, sidebar_projeto, calcular_status_projetos, calcular_status_atividade, registrar_estatistica_sessao
+from funcoes_auxiliares import conectar_mongo_coruja, sidebar_projeto, calcular_status_projetos, calcular_status_atividade, registrar_estatistica_sessao
 import pandas as pd
 import streamlit_shadcn_ui as ui
 import datetime
@@ -84,7 +84,7 @@ section[data-testid="stFileUploaderDropzone"] button[data-testid="stBaseButton-s
 ###########################################################################################################
 
 # Conexão com MongoDB
-db = conectar_mongo_cepf_gestao()
+db = conectar_mongo_coruja()
 
 # Coleções
 col_pessoas = db["pessoas"]
@@ -476,7 +476,7 @@ df_projeto = df_projeto.merge(
 ###########################################################################################################
 
 # Logo do sidebar
-st.logo("images/ieb_logo.svg", size='large')
+st.logo("images/logo_fundo_ecos.png", size='large')
 
 
 # Código e Sigla do projeto

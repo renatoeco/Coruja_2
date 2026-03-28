@@ -1,5 +1,5 @@
 import streamlit as st
-from funcoes_auxiliares import conectar_mongo_cepf_gestao  # Função personalizada para conectar ao MongoDB
+from funcoes_auxiliares import conectar_mongo_coruja  # Função personalizada para conectar ao MongoDB
 import plotly.graph_objects as go
 
 
@@ -16,7 +16,7 @@ st.set_page_config(page_title="Armazenamento no BD", page_icon=":material/home_s
 ###########################################################################################################
 
 
-db = conectar_mongo_cepf_gestao()
+db = conectar_mongo_coruja()
 
 
 
@@ -31,7 +31,7 @@ db = conectar_mongo_cepf_gestao()
 
 
 # Logo do sidebar
-st.logo("images/ieb_logo.svg", size='large')
+st.logo("images/logo_fundo_ecos.png", size='large')
 
 st.header('Armazenamento do banco de dados')
 

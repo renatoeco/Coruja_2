@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import folium
 from streamlit_folium import st_folium
-from funcoes_auxiliares import conectar_mongo_cepf_gestao
+from funcoes_auxiliares import conectar_mongo_coruja
 
 
 
@@ -15,7 +15,7 @@ st.set_page_config(page_title="Mapa", page_icon=":material/map:")
 # CONEXÃO COM O BANCO
 ###########################################################################################################
 
-db = conectar_mongo_cepf_gestao()
+db = conectar_mongo_coruja()
 
 col_projetos = db["projetos"]
 df_projetos = pd.DataFrame(list(col_projetos.find()))
@@ -52,7 +52,7 @@ def notificar_mapa(mensagem: str):
 # INTERFACE
 ###########################################################################################################
 
-st.logo("images/ieb_logo.svg", size="large")
+st.logo("images/logo_fundo_ecos.png", size="large")
 st.header("Mapa de projetos")
 
 st.write('')

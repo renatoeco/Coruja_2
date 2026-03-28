@@ -1,5 +1,5 @@
 import streamlit as st
-from funcoes_auxiliares import conectar_mongo_cepf_gestao, limpar_e_validar_cep
+from funcoes_auxiliares import conectar_mongo_coruja, limpar_e_validar_cep
 import pandas as pd
 import time
 import re
@@ -17,7 +17,7 @@ st.set_page_config(page_title="Organizações", page_icon=":material/analytics:"
 ###########################################################################################################
 
 # Conecta-se ao banco de dados MongoDB (usa cache automático para melhorar performance)
-db = conectar_mongo_cepf_gestao()
+db = conectar_mongo_coruja()
 
 
 col_projetos = db["projetos"]
@@ -378,7 +378,7 @@ df_organizacoes["quantidade_projetos"] = (
 
 
 # Logo do sidebar
-st.logo("images/ieb_logo.svg", size='large')
+st.logo("images/logo_fundo_ecos.png", size='large')
 
 # Título da página
 st.header("Organizações")

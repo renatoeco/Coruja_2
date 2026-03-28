@@ -1,5 +1,5 @@
 import streamlit as st
-from funcoes_auxiliares import conectar_mongo_cepf_gestao  # Função personalizada para conectar ao MongoDB
+from funcoes_auxiliares import conectar_mongo_coruja  # Função personalizada para conectar ao MongoDB
 import pandas as pd
 from bson import ObjectId
 import time
@@ -17,7 +17,7 @@ st.set_page_config(page_title="Cadastros auxiliares", page_icon=":material/tune:
 ###########################################################################################################
 
 # Conecta-se ao banco de dados MongoDB (usa cache automático para melhorar performance)
-db = conectar_mongo_cepf_gestao()
+db = conectar_mongo_coruja()
 
 # Importa coleções e cria dataframes
 
@@ -290,7 +290,7 @@ def confirmar_exclusao_pergunta(pergunta_atual, perguntas, edital_selecionado):
 
 
 # Logo do sidebar
-st.logo("images/ieb_logo.svg", size='large')
+st.logo("images/logo_fundo_ecos.png", size='large')
 
 st.header('Cadastros auxiliares')
 

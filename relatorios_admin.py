@@ -1,5 +1,5 @@
 import streamlit as st
-from funcoes_auxiliares import conectar_mongo_cepf_gestao, calcular_status_projetos  # Função personalizada para conectar ao MongoDB
+from funcoes_auxiliares import conectar_mongo_coruja, calcular_status_projetos  # Função personalizada para conectar ao MongoDB
 import pandas as pd
 import io
 import datetime
@@ -16,7 +16,7 @@ st.set_page_config(page_title="Relatórios", page_icon=":material/assignment:")
 ###########################################################################################################
 
 # Conecta-se ao banco de dados MongoDB (usa cache automático para melhorar performance)
-db = conectar_mongo_cepf_gestao()
+db = conectar_mongo_coruja()
 
 
 
@@ -199,7 +199,7 @@ mapa_organizacoes = {
 
 
 # Logo do sidebar
-st.logo("images/ieb_logo.svg", size='large')
+st.logo("images/logo_fundo_ecos.png", size='large')
 
 st.header('Relatórios')
 

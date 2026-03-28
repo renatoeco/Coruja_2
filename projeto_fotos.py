@@ -3,7 +3,7 @@ import pandas as pd
 import re
 
 from funcoes_auxiliares import (
-    conectar_mongo_cepf_gestao,
+    conectar_mongo_coruja,
     sidebar_projeto,
 )
 
@@ -18,7 +18,7 @@ st.set_page_config(page_title="Fotos", page_icon=":material/image:")
 # CONEXÃO COM O BANCO DE DADOS
 ###########################################################################################################
 
-db = conectar_mongo_cepf_gestao()
+db = conectar_mongo_coruja()
 col_projetos = db["projetos"]
 
 ###########################################################################################################
@@ -112,7 +112,7 @@ projeto = df_projeto.iloc[0].to_dict()
 # INTERFACE
 ###########################################################################################################
 
-st.logo("images/ieb_logo.svg", size="large")
+st.logo("images/logo_fundo_ecos.png", size="large")
 
 col_titulo, col_identificacao = st.columns([3, 2])
 

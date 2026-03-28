@@ -1,5 +1,5 @@
 import streamlit as st
-from funcoes_auxiliares import conectar_mongo_cepf_gestao, calcular_status_projetos
+from funcoes_auxiliares import conectar_mongo_coruja, calcular_status_projetos
 # import plotly.express as px
 import pandas as pd
 
@@ -14,7 +14,7 @@ st.set_page_config(page_title="Projetos", page_icon=":material/list:")
 ###########################################################################################################
 
 # Conecta-se ao banco de dados MongoDB (usa cache automático para melhorar performance)
-db = conectar_mongo_cepf_gestao()
+db = conectar_mongo_coruja()
 
 # Importa coleções e cria dataframes
 
@@ -128,7 +128,7 @@ if not df_projetos.empty:
 
 
 # Logo do sidebar
-st.logo("images/ieb_logo.svg", size='large')
+st.logo("images/logo_fundo_ecos.png", size='large')
 
 # Título da página
 st.header("Projetos")

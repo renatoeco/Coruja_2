@@ -763,11 +763,11 @@ def gerar_cronograma_financeiro(parcelas: list, relatorios: list) -> pd.DataFram
 
 
 @st.cache_resource
-def conectar_mongo_cepf_gestao():
+def conectar_mongo_coruja():
     # CONEXÃO LOCAL
-    cliente = MongoClient(st.secrets["senhas"]["senha_mongo_cepf_gestao"])
-    db_cepf_gestao = cliente["cepf_gestao"] 
-    return db_cepf_gestao
+    cliente = MongoClient(st.secrets["senhas"]["senha_mongo_coruja"])
+    db_coruja_mongo = cliente["Coruja"] 
+    return db_coruja_mongo
 
 
 

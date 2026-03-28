@@ -6,7 +6,7 @@ import time
 import bson
 
 from funcoes_auxiliares import (
-    conectar_mongo_cepf_gestao, 
+    conectar_mongo_coruja, 
     gerar_link_drive,
     sidebar_projeto,
     enviar_email,
@@ -43,7 +43,7 @@ sidebar_projeto()
 ###########################################################################################################
 
 # Conecta-se ao banco de dados MongoDB (usa cache automático para melhorar performance)
-db = conectar_mongo_cepf_gestao()
+db = conectar_mongo_coruja()
 
 # Projetos
 col_projetos = db["projetos"]
@@ -2210,7 +2210,7 @@ lista_indicadores_edital = [
 
 
 # Logo do sidebar
-st.logo("images/ieb_logo.svg", size='large')
+st.logo("images/logo_fundo_ecos.png", size='large')
 
 
 

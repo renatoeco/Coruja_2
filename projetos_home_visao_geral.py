@@ -1,5 +1,5 @@
 import streamlit as st
-from funcoes_auxiliares import conectar_mongo_cepf_gestao, calcular_status_projetos, registrar_estatistica_sessao
+from funcoes_auxiliares import conectar_mongo_coruja, calcular_status_projetos, registrar_estatistica_sessao
 import plotly.express as px
 import pandas as pd
 import datetime
@@ -16,7 +16,7 @@ st.set_page_config(page_title="Visão Geral", page_icon=":material/analytics:")
 ###########################################################################################################
 
 # Conecta-se ao banco de dados MongoDB (usa cache automático para melhorar performance)
-db = conectar_mongo_cepf_gestao()
+db = conectar_mongo_coruja()
 
 # Importa coleções e cria dataframes
 
@@ -123,37 +123,82 @@ if not df_projetos.empty:
         .reset_index()
     )
 
-    # Junta padrinhos ao dataframe de projetos
-    df_projetos = df_projetos.merge(
-        df_padrinhos,
-        on="codigo",
-        how="left"
-    )
+
+    # ------------------------------------------------------------------------------
+    # 4.1 Validação antes do merge (evita KeyError quando não há projetos)
+    # ------------------------------------------------------------------------------
+
+    # Verifica se o dataframe de projetos não está vazio e possui a coluna "codigo"
+    if not df_projetos.empty and "codigo" in df_projetos.columns:
+
+        # Realiza o merge com padrinhos
+        df_projetos = df_projetos.merge(
+            df_padrinhos,
+            on="codigo",
+            how="left"
+        )
+
+    else:
+        # Garante que a coluna "padrinho" exista mesmo sem merge
+        # Isso evita erros posteriores na interface e nos filtros
+        df_projetos["padrinho"] = None
+
+
+    # Garante que colunas essenciais existam mesmo se o dataframe vier vazio
+    colunas_essenciais = ["codigo", "sigla", "edital"]
+
+    for col in colunas_essenciais:
+        if col not in df_projetos.columns:
+            df_projetos[col] = None
+
+
 
 
     # ------------------------------------------------------------------------------
-    # 5. Ajustes de tipos (IDs e datas)
+    # 5. Ajustes de tipos (IDs e datas) - versão resiliente
     # ------------------------------------------------------------------------------
 
-    # Converte ObjectId para string (evita problemas com Streamlit)
-    df_pessoas["_id"] = df_pessoas["_id"].astype(str)
-    df_projetos["_id"] = df_projetos["_id"].astype(str)
+    # ------------------------------------------------------------------------------
+    # 5.1 Garante que a coluna "_id" exista antes da conversão
+    # ------------------------------------------------------------------------------
 
-    # Converte datas do contrato para datetime
-    df_projetos["data_inicio_contrato_dtime"] = pd.to_datetime(
-        df_projetos["data_inicio_contrato"],
-        format="%d/%m/%Y",
-        dayfirst=True,
-        errors="coerce"
-    )
+    # DataFrame de pessoas
+    if "_id" in df_pessoas.columns:
+        df_pessoas["_id"] = df_pessoas["_id"].astype(str)
 
-    df_projetos["data_fim_contrato_dtime"] = pd.to_datetime(
-        df_projetos["data_fim_contrato"],
-        format="%d/%m/%Y",
-        dayfirst=True,
-        errors="coerce"
-    )
+    # DataFrame de projetos
+    if "_id" in df_projetos.columns:
+        df_projetos["_id"] = df_projetos["_id"].astype(str)
 
+
+    # ------------------------------------------------------------------------------
+    # 5.2 Conversão de datas com validação de existência das colunas
+    # ------------------------------------------------------------------------------
+
+    # Data início do contrato
+    if "data_inicio_contrato" in df_projetos.columns:
+        df_projetos["data_inicio_contrato_dtime"] = pd.to_datetime(
+            df_projetos["data_inicio_contrato"],
+            format="%d/%m/%Y",
+            dayfirst=True,
+            errors="coerce"
+        )
+    else:
+        # Cria a coluna vazia para manter consistência do dataframe
+        df_projetos["data_inicio_contrato_dtime"] = pd.NaT
+
+
+    # Data fim do contrato
+    if "data_fim_contrato" in df_projetos.columns:
+        df_projetos["data_fim_contrato_dtime"] = pd.to_datetime(
+            df_projetos["data_fim_contrato"],
+            format="%d/%m/%Y",
+            dayfirst=True,
+            errors="coerce"
+        )
+    else:
+        # Cria a coluna vazia para manter consistência do dataframe
+        df_projetos["data_fim_contrato_dtime"] = pd.NaT
 
 
 
@@ -169,7 +214,7 @@ if not df_projetos.empty:
 
 
 # Logo do sidebar
-st.logo("images/ieb_logo.svg", size='large')
+st.logo("images/logo_fundo_ecos.png", size='large')
 
 # Título da página
 st.header("Projetos")
@@ -195,8 +240,28 @@ st.write('')
 # ============================================
 
 
-lista_editais = ["Todos"] + df_editais['codigo_edital'].tolist()
-edital_selecionado = st.selectbox("Selecione o edital", lista_editais, width=300)
+
+# ------------------------------------------------------------------------------
+# SELEÇÃO DO EDITAL - versão resiliente
+# ------------------------------------------------------------------------------
+
+# Verifica se o dataframe de editais possui dados e a coluna necessária
+if not df_editais.empty and "codigo_edital" in df_editais.columns:
+
+    lista_editais = ["Todos"] + df_editais["codigo_edital"].dropna().tolist()
+
+else:
+    # Garante que o selectbox funcione mesmo sem editais cadastrados
+    lista_editais = ["Todos"]
+
+
+# Criação do selectbox
+edital_selecionado = st.selectbox(
+    "Selecione o edital",
+    lista_editais,
+    width=300
+)
+
 
 
 
@@ -390,6 +455,14 @@ else:
             height=300
         )
         st.plotly_chart(fig)
+
+
+
+
+
+
+
+
 
     # Cronograma de contratos
     st.write("**Cronograma de contratos**")

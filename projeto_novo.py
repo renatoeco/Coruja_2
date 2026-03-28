@@ -1,5 +1,5 @@
 import streamlit as st
-from funcoes_auxiliares import conectar_mongo_cepf_gestao
+from funcoes_auxiliares import conectar_mongo_coruja
 import pandas as pd
 import bson
 import time
@@ -13,7 +13,7 @@ st.set_page_config(page_title="Novo Projeto", page_icon=":material/add_circle:")
 # CONEXÃO COM O BANCO
 ###########################################################################################################
 
-db = conectar_mongo_cepf_gestao()
+db = conectar_mongo_coruja()
 
 col_projetos = db["projetos"]
 col_pessoas = db["pessoas"]
@@ -53,7 +53,7 @@ if "form_projeto" not in st.session_state:
 # INTERFACE
 ###########################################################################################################
 
-st.logo("images/ieb_logo.svg", size="large")
+st.logo("images/logo_fundo_ecos.png", size="large")
 st.header("Novo projeto")
 
 st.write(

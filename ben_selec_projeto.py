@@ -1,5 +1,5 @@
 import streamlit as st
-from funcoes_auxiliares import conectar_mongo_cepf_gestao, registrar_estatistica_sessao
+from funcoes_auxiliares import conectar_mongo_coruja, registrar_estatistica_sessao
 
 
 st.set_page_config(page_title="Lista de projetos", page_icon=":material/list")
@@ -12,7 +12,7 @@ st.set_page_config(page_title="Lista de projetos", page_icon=":material/list")
 ###########################################################################################################
 
 # Conecta-se ao banco de dados MongoDB (usa cache automático para melhorar performance)
-db = conectar_mongo_cepf_gestao()
+db = conectar_mongo_coruja()
 
 # Define as coleções específicas que serão utilizadas a partir do banco
 
@@ -52,7 +52,7 @@ registrar_estatistica_sessao(db)
 
 # Exibe o logo
 container_logo = st.container(horizontal=True, horizontal_alignment="center")
-container_logo.image("images/ieb_logo.svg", width=300)
+container_logo.image("images/logo_fundo_ecos.png", width=300)
 
 st.write('')
 st.write('')

@@ -1,6 +1,6 @@
 
 import streamlit as st
-from funcoes_auxiliares import conectar_mongo_cepf_gestao, limpar_e_validar_cep  # Funções personalizadas
+from funcoes_auxiliares import conectar_mongo_coruja, limpar_e_validar_cep  # Funções personalizadas
 import pandas as pd
 import locale
 import re
@@ -18,7 +18,7 @@ st.set_page_config(page_title="Nova Organização", page_icon=":material/add_bus
 ###########################################################################################################
 
 # Conecta-se ao banco de dados MongoDB (usa cache automático para melhorar performance)
-db = conectar_mongo_cepf_gestao()
+db = conectar_mongo_coruja()
 
 # Importa coleções e cria dataframes
 col_pessoas = db["pessoas"]
@@ -172,7 +172,7 @@ if st.session_state.limpar_form_organizacao:
 ###########################################################################################################
 
 # Logo do sidebar
-st.logo("images/ieb_logo.svg", size='large')
+st.logo("images/logo_fundo_ecos.png", size='large')
 
 # Título da página
 st.header("Nova Organização")
