@@ -1,0 +1,7 @@
+# Max size, in megabytes, for files uploaded with the file_uploader.
+# Default: 200
+[server]
+maxUploadSize = 10
+
+[theme]
+primaryColor = "#2F5AA1"
