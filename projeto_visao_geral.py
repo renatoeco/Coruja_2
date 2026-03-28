@@ -126,9 +126,9 @@ if not st.session_state["ultimo_acesso_atualizado"]:
 
         # GERA DATA NO FUSO AMERICA/SAO_PAULO (SEM HORA)
 
-        agora_brasil = datetime.now(ZoneInfo("America/Sao_Paulo"))
+        agora_brasil = datetime.datetime.now(ZoneInfo("America/Sao_Paulo"))
 
-        data_somente_dia = datetime(
+        data_somente_dia = datetime.datetime(
             year=agora_brasil.year,
             month=agora_brasil.month,
             day=agora_brasil.day,
