@@ -24,8 +24,8 @@ df_ciclos = pd.DataFrame(list(col_ciclos.find()))
 col_editais = db["editais"]
 df_editais = pd.DataFrame(list(col_editais.find()))
 
-col_investidores = db["investidores"]
-df_investidores = pd.DataFrame(list(col_investidores.find()))
+# col_investidores = db["investidores"]
+# df_investidores = pd.DataFrame(list(col_investidores.find()))
 
 col_doadores = db["doadores"]
 df_doadores = pd.DataFrame(list(col_doadores.find()))
@@ -43,7 +43,6 @@ df_ciclos = df_ciclos.rename(columns={
     "codigo_ciclo": "Código",
     "nome_ciclo": "Nome",
     "data_lancamento": "Data de Lançamento",
-    "investidores": "Investidores",
     "doadores": "Doadores"
 })
 
@@ -54,8 +53,8 @@ if "_id" in df_ciclos.columns:
 if "_id" in df_editais.columns:
     df_editais["_id"] = df_editais["_id"].astype(str)
 
-if "_id" in df_investidores.columns:
-    df_investidores["_id"] = df_investidores["_id"].astype(str)
+# if "_id" in df_investidores.columns:
+#     df_investidores["_id"] = df_investidores["_id"].astype(str)
 
 if "_id" in df_doadores.columns:
     df_doadores["_id"] = df_doadores["_id"].astype(str)
@@ -81,128 +80,124 @@ st.logo("images/logo_fundo_ecos.png", size='large')
 # Título da página
 st.header("Gerenciar Fases Operacionais")
 
-tab1, tab2, tab3, tab4 = st.tabs(["Investidores", "Doadores", "Fases Operacionais", "Editais"])
-
-
-
-
+tab1, tab2, tab3 = st.tabs(["Doadores", "Fases Operacionais", "Editais"])
 
 
 # Aba Investidores ---------------------------------------------------------------------------------------
 
-with tab1:
+# with tab1:
 
-    st.write("")
+#     st.write("")
 
-    # Escolha da ação
-    opcao_investidores = st.radio("Selecione uma ação:",
-        ["Cadastrar Investidor", "Editar Investidor"],
-        horizontal=True
-    )
+#     # Escolha da ação
+#     opcao_investidores = st.radio("Selecione uma ação:",
+#         ["Cadastrar Investidor", "Editar Investidor"],
+#         horizontal=True
+#     )
 
-    # ----------------------------------------
-    # CADASTRAR INVESTIDOR
-    # ----------------------------------------
-    if opcao_investidores == "Cadastrar Investidor":
-        with st.form(key="investidor_cadastro_form", border=False):
-            st.write("")
+#     # ----------------------------------------
+#     # CADASTRAR INVESTIDOR
+#     # ----------------------------------------
+#     if opcao_investidores == "Cadastrar Investidor":
+#         with st.form(key="investidor_cadastro_form", border=False):
+#             st.write("")
 
-            sigla_investidor = st.text_input("Sigla do investidor:")
-            nome_investidor = st.text_input("Nome do investidor:")
+#             sigla_investidor = st.text_input("Sigla do investidor:")
+#             nome_investidor = st.text_input("Nome do investidor:")
 
-            st.write("")
-            submit_cadastro = st.form_submit_button(
-                "Salvar novo investidor", 
-                icon=":material/save:", 
-                type="primary"
-            )
+#             st.write("")
+#             submit_cadastro = st.form_submit_button(
+#                 "Salvar novo investidor", 
+#                 icon=":material/save:", 
+#                 type="primary"
+#             )
 
-            if submit_cadastro:
-                # Validação
-                if not sigla_investidor or not nome_investidor:
-                    st.error("Todos os campos devem ser preenchidos.")
-                else:
-                    # Verifica se a sigla já existe
-                    sigla_existente = col_investidores.find_one({"sigla_investidor": sigla_investidor})
-                    if sigla_existente:
-                        st.error(f"A sigla '{sigla_investidor}' já está sendo utilizada.")
-                    else:
-                        # Inserir no MongoDB
-                        novo_investidor = {
-                            "sigla_investidor": sigla_investidor,
-                            "nome_investidor": nome_investidor
-                        }
-                        col_investidores.insert_one(novo_investidor)
-                        st.success("Investidor cadastrado com sucesso!")
-                        time.sleep(2)
-                        st.rerun()
+#             if submit_cadastro:
+#                 # Validação
+#                 if not sigla_investidor or not nome_investidor:
+#                     st.error("Todos os campos devem ser preenchidos.")
+#                 else:
+#                     # Verifica se a sigla já existe
+#                     sigla_existente = col_investidores.find_one({"sigla_investidor": sigla_investidor})
+#                     if sigla_existente:
+#                         st.error(f"A sigla '{sigla_investidor}' já está sendo utilizada.")
+#                     else:
+#                         # Inserir no MongoDB
+#                         novo_investidor = {
+#                             "sigla_investidor": sigla_investidor,
+#                             "nome_investidor": nome_investidor
+#                         }
+#                         col_investidores.insert_one(novo_investidor)
+#                         st.success("Investidor cadastrado com sucesso!")
+#                         time.sleep(2)
+#                         st.rerun()
 
-    # ----------------------------------------
-    # EDITAR INVESTIDOR
-    # ----------------------------------------
-    elif opcao_investidores == "Editar Investidor":
-        st.write("")
+#     # ----------------------------------------
+#     # EDITAR INVESTIDOR
+#     # ----------------------------------------
+#     elif opcao_investidores == "Editar Investidor":
+#         st.write("")
 
-        # Selectbox fora do form — assim o form de edição só existe quando há um investidor selecionado
-        lista_investidores = sorted(col_investidores.distinct("sigla_investidor"))
-        investidor_selecionado = st.selectbox(
-            "Selecione o investidor:",
-            options=[""] + lista_investidores,
-            index=0
-        )
+#         # Selectbox fora do form — assim o form de edição só existe quando há um investidor selecionado
+#         lista_investidores = sorted(col_investidores.distinct("sigla_investidor"))
+#         investidor_selecionado = st.selectbox(
+#             "Selecione o investidor:",
+#             options=[""] + lista_investidores,
+#             index=0
+#         )
 
-        if investidor_selecionado:
-            # Buscar o investidor no MongoDB
-            investidor = col_investidores.find_one({"sigla_investidor": investidor_selecionado})
+#         if investidor_selecionado:
+#             # Buscar o investidor no MongoDB
+#             investidor = col_investidores.find_one({"sigla_investidor": investidor_selecionado})
 
-            if investidor:
-                # Form somente quando temos o investidor — garante que sempre haverá um botão de submit
-                with st.form(key="investidor_editar_form", border=False):
-                    st.divider()
+#             if investidor:
+#                 # Form somente quando temos o investidor — garante que sempre haverá um botão de submit
+#                 with st.form(key="investidor_editar_form", border=False):
+#                     st.divider()
 
-                    # Sigla não editável
-                    sigla_investidor = st.text_input(
-                        "Sigla do investidor:",
-                        value=investidor.get("sigla_investidor", ""),
-                        disabled=True
-                    )
-                    nome_investidor = st.text_input(
-                        "Nome do investidor:",
-                        value=investidor.get("nome_investidor", "")
-                    )
+#                     # Sigla não editável
+#                     sigla_investidor = st.text_input(
+#                         "Sigla do investidor:",
+#                         value=investidor.get("sigla_investidor", ""),
+#                         disabled=True
+#                     )
+#                     nome_investidor = st.text_input(
+#                         "Nome do investidor:",
+#                         value=investidor.get("nome_investidor", "")
+#                     )
 
-                    st.write("")
-                    submit_editar = st.form_submit_button(
-                        "Salvar alterações",
-                        icon=":material/save:",
-                        type="primary"
-                    )
+#                     st.write("")
+#                     submit_editar = st.form_submit_button(
+#                         "Salvar alterações",
+#                         icon=":material/save:",
+#                         type="primary"
+#                     )
 
-                    if submit_editar:
-                        # Validação
-                        if not nome_investidor:
-                            st.error("O campo nome do investidor deve ser preenchido.")
-                        else:
-                            # Atualizar no MongoDB (sem checar duplicidade)
-                            col_investidores.update_one(
-                                {"_id": investidor["_id"]},
-                                {"$set": {
-                                    "nome_investidor": nome_investidor
-                                }}
-                            )
+#                     if submit_editar:
+#                         # Validação
+#                         if not nome_investidor:
+#                             st.error("O campo nome do investidor deve ser preenchido.")
+#                         else:
+#                             # Atualizar no MongoDB (sem checar duplicidade)
+#                             col_investidores.update_one(
+#                                 {"_id": investidor["_id"]},
+#                                 {"$set": {
+#                                     "nome_investidor": nome_investidor
+#                                 }}
+#                             )
 
-                            st.success("Investidor atualizado com sucesso!")
-                            time.sleep(2)
-                            st.rerun()
-            else:
-                st.warning("Não foi possível localizar o investidor selecionado.")
+#                             st.success("Investidor atualizado com sucesso!")
+#                             time.sleep(2)
+#                             st.rerun()
+#             else:
+#                 st.warning("Não foi possível localizar o investidor selecionado.")
 
 
 
 
 # Aba Doadores ---------------------------------------------------------------------------------------
 
-with tab2:
+with tab1:
 
     st.write("")
 
@@ -308,7 +303,7 @@ with tab2:
 
 # Aba Fases Operacionais ---------------------------------------------------------------------------------------
 
-with tab3:
+with tab2:
 
     st.write('')
     opcao_ciclos = st.radio("Selecione uma ação", ["Cadastrar Fase Operacional", "Editar Fase Operacional"], key="opcao_ciclos", horizontal=True)
@@ -326,13 +321,13 @@ with tab3:
             nome_ciclo = st.text_input("Nome da Fase Operacional:")
             
             # Buscar siglas únicas dos investidores no MongoDB
-            siglas_investidores = sorted(col_investidores.distinct("sigla_investidor"))
-            siglas_investidores.insert(0, "")  # adiciona uma opção vazia
+            # siglas_investidores = sorted(col_investidores.distinct("sigla_investidor"))
+            # siglas_investidores.insert(0, "")  # adiciona uma opção vazia
 
-            investidor = st.multiselect(
-                "Investidor(es):",
-                options=siglas_investidores,
-            )
+            # investidor = st.multiselect(
+            #     "Investidor(es):",
+            #     options=siglas_investidores,
+            # )
 
 
             # Buscar siglas únicas dos doadores no MongoDB
@@ -354,7 +349,7 @@ with tab3:
             if submit:
 
                 # Validação de campos vazios
-                if not codigo_ciclo or not nome_ciclo or not investidor or not doador:
+                if not codigo_ciclo or not nome_ciclo or not doador:
                     st.error("Todos os campos devem ser preenchidos.")
 
                 else:
@@ -370,7 +365,6 @@ with tab3:
                         novo_ciclo = {
                             "codigo_ciclo": codigo_ciclo,
                             "nome_ciclo": nome_ciclo,
-                            "investidores": investidor,
                             "doadores": doador,
                             }
                         col_ciclos.insert_one(novo_ciclo)
@@ -406,15 +400,15 @@ with tab3:
                     nome_ciclo = st.text_input("Nome da Fase Operacional :", value=ciclo.get("nome_ciclo", ""))
 
                     # Investidores
-                    siglas_investidores = sorted(col_investidores.distinct("sigla_investidor"))
-                    siglas_investidores.insert(0, "")
-                    investidores_selecionados = ciclo.get("investidores", [])
+                    # siglas_investidores = sorted(col_investidores.distinct("sigla_investidor"))
+                    # siglas_investidores.insert(0, "")
+                    # investidores_selecionados = ciclo.get("investidores", [])
 
-                    investidor = st.multiselect(
-                        "Investidor(es):",
-                        options=siglas_investidores,
-                        default=investidores_selecionados
-                    )
+                    # investidor = st.multiselect(
+                    #     "Investidor(es):",
+                    #     options=siglas_investidores,
+                    #     default=investidores_selecionados
+                    # )
 
                     # Doadores
                     siglas_doadores = sorted(col_doadores.distinct("sigla_doador"))
@@ -439,7 +433,7 @@ with tab3:
 
                     if submit_editar:
                         # Validação de campos vazios
-                        if not nome_ciclo or not investidor or not doador:
+                        if not nome_ciclo or not doador:
                             st.error("Todos os campos devem ser preenchidos.")
                         else:
                             # Atualizar no MongoDB (sem verificar duplicidade de código)
@@ -447,7 +441,6 @@ with tab3:
                                 {"_id": ciclo["_id"]},
                                 {"$set": {
                                     "nome_ciclo": nome_ciclo,
-                                    "investidores": investidor,
                                     "doadores": doador
                                 }}
                             )
@@ -457,11 +450,9 @@ with tab3:
                             st.rerun()
 
 
-
-
 # Aba Editais ---------------------------------------------------------------------------------------
 
-with tab4:
+with tab3:
  
     st.write("")
     opcao_editais = st.radio("Selecione uma ação:", ["Cadastrar Edital", "Editar Edital"], key="opcao_editais", horizontal=True)
@@ -606,7 +597,6 @@ with tab4:
                                     "nome_edital": nome_edital,
                                     "data_lancamento": data_lancamento.strftime("%d/%m/%Y") if data_lancamento else None,
                                     "ciclo_investimento": ciclo,
-                                    "investidores": investidor,
                                     "doadores": doador
                                 }}
                             )
