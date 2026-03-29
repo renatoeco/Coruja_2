@@ -1,11 +1,11 @@
 import streamlit as st
-from funcoes_auxiliares import conectar_mongo_coruja  # Função personalizada para conectar ao MongoDB
+from funcoes_auxiliares import conectar_mongo_coruja, safe_col, safe_get, validar_df
 import pandas as pd
 import time
 import datetime
 
 
-st.set_page_config(page_title="Ciclos de Investimento", page_icon=":material/analytics:")
+st.set_page_config(page_title="Fases Operacionais", page_icon=":material/analytics:")
 
 
 
@@ -39,31 +39,39 @@ df_doadores = pd.DataFrame(list(col_doadores.find()))
 
 # Renomear as colunas de df_ciclos
 df_ciclos = df_ciclos.rename(columns={
-    "codigo_ciclo": "Código",
-    "nome_ciclo": "Nome",
-    "data_lancamento": "Data de Lançamento",
-    "investidores": "Investidores",
-    "doadores": "Doadores"
+    col: novo for col, novo in {
+        "codigo_ciclo": "Código",
+        "nome_ciclo": "Nome",
+        "data_lancamento": "Data de Lançamento",
+        "investidores": "Investidores",
+        "doadores": "Doadores"
+    }.items() if col in df_ciclos.columns
 })
 
 # Renomear as colunas de df_editais
 df_editais = df_editais.rename(columns={
-    "codigo_edital": "Código",
-    "nome_edital": "Nome",
-    "data_lancamento": "Data de Lançamento",
-    "ciclo_investimento": "Ciclo de investimento",
+    col: novo for col, novo in {
+        "codigo_edital": "Código",
+        "nome_edital": "Nome",
+        "data_lancamento": "Data de Lançamento",
+        "ciclo_investimento": "Fase operacional",
+    }.items() if col in df_editais.columns
 })
 
 # Renomear as colunas de df_investidores
 df_investidores = df_investidores.rename(columns={
-    "sigla_investidor": "Sigla",
-    "nome_investidor": "Nome",
+    col: novo for col, novo in {
+        "sigla_investidor": "Sigla",
+        "nome_investidor": "Nome",
+    }.items() if col in df_investidores.columns
 })
 
 # Renomear as colunas de df_doadores
 df_doadores = df_doadores.rename(columns={
-    "sigla_doador": "Sigla",
-    "nome_doador": "Nome",
+    col: novo for col, novo in {
+        "sigla_doador": "Sigla",
+        "nome_doador": "Nome",
+    }.items() if col in df_doadores.columns
 })
 
 # Converte o ObjectId para string (evita erro do PyArrow)
@@ -80,6 +88,24 @@ if "_id" in df_doadores.columns:
     df_doadores["_id"] = df_doadores["_id"].astype(str)
 
 
+###########################################################################################################
+# VALIDAÇÃO DOS DADOS
+###########################################################################################################
+
+
+erros_gerais = []
+
+valido_ciclos, erros = validar_df(df_ciclos, "Ciclos", ["Código"])
+erros_gerais += erros
+
+valido_editais, erros = validar_df(df_editais, "Editais", ["Código"])
+erros_gerais += erros
+
+valido_investidores, erros = validar_df(df_investidores, "Investidores", ["Sigla"])
+erros_gerais += erros
+
+valido_doadores, erros = validar_df(df_doadores, "Doadores", ["Sigla"])
+erros_gerais += erros
 
 
 ###########################################################################################################
@@ -100,7 +126,14 @@ st.logo("images/logo_fundo_ecos.png", size='large')
 st.header("Visão geral")
 st.write('')
 
-
+if erros_gerais:
+    st.warning(
+        "Dados incompletos detectados:\n\n- " +
+        "\n- ".join(erros_gerais)
+    )
+    
+    st.write("")
+    st.write("")
 
 
 # --- Função auxiliar para pluralização ---
@@ -115,30 +148,38 @@ with st.expander("**Filtros**"):
 
     with col_filtros[0]:
         filtro_ciclo = st.selectbox(
-            "Ciclo de investimento:",
-            options=["Todos"] + sorted(df_ciclos["Código"].unique().tolist()),
-            index=0
+            "Fase operacional:",
+                options=["Todos"] + (
+                sorted(df_ciclos["Código"].dropna().unique().tolist())
+                if "Código" in df_ciclos.columns else []
+            )
         )
 
     with col_filtros[1]:
         filtro_edital = st.selectbox(
             "Edital:",
-            options=["Todos"] + sorted(df_editais["Código"].unique().tolist()),
-            index=0
+            options=["Todos"] + (
+                sorted(df_editais["Código"].dropna().unique().tolist())
+                if "Código" in df_editais.columns else []
+            )
         )
 
     with col_filtros[2]:
         filtro_investidor = st.selectbox(
             "Investidor:",
-            options=["Todos"] + sorted(df_investidores["Sigla"].unique().tolist()),
-            index=0
+                options=["Todos"] + (
+                    sorted(df_investidores["Sigla"].dropna().unique().tolist())
+                    if "Sigla" in df_investidores.columns else []
+            )
         )
 
     with col_filtros[3]:
         filtro_doador = st.selectbox(
             "Doador:",
-            options=["Todos"] + sorted(df_doadores["Sigla"].unique().tolist()),
-            index=0
+                options=["Todos"] + (
+                    sorted(df_doadores["Sigla"].dropna().unique().tolist())
+                    if "Sigla" in df_doadores.columns else []
+            )
         )
 
 
@@ -149,13 +190,13 @@ df_investidores_filtrado = df_investidores.copy()
 df_doadores_filtrado = df_doadores.copy()
 
 
-# --- FILTRO POR CICLO DE INVESTIMENTO ---
-if filtro_ciclo != "Todos":
-    # Ciclo de investimento selecionado
+# --- FILTRO POR FASE OPERACIONAL ---
+if filtro_ciclo != "Todos" and "Código" in df_ciclos.columns:
+    # Fase operacional selecionada
     df_ciclos_filtrado = df_ciclos[df_ciclos["Código"] == filtro_ciclo]
 
     # Editais relacionados
-    df_editais_filtrado = df_editais[df_editais["Ciclo de investimento"] == filtro_ciclo]
+    df_editais_filtrado = df_editais[df_editais["Fase operacional"] == filtro_ciclo]
 
     # Investidores e doadores relacionados
     investidores_rel = df_ciclos_filtrado["Investidores"].explode().dropna().unique().tolist()
@@ -166,10 +207,13 @@ if filtro_ciclo != "Todos":
 
 
 # --- FILTRO POR EDITAL ---
-elif filtro_edital != "Todos":
+elif filtro_edital != "Todos" and "Código" in df_editais.columns:
     df_editais_filtrado = df_editais[df_editais["Código"] == filtro_edital]
 
-    ciclo_rel = df_editais_filtrado["Ciclo de investimento"].iloc[0]
+    ciclo_rel = None
+    if not df_editais_filtrado.empty and "Fase operacional" in df_editais_filtrado.columns:
+        ciclo_rel = df_editais_filtrado["Fase operacional"].iloc[0]
+        
     df_ciclos_filtrado = df_ciclos[df_ciclos["Código"] == ciclo_rel]
 
     investidores_rel = df_ciclos_filtrado["Investidores"].explode().dropna().unique().tolist()
@@ -180,13 +224,13 @@ elif filtro_edital != "Todos":
 
 
 # --- FILTRO POR INVESTIDOR ---
-elif filtro_investidor != "Todos":
+elif filtro_investidor != "Todos" and "Investidores" in df_ciclos.columns:
     df_ciclos_filtrado = df_ciclos[
         df_ciclos["Investidores"].apply(lambda x: filtro_investidor in x if isinstance(x, list) else False)
     ]
 
     codigos_ciclos_rel = df_ciclos_filtrado["Código"].unique().tolist()
-    df_editais_filtrado = df_editais[df_editais["Ciclo de investimento"].isin(codigos_ciclos_rel)]
+    df_editais_filtrado = df_editais[df_editais["Fase operacional"].isin(codigos_ciclos_rel)]
 
     df_investidores_filtrado = df_investidores[df_investidores["Sigla"] == filtro_investidor]
 
@@ -195,13 +239,13 @@ elif filtro_investidor != "Todos":
 
 
 # --- FILTRO POR DOADOR ---
-elif filtro_doador != "Todos":
+elif filtro_doador != "Todos" and "Doadores" in df_ciclos.columns:
     df_ciclos_filtrado = df_ciclos[
         df_ciclos["Doadores"].apply(lambda x: filtro_doador in x if isinstance(x, list) else False)
     ]
 
     codigos_ciclos_rel = df_ciclos_filtrado["Código"].unique().tolist()
-    df_editais_filtrado = df_editais[df_editais["Ciclo de investimento"].isin(codigos_ciclos_rel)]
+    df_editais_filtrado = df_editais[df_editais["Fase operacional"].isin(codigos_ciclos_rel)]
 
     investidores_rel = df_ciclos_filtrado["Investidores"].explode().dropna().unique().tolist()
     df_investidores_filtrado = df_investidores[df_investidores["Sigla"].isin(investidores_rel)]
@@ -219,8 +263,8 @@ elif filtro_doador != "Todos":
 
 st.write('')
 
-# CICLOS DE INVESTIMENTO ------------------------------------------------------
-st.subheader(pluralizar(len(df_ciclos_filtrado), "ciclo de investimento", "ciclos de investimento"))
+# Fases Operacionais ------------------------------------------------------
+st.subheader(pluralizar(len(df_ciclos_filtrado), "fase operacional", "fases operacionais"))
 st.dataframe(
     df_ciclos_filtrado,
     hide_index=True,
@@ -241,7 +285,7 @@ if "Data de Lançamento" in df_editais_filtrado.columns:
 st.dataframe(
     df_editais_filtrado,
     hide_index=True,
-    column_order=['Código', 'Nome', 'Data de Lançamento', 'Ciclo de investimento']
+    column_order=['Código', 'Nome', 'Data de Lançamento', 'Fase operacional']
 )
 st.write('')
 

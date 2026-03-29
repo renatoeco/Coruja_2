@@ -2,18 +2,16 @@ import streamlit as st
 import pandas as pd
 import folium
 from streamlit_folium import st_folium
-from funcoes_auxiliares import conectar_mongo_coruja
-
+from funcoes_auxiliares import conectar_mongo_coruja, safe_col, safe_get, validar_df
 
 
 st.set_page_config(page_title="Mapa", page_icon=":material/map:")
 
 
-
-
 ###########################################################################################################
 # CONEXÃO COM O BANCO
 ###########################################################################################################
+
 
 db = conectar_mongo_coruja()
 
@@ -24,28 +22,39 @@ col_editais = db["editais"]
 df_editais = pd.DataFrame(list(col_editais.find()))
 
 
-
 ###########################################################################################################
 # FUNÇÕES
 ###########################################################################################################
 
+
 if "notificacoes_mapa" not in st.session_state:
     st.session_state.notificacoes_mapa = []
+
 
 # Envia mensagem para a área de notificação
 def notificar_mapa(mensagem: str):
     st.session_state.notificacoes_mapa.append(mensagem)
 
 
-
-
-
-
-
 ###########################################################################################################
-# TRATAMENTO DOS DADOS
+# VALIDAÇÃO DOS DADOS
 ###########################################################################################################
 
+
+erros_gerais = []
+
+valido_editais, erros = validar_df(
+    df_editais,
+    "Editais",
+    ["codigo_edital", "nome_edital"]
+)
+erros_gerais += erros
+
+valido_projetos, erros = validar_df(
+    df_projetos,
+    "Projetos",
+    ["codigo", "sigla", "edital"]
+)
 
 
 ###########################################################################################################
@@ -56,6 +65,16 @@ st.logo("images/logo_fundo_ecos.png", size="large")
 st.header("Mapa de projetos")
 
 st.write('')
+
+if erros_gerais:
+    st.warning(
+        "Dados incompletos detectados:\n\n- " +
+        "\n- ".join(erros_gerais)
+    )
+    
+    st.write('')
+    st.write('')
+    
 
 # Área de notificações
 if st.session_state.notificacoes_mapa:
@@ -72,7 +91,13 @@ st.session_state.notificacoes_mapa = []
 # FILTRO DE EDITAL
 # ============================================
 
-lista_editais = ["Todos"] + df_editais["codigo_edital"].tolist()
+if valido_editais:
+    lista_editais = ["Todos"] + sorted(
+        safe_col(df_editais, "codigo_edital", pd.Series()).dropna().unique().tolist()
+    )
+else:
+    lista_editais = ["Todos"]
+    
 edital_selecionado = st.selectbox("Selecione o edital", lista_editais, width=300)
 
 st.write("")
@@ -80,10 +105,15 @@ st.write("")
 if edital_selecionado == "Todos":
     st.markdown("##### Todos os editais")
 else:
-    nome_edital = df_editais.loc[
-        df_editais["codigo_edital"] == edital_selecionado,
-        "nome_edital"
-    ].values[0]
+    nome_edital = "Nome não disponível"
+
+    if valido_editais and edital_selecionado != "Todos":
+        resultado = df_editais.loc[
+            df_editais["codigo_edital"] == edital_selecionado,
+            "nome_edital"
+        ]
+        if not resultado.empty:
+            nome_edital = resultado.values[0]
 
     st.markdown(f"##### {edital_selecionado} - {nome_edital}")
 
@@ -93,7 +123,7 @@ else:
 
 df_filtrado = df_projetos.copy()
 
-if edital_selecionado != "Todos":
+if edital_selecionado != "Todos" and "edital" in df_filtrado.columns:
     df_filtrado = df_filtrado[df_filtrado["edital"] == edital_selecionado]
 
 if df_filtrado.empty:
@@ -113,12 +143,12 @@ for _, projeto in df_filtrado.iterrows():
 
     encontrou_localidade = False  # <- controle por projeto
 
-    locais = projeto.get("locais")
+    locais = safe_get(projeto, "locais")
 
     # Garante que seja um dicionário
     if not isinstance(locais, dict):
         notificar_mapa(
-            f"O projeto {projeto.get('codigo')} - {projeto.get('sigla')} não tem localidades cadastradas."
+            f"O projeto {safe_get(projeto,'codigo','-')} - {safe_get(projeto,'sigla','-')} não tem localidades cadastradas."
         )
         continue
 
@@ -135,8 +165,8 @@ for _, projeto in df_filtrado.iterrows():
         if not isinstance(local, dict):
             continue
 
-        lat = local.get("latitude")
-        lon = local.get("longitude")
+        lat = local.get("latitude") if isinstance(local, dict) else None
+        lon = local.get("longitude") if isinstance(local, dict) else None
 
         # Ignora coordenadas inválidas
         if lat is None or lon is None:

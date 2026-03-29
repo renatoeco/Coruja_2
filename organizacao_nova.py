@@ -46,7 +46,11 @@ col_uf_municipios = db["ufs_municipios"]
 # Busca especificamente o documento que possui a chave 'ufs'
 doc_ufs = col_uf_municipios.find_one({"ufs": {"$exists": True}})
 
-df_ufs = pd.DataFrame(doc_ufs["ufs"])
+if doc_ufs and "ufs" in doc_ufs:
+    df_ufs = pd.DataFrame(doc_ufs["ufs"])
+else:
+    st.warning("Dados de UFs não encontrados.")
+    df_ufs = pd.DataFrame(columns=["sigla_uf", "nome_uf", "codigo_uf"])
 
 
 
@@ -58,7 +62,11 @@ df_ufs = pd.DataFrame(doc_ufs["ufs"])
 # Busca especificamente o documento que possui a chave 'municipios'
 doc_municipios = col_uf_municipios.find_one({"municipios": {"$exists": True}})
 
-df_municipios = pd.DataFrame(doc_municipios["municipios"])
+if doc_municipios and "municipios" in doc_municipios:
+    df_municipios = pd.DataFrame(doc_municipios["municipios"])
+else:
+    st.warning("Dados de municípios não encontrados.")
+    df_municipios = pd.DataFrame(columns=["nome_municipio", "codigo_municipio"])
 
 
 
@@ -76,11 +84,17 @@ df_municipios = pd.DataFrame(doc_municipios["municipios"])
 # -------------------------------------------------------------------------------------------------
 
 # Lista de UFs com opção vazia no topo
-lista_ufs = [""] + sorted(df_ufs["sigla_uf"].tolist())
+lista_ufs = [""] + (
+    sorted(df_ufs["sigla_uf"].dropna().tolist())
+    if "sigla_uf" in df_ufs.columns else []
+)
 
 # Lista de municípios com opção vazia
 
-lista_municipios = [""] + sorted(df_municipios["nome_municipio"].tolist())
+lista_municipios = [""] + (
+    sorted(df_municipios["nome_municipio"].dropna().tolist())
+    if "nome_municipio" in df_municipios.columns else []
+)
 
 
 
@@ -179,10 +193,11 @@ st.header("Nova Organização")
 
 # Seleção do tipo de cadastro
 opcao_cadastro = st.radio(
-    "",
+    "Tipo de cadastro",
     ["Cadastro individual", "Cadastro em massa"],
     key="opcao_cadastro",
-    horizontal=True
+    horizontal=True,
+    label_visibility="hidden"
 )
 
 st.write("")
@@ -339,12 +354,20 @@ if opcao_cadastro == "Cadastro individual":
                     # -------------------------------------------------------------------------------------------------
 
                     # Busca UF selecionada
-                    uf_doc = df_ufs[df_ufs["sigla_uf"] == uf].iloc[0]
+                    uf_doc = None
+                    if "sigla_uf" in df_ufs.columns:
+                        resultado = df_ufs[df_ufs["sigla_uf"] == uf]
+                        if not resultado.empty:
+                            uf_doc = resultado.iloc[0]
 
                     # Busca município selecionado
-                    municipio_doc = df_municipios[
-                        df_municipios["nome_municipio"] == municipio_nome
-                    ].iloc[0]
+                    municipio_doc = None
+                    if "nome_municipio" in df_municipios.columns:
+                        resultado = df_municipios[
+                            df_municipios["nome_municipio"] == municipio_nome
+                        ]
+                        if not resultado.empty:
+                            municipio_doc = resultado.iloc[0]
 
 
                     # -------------------------------------------------------------------------------------------------
@@ -359,13 +382,13 @@ if opcao_cadastro == "Cadastro individual":
                         # Dados de localização
                         "endereco": endereco,
                         "uf": {
-                            "sigla": uf_doc["sigla_uf"],
-                            "nome": uf_doc["nome_uf"],
-                            "codigo_uf": int(uf_doc["codigo_uf"])
+                            "sigla": uf_doc["sigla_uf"] if uf_doc is not None else "",
+                            "nome": uf_doc["nome_uf"] if uf_doc is not None else "",
+                            "codigo_uf": int(uf_doc["codigo_uf"]) if uf_doc is not None else None
                         },
                         "municipio": {
-                            "nome": municipio_doc["nome_municipio"],
-                            "codigo_municipio": int(municipio_doc["codigo_municipio"])
+                            "nome": municipio_doc["nome_municipio"] if municipio_doc is not None else "",
+                            "codigo_municipio": int(municipio_doc["codigo_municipio"]) if municipio_doc is not None else None
                         },
                         "cep": cep
                     }
@@ -516,7 +539,7 @@ elif opcao_cadastro == "Cadastro em massa":
             # -----------------------------
             # UF
             # -----------------------------
-            uf_match = df_ufs[df_ufs["sigla_uf"] == uf]
+            uf_match = df_ufs[df_ufs["sigla_uf"] == uf] if "sigla_uf" in df_ufs.columns else pd.DataFrame()
 
             if uf_match.empty:
                 erros.append(f"{identificador}: UF inválida.")
@@ -527,9 +550,10 @@ elif opcao_cadastro == "Cadastro em massa":
             # -----------------------------
             # MUNICÍPIO
             # -----------------------------
-            mun_match = df_municipios[
-                df_municipios["nome_municipio"] == municipio_nome
-            ]
+            mun_match = (
+                df_municipios[df_municipios["nome_municipio"] == municipio_nome]
+                if "nome_municipio" in df_municipios.columns else pd.DataFrame()
+            )
 
             if mun_match.empty:
                 erros.append(f"{identificador}: Município inválido.")

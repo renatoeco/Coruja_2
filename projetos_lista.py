@@ -1,5 +1,5 @@
 import streamlit as st
-from funcoes_auxiliares import conectar_mongo_coruja, calcular_status_projetos
+from funcoes_auxiliares import conectar_mongo_coruja, calcular_status_projetos, safe_col, safe_get, validar_df
 # import plotly.express as px
 import pandas as pd
 
@@ -41,16 +41,51 @@ df_organizacoes = pd.DataFrame(list(col_organizacoes.find()))
 
 
 ###########################################################################################################
+# VALIDAÇÃO GLOBAL DOS DATAFRAMES
+###########################################################################################################
+
+
+erros_gerais = []
+
+valido_editais, erros = validar_df(
+    df_editais,
+    "Editais",
+    ["codigo_edital", "nome_edital"]
+)
+erros_gerais += erros
+
+valido_projetos, erros = validar_df(
+    df_projetos,
+    "Projetos",
+    ["codigo", "sigla", "id_organizacao"]
+)
+erros_gerais += erros
+
+valido_pessoas, erros = validar_df(
+    df_pessoas,
+    "Pessoas",
+    ["nome_completo", "projetos"]
+)
+erros_gerais += erros
+
+valido_orgs, erros = validar_df(
+    df_organizacoes,
+    "Organizações",
+    ["_id", "nome_organizacao", "sigla_organizacao"]
+)
+erros_gerais += erros
+
+
+###########################################################################################################
 # MAPA ID -> NOME DA ORGANIZAÇÃO
 ###########################################################################################################
+
 
 # cria um dicionário para acessar rapidamente o nome da organização pelo _id
 mapa_org_id_nome = {
     row["_id"]: row["nome_organizacao"]
     for _, row in df_organizacoes.iterrows()
 }
-
-
 
 
 ###########################################################################################################
@@ -136,71 +171,59 @@ st.header("Projetos")
 
 st.write('')
 
+if erros_gerais:
+    st.warning(
+        "Dados incompletos detectados:\n\n- " +
+        "\n- ".join(erros_gerais)
+    )
+
+    st.write("")
+    st.write("")
+
 
 col1, col2, col3, col4 = st.columns(4)
 
-
 with col1:
 
-    # ============================================
-    # SELEÇÃO DO EDITAL
-    # ============================================
+    if valido_editais:
+        lista_editais = sorted(
+            safe_col(df_editais, "codigo_edital", pd.Series()).dropna().unique().tolist()
+        )
+        lista_editais = ["Todos"] + lista_editais
+    else:
+        lista_editais = ["Todos"]
 
-    # Lista de editais disponíveis
-    lista_editais = sorted(df_editais['codigo_edital'].unique().tolist())
-
-    # Adiciona "Todos" no início
-    lista_editais = ["Todos"] + lista_editais
-
-    # Selectbox de edital
-    edital_selecionado = st.selectbox("Selecione o edital", lista_editais, width=300)
-
-
-
-
-
+    edital_selecionado = st.selectbox(
+        "Selecione o edital",
+        lista_editais,
+        width=300
+    )
 
 with col2:
 
-    # ============================================
-    # SELEÇÃO DA ORGANIZAÇÃO
-    # ============================================
+    if valido_orgs:
+        df_organizacoes["org_label"] = (
+            safe_col(df_organizacoes, "sigla_organizacao", "") + " - " +
+            safe_col(df_organizacoes, "nome_organizacao", "")
+        )
 
-    # Cria coluna concatenada "SIGLA - Nome"
-    df_organizacoes["org_label"] = (
-        df_organizacoes["sigla_organizacao"] + " - " + df_organizacoes["nome_organizacao"]
-    )
+        df_organizacoes = df_organizacoes.sort_values("org_label")
 
-    # Ordena para melhor visualização
-    df_organizacoes = df_organizacoes.sort_values("org_label")
+        lista_orgs = ["Todas"] + df_organizacoes["org_label"].tolist()
 
-    # Cria lista de opções
-    lista_orgs = df_organizacoes["org_label"].tolist()
+        mapa_org_label_id = {
+            row["org_label"]: row["_id"]
+            for _, row in df_organizacoes.iterrows()
+        }
+    else:
+        lista_orgs = ["Todas"]
+        mapa_org_label_id = {}
 
-    # Adiciona opção "Todas"
-    lista_orgs = ["Todas"] + lista_orgs
-
-    # Cria mapa label -> id da organização
-    mapa_org_label_id = {
-        row["org_label"]: row["_id"]
-        for _, row in df_organizacoes.iterrows()
-    }
-
-    # Selectbox de organização
     org_selecionada = st.selectbox(
         "Selecione a organização",
         lista_orgs,
         width=300
     )
-
-st.write('')
-
-
-
-
-
-
-
 
 st.write('')
 
@@ -220,10 +243,15 @@ with col_titulo:
 
 
     else:
-        nome_edital = df_editais.loc[
-            df_editais["codigo_edital"] == edital_selecionado,
-            "nome_edital"
-        ].values[0]
+        nome_edital = "Nome não disponível"
+
+        if valido_editais and edital_selecionado != "Todos":
+            resultado = df_editais.loc[
+                df_editais["codigo_edital"] == edital_selecionado,
+                "nome_edital"
+            ]
+            if not resultado.empty:
+                nome_edital = resultado.values[0]
 
         st.subheader(f"{edital_selecionado} — {nome_edital}")
 
@@ -255,7 +283,8 @@ col1, col2, col3, col4 = st.columns(4, gap="large")
 # Filtrar pelo EDITAL
 # ###########################################################################################################
 
-if edital_selecionado != "Todos":
+
+if edital_selecionado != "Todos" and "edital" in df_filtrado.columns:
     df_filtrado = df_filtrado[df_filtrado["edital"] == edital_selecionado]
 
 
@@ -303,7 +332,7 @@ if ver_meus_projetos:
 # ###############################################################################
 
 
-if org_selecionada != "Todas":
+if org_selecionada != "Todas" and "id_organizacao" in df_filtrado.columns:
 
     # Recupera o id da organização selecionada
     id_org = mapa_org_label_id.get(org_selecionada)
@@ -362,12 +391,15 @@ for index, projeto in df_filtrado.iterrows():
     
     cols = st.columns(larguras_colunas)
 
-    cols[0].write(projeto['codigo'])
-    cols[1].write(projeto['sigla'])
+    cols[0].write(safe_get(projeto, 'codigo', '-'))
+    cols[1].write(safe_get(projeto, 'sigla', '-'))
 
     # NOME DA ORGANIZAÇÃO
     # recupera o nome da organização usando o id armazenado no projeto
-    nome_org = mapa_org_id_nome.get(projeto["id_organizacao"], "")
+    nome_org = mapa_org_id_nome.get(
+        safe_get(projeto, "id_organizacao"),
+        ""
+    )
 
     cols[2].write(nome_org)
 
@@ -396,7 +428,7 @@ for index, projeto in df_filtrado.iterrows():
         'Sem cronograma': '#fff099'
     }
 
-    status = projeto.get("status", "")
+    status = safe_get(projeto, "status", "")
 
     cor = mapa_cores_status.get(status, "#ccc")
 

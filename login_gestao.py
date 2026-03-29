@@ -414,7 +414,7 @@ else:
                 st.Page("mapa.py", title="Mapa", icon=":material/map:"),
                 st.Page("projeto_novo.py", title="Novo projeto", icon=":material/add_circle:"),
             ],
-            "Ciclos de investimento": [
+            "Fases operacionais": [
                 st.Page("ciclos_visao_geral.py", title="Visão geral", icon=":material/analytics:"),
                 st.Page("ciclos_gerenciar.py", title="Gerenciar", icon=":material/settings:"),
             ],
@@ -445,7 +445,7 @@ else:
                 st.Page("mapa.py", title="Mapa", icon=":material/map:"),
                 st.Page("projeto_novo.py", title="Novo projeto", icon=":material/add_circle:"),
             ],
-            "Ciclos de investimento": [
+            "Fases operacionais": [
                 st.Page("ciclos_visao_geral.py", title="Visão geral", icon=":material/analytics:"),
                 st.Page("ciclos_gerenciar.py", title="Gerenciar", icon=":material/settings:"),
             ],

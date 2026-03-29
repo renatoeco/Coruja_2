@@ -1,15 +1,11 @@
 import streamlit as st
-from funcoes_auxiliares import conectar_mongo_coruja, limpar_e_validar_cep
+from funcoes_auxiliares import conectar_mongo_coruja, limpar_e_validar_cep, safe_col, safe_get, validar_df
 import pandas as pd
 import time
 import re
 
 
-
 st.set_page_config(page_title="Organizações", page_icon=":material/analytics:")
-
-
-
 
 
 ###########################################################################################################
@@ -26,8 +22,37 @@ df_projetos = pd.DataFrame(list(col_projetos.find()))
 col_organizacoes = db["organizacoes"]
 df_organizacoes = pd.DataFrame(list(col_organizacoes.find()))
 
+
+###########################################################################################################
+# VALIDAÇÃO DOS DADOS
+###########################################################################################################
+
+erros_gerais = []
+
+valido_orgs, erros = validar_df(
+    df_organizacoes,
+    "Organizações",
+    ["sigla_organizacao", "nome_organizacao"]
+)
+erros_gerais += erros
+
+valido_projetos, erros = validar_df(
+    df_projetos,
+    "Projetos",
+    ["id_organizacao"]
+)
+erros_gerais += erros
+
+###########################################################################################################
+# TRATAMENTO DOS DADOS
+###########################################################################################################
+
+
 # Organiza em ordem alfabética pela sigla
-df_organizacoes = df_organizacoes.sort_values(by=["sigla_organizacao"])
+if "sigla_organizacao" in df_organizacoes.columns:
+    df_organizacoes = df_organizacoes.sort_values(by=["sigla_organizacao"])
+else:
+    st.warning("Dados de organizações incompletos: coluna 'sigla_organizacao' não encontrada.")
 
 
 # CARREGAMENTO DE UFs E MUNICÍPIOS
@@ -36,15 +61,32 @@ col_uf_municipios = db["ufs_municipios"]
 
 # Documento de UFs
 doc_ufs = col_uf_municipios.find_one({"ufs": {"$exists": True}})
-df_ufs = pd.DataFrame(doc_ufs["ufs"])
+
+if doc_ufs and "ufs" in doc_ufs:
+    df_ufs = pd.DataFrame(doc_ufs["ufs"])
+else:
+    st.warning("Dados de UFs não encontrados.")
+    df_ufs = pd.DataFrame(columns=["sigla_uf", "nome_uf", "codigo_uf"])
 
 # Documento de municípios
 doc_municipios = col_uf_municipios.find_one({"municipios": {"$exists": True}})
-df_municipios = pd.DataFrame(doc_municipios["municipios"])
+
+if doc_municipios and "municipios" in doc_municipios:
+    df_municipios = pd.DataFrame(doc_municipios["municipios"])
+else:
+    st.warning("Dados de municípios não encontrados.")
+    df_municipios = pd.DataFrame(columns=["nome_municipio", "codigo_municipio"])
 
 # Listas para selectbox
-lista_ufs = [""] + sorted(df_ufs["sigla_uf"].tolist())
-lista_municipios = [""] + df_municipios["nome_municipio"].sort_values().tolist()
+lista_ufs = [""] + (
+    sorted(df_ufs["sigla_uf"].dropna().tolist())
+    if "sigla_uf" in df_ufs.columns else []
+)
+
+lista_municipios = [""] + (
+    df_municipios["nome_municipio"].dropna().sort_values().tolist()
+    if "nome_municipio" in df_municipios.columns else []
+)
 
 
 
@@ -96,18 +138,22 @@ def editar_organizacao_dialog():
 
 
     # Cria coluna concatenada
-    df_organizacoes["org_label"] = (
-        df_organizacoes["sigla_organizacao"]
-        + " - "
-        + df_organizacoes["nome_organizacao"]
-    )
+    if "sigla_organizacao" in df_organizacoes.columns and "nome_organizacao" in df_organizacoes.columns:
+        df_organizacoes["org_label"] = (
+            safe_col(df_organizacoes, "sigla_organizacao", "") +
+            " - " +
+            safe_col(df_organizacoes, "nome_organizacao", "")
+        )
+    else:
+        st.warning("Dados insuficientes para listar organizações.")
+        df_organizacoes["org_label"] = ""
 
     # Lista de opções
     opcoes = df_organizacoes["org_label"].tolist()
 
     # Mapa label -> id
     mapa_org_label_id = {
-        row["org_label"]: row["_id"]
+        row["org_label"]: safe_get(row, "_id")
         for _, row in df_organizacoes.iterrows()
     }
 
@@ -133,7 +179,9 @@ def editar_organizacao_dialog():
         org_id = mapa_org_label_id.get(escolha)
 
         # Busca no banco pelo _id
-        org = col_organizacoes.find_one({"_id": org_id})
+        org = None
+        if org_id:
+            org = col_organizacoes.find_one({"_id": org_id})
         
         
 
@@ -295,15 +343,23 @@ def editar_organizacao_dialog():
                         # BUSCA DE UF E MUNICÍPIO, POIS ELE SALVA UM UF E MUNICIPIO COM ALGUNS METADADOS
                         # -------------------------------------------------------------------------------------------------
 
-                        uf_doc = df_ufs[df_ufs["sigla_uf"] == uf].iloc[0]
+                        uf_doc = None
+                        if "sigla_uf" in df_ufs.columns:
+                            resultado = df_ufs[df_ufs["sigla_uf"] == uf]
+                            if not resultado.empty:
+                                uf_doc = resultado.iloc[0]
 
-                        municipio_doc = df_municipios[
-                            df_municipios["nome_municipio"] == municipio_nome
-                        ].iloc[0]
+                        municipio_doc = None
+                        if "nome_municipio" in df_municipios.columns:
+                            resultado = df_municipios[
+                                df_municipios["nome_municipio"] == municipio_nome
+                            ]
+                            if not resultado.empty:
+                                municipio_doc = resultado.iloc[0]
 
 
                         col_organizacoes.update_one(
-                            {"_id": org["_id"]},
+                            {"_id": org["_id"]} if org and "_id" in org else {},
                             {
 
                                 "$set": {
@@ -312,13 +368,13 @@ def editar_organizacao_dialog():
                                     "cnpj": cnpj,
                                     "endereco": endereco,
                                     "uf": {
-                                        "sigla": uf_doc["sigla_uf"],
-                                        "nome": uf_doc["nome_uf"],
-                                        "codigo_uf": int(uf_doc["codigo_uf"])
+                                        "sigla": uf_doc["sigla_uf"] if uf_doc is not None else "",
+                                        "nome": uf_doc["nome_uf"] if uf_doc is not None else "",
+                                        "codigo_uf": int(uf_doc["codigo_uf"]) if uf_doc is not None else None
                                     },
                                     "municipio": {
-                                        "nome": municipio_doc["nome_municipio"],
-                                        "codigo_municipio": int(municipio_doc["codigo_municipio"])
+                                        "nome": municipio_doc["nome_municipio"] if municipio_doc is not None else "",
+                                        "codigo_municipio": int(municipio_doc["codigo_municipio"]) if municipio_doc is not None else None
                                     },
                                     "cep": cep_limpo
                                 }
@@ -353,15 +409,22 @@ def editar_organizacao_dialog():
 # --------------------------------------------------
 
 # Conta projetos agrupando pelo id da organização
-contagem_projetos = df_projetos["id_organizacao"].value_counts()
+if "id_organizacao" in df_projetos.columns:
+    contagem_projetos = df_projetos["id_organizacao"].value_counts()
+else:
+    contagem_projetos = pd.Series(dtype=int)
 
 # Merge usando o _id da organização
-df_organizacoes = df_organizacoes.merge(
-    contagem_projetos.rename("quantidade_projetos"),
-    left_on="_id",
-    right_index=True,
-    how="left"
-)
+if "_id" in df_organizacoes.columns:
+    df_organizacoes = df_organizacoes.merge(
+        contagem_projetos.rename("quantidade_projetos"),
+        left_on="_id",
+        right_index=True,
+        how="left"
+    )
+else:
+    st.warning("Não foi possível relacionar projetos: coluna '_id' ausente em organizações.")
+    df_organizacoes["quantidade_projetos"] = 0
 
 # Organizações sem projeto ficam com 0
 df_organizacoes["quantidade_projetos"] = (
@@ -383,11 +446,25 @@ st.logo("images/logo_fundo_ecos.png", size='large')
 # Título da página
 st.header("Organizações")
 
+if erros_gerais:
+    st.write('')
+    st.write('')
+    st.warning(
+        "Dados incompletos detectados:\n\n- " +
+        "\n- ".join(erros_gerais)
+    )
+
 st.write('')
 st.write('')
 
 # Contagem de organizações
-st.write(f"**{df_organizacoes['sigla_organizacao'].nunique()} organizações cadastradas**")
+total_orgs = (
+    df_organizacoes["sigla_organizacao"].nunique()
+    if "sigla_organizacao" in df_organizacoes.columns
+    else 0
+)
+
+st.write(f"**{total_orgs} organizações cadastradas**")
 st.write('')
 
 
@@ -402,31 +479,37 @@ st.write('')
 # PREPARAÇÃO DE CAMPOS DE LOCALIZAÇÃO PARA EXIBIÇÃO
 # -------------------------------------------------------------------------------------------------
 
-df_organizacoes["uf_sigla"] = df_organizacoes["uf"].apply(
-    lambda x: x.get("sigla") if isinstance(x, dict) else ""
-)
+if "uf" in df_organizacoes.columns:
+    df_organizacoes["uf_sigla"] = df_organizacoes["uf"].apply(
+        lambda x: x.get("sigla") if isinstance(x, dict) else ""
+    )
+else:
+    df_organizacoes["uf_sigla"] = ""
 
-df_organizacoes["municipio_nome"] = df_organizacoes["municipio"].apply(
-    lambda x: x.get("nome") if isinstance(x, dict) else ""
-)
+if "municipio" in df_organizacoes.columns:
+    df_organizacoes["municipio_nome"] = df_organizacoes["municipio"].apply(
+        lambda x: x.get("nome") if isinstance(x, dict) else ""
+    )
+else:
+    df_organizacoes["municipio_nome"] = ""
+colunas_exibir = [
+    col for col in [
+        "sigla_organizacao",
+        "nome_organizacao",
+        "cnpj",
+        "endereco",
+        "uf_sigla",
+        "municipio_nome",
+        "cep",
+        "quantidade_projetos"
+    ] if col in df_organizacoes.columns
+]
 
-
-
-
-st.dataframe(df_organizacoes, 
-            column_order=[
-                "sigla_organizacao",
-                "nome_organizacao",
-                "cnpj",
-                "endereco",
-                "uf_sigla",
-                "municipio_nome",
-                "cep",
-                "quantidade_projetos"
-            ],
-
-             hide_index=True,
-             column_config={
+st.dataframe(
+            df_organizacoes,
+            column_order=colunas_exibir,
+            hide_index=True,
+            column_config={
                  "sigla_organizacao": st.column_config.Column(
                      label="Sigla",
                      width="small" 

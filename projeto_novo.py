@@ -49,9 +49,11 @@ if "form_projeto" not in st.session_state:
         "objetivo": ""
     }
 
+
 ###########################################################################################################
 # INTERFACE
 ###########################################################################################################
+
 
 st.logo("images/logo_fundo_ecos.png", size="large")
 st.header("Novo projeto")
@@ -59,19 +61,6 @@ st.header("Novo projeto")
 st.write(
     "*Antes de cadastrar o **projeto**, cadastre a **Organização** e as **Pessoas** envolvidas.*"
 )
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 ###########################################################################################################
@@ -92,11 +81,10 @@ mapa_id_nome = {
 lista_ids = list(mapa_id_nome.keys())
 
 
-
-
 ###########################################################################################################
 # DADOS AUXILIARES (ORGANIZAÇÕES)
 ###########################################################################################################
+
 
 orgs = list(col_organizacoes.find().sort("nome_organizacao", 1))
 
@@ -113,7 +101,6 @@ lista_org_ids = list(mapa_org_id_nome.keys())
 st.write('')
 
 col1, col2, col3 = st.columns(3)
-
 
 
 ###########################################################################################################
@@ -134,11 +121,23 @@ edital = col1.selectbox(
 edital_doc = next((e for e in editais if e["codigo_edital"] == edital), {})
 
 
+###########################################################################################################
+# DADOS AUXILIARES (PÚBLICOS)
+###########################################################################################################
+
+
+# Verifica se dataframe está vazio OU coluna não existe
+if df_publicos.empty or "publico" not in df_publicos.columns:
+    lista_publicos = []
+else:
+    # Remove valores nulos e garante lista limpa
+    lista_publicos = df_publicos["publico"].dropna().tolist()
 
 
 ###########################################################################################################
 # FORMULÁRIO
 ###########################################################################################################
+
 
 with st.form(key=f"form_novo_projeto_{st.session_state.form_key}", border=False):
 
@@ -201,8 +200,9 @@ with st.form(key=f"form_novo_projeto_{st.session_state.form_key}", border=False)
 
     publicos = col2.multiselect(
         "Públicos",
-        df_publicos["publico"].tolist(),
-        default=st.session_state.form_projeto["publicos"]
+        options=lista_publicos if lista_publicos else ["Nenhum público cadastrado"],
+        default=st.session_state.form_projeto["publicos"] if lista_publicos else [],
+        disabled=not lista_publicos  # desativa se não houver dados
     )
 
     objetivo = st.text_area(

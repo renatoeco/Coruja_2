@@ -6,7 +6,7 @@ import datetime
 
 
 
-st.set_page_config(page_title="Gerenciar Ciclos de Investimento", page_icon=":material/settings:")
+st.set_page_config(page_title="Gerenciar Fases Operacionais", page_icon=":material/settings:")
 
 
 
@@ -79,9 +79,9 @@ if "_id" in df_doadores.columns:
 st.logo("images/logo_fundo_ecos.png", size='large')
 
 # Título da página
-st.header("Gerenciar Ciclos de Investimento")
+st.header("Gerenciar Fases Operacionais")
 
-tab1, tab2, tab3, tab4 = st.tabs(["Investidores", "Doadores", "Ciclos de Investimento", "Editais"])
+tab1, tab2, tab3, tab4 = st.tabs(["Investidores", "Doadores", "Fases Operacionais", "Editais"])
 
 
 
@@ -306,24 +306,24 @@ with tab2:
 
 
 
-# Aba Ciclos de Investimento ---------------------------------------------------------------------------------------
+# Aba Fases Operacionais ---------------------------------------------------------------------------------------
 
 with tab3:
 
     st.write('')
-    opcao_ciclos = st.radio("Selecione uma ação", ["Cadastrar Ciclo de Investimento", "Editar Ciclo de Investimento"], key="opcao_ciclos", horizontal=True)
+    opcao_ciclos = st.radio("Selecione uma ação", ["Cadastrar Fase Operacional", "Editar Fase Operacional"], key="opcao_ciclos", horizontal=True)
 
 
-    # CADASTRAR CICLO DE INVESTIMENTO
-    if opcao_ciclos == "Cadastrar Ciclo de Investimento":
+    # CADASTRAR Fase Operacional
+    if opcao_ciclos == "Cadastrar Fase Operacional":
         
 
         with st.form(key="cadastrar_ciclo_form" ,border=False):
 
             st.write('')
 
-            codigo_ciclo = st.text_input("Codigo do Ciclo de Investimento:")
-            nome_ciclo = st.text_input("Nome do Ciclo de Investimento:")
+            codigo_ciclo = st.text_input("Codigo da Fase Operacional:")
+            nome_ciclo = st.text_input("Nome da Fase Operacional:")
             
             # Buscar siglas únicas dos investidores no MongoDB
             siglas_investidores = sorted(col_investidores.distinct("sigla_investidor"))
@@ -348,7 +348,7 @@ with tab3:
 
             st.write('')
 
-            submit = st.form_submit_button("Cadastrar Ciclo de Investimento", icon=":material/save:", type="primary", key="btn_cadastrar_ciclo")
+            submit = st.form_submit_button("Cadastrar Fase Operacional", icon=":material/save:", type="primary", key="btn_cadastrar_ciclo")
 
 
             if submit:
@@ -374,19 +374,19 @@ with tab3:
                             "doadores": doador,
                             }
                         col_ciclos.insert_one(novo_ciclo)
-                        st.success("Ciclo de Investimento cadastrado com sucesso!")
+                        st.success("Fase Operacional cadastrada com sucesso!")
 
                         time.sleep(2)
                         st.rerun()
 
-    elif opcao_ciclos == "Editar Ciclo de Investimento":
+    elif opcao_ciclos == "Editar Fase Operacional":
 
         st.write('')
 
         lista_ciclos = sorted(col_ciclos.distinct("codigo_ciclo"))
 
         ciclo_selecionado = st.selectbox(
-            "Selecione o Ciclo de Investimento:", 
+            "Selecione a Fase Operacional:", 
             options=[""] + lista_ciclos,
             index=0
         )
@@ -402,8 +402,8 @@ with tab3:
                     st.divider()
 
                     # Campos preenchidos com dados existentes
-                    codigo_ciclo = st.text_input("Código do Ciclo de Investimento :", value=ciclo.get("codigo_ciclo", ""), disabled=True)
-                    nome_ciclo = st.text_input("Nome do Ciclo de Investimento :", value=ciclo.get("nome_ciclo", ""))
+                    codigo_ciclo = st.text_input("Código da Fase Operacional :", value=ciclo.get("codigo_ciclo", ""), disabled=True)
+                    nome_ciclo = st.text_input("Nome da Fase Operacional :", value=ciclo.get("nome_ciclo", ""))
 
                     # Investidores
                     siglas_investidores = sorted(col_investidores.distinct("sigla_investidor"))
@@ -452,7 +452,7 @@ with tab3:
                                 }}
                             )
 
-                            st.success("Ciclo de Investimento atualizado com sucesso!", icon=":material/check:")
+                            st.success("Fase Operacional atualizada com sucesso!", icon=":material/check:")
                             time.sleep(2)
                             st.rerun()
 
@@ -483,7 +483,7 @@ with tab4:
             codigos_ciclos.insert(0, "")  # adiciona uma opção vazia
 
             ciclo = st.selectbox(
-                "Ciclo de Investimento:",
+                "Fase Operacional:",
                 options=sorted(codigos_ciclos),
             )
 
@@ -575,13 +575,13 @@ with tab4:
                         format="DD/MM/YYYY"
                     )
 
-                    # Ciclo de investimento vinculado
+                    # Fase Operacional vinculado
                     codigos_ciclos = sorted(col_ciclos.distinct("codigo_ciclo"))
                     codigos_ciclos.insert(0, "")
 
                     ciclo_atual = edital.get("ciclo_investimento", "")
                     ciclo = st.selectbox(
-                        "Ciclo de Investimento:",
+                        "Fase Operacional:",
                         options=codigos_ciclos,
                         index=codigos_ciclos.index(ciclo_atual) if ciclo_atual in codigos_ciclos else 0
                     )

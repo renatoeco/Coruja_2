@@ -1059,8 +1059,48 @@ def sidebar_projeto():
         st.sidebar.caption("Em caso de dúvidas, sugestões ou comentários, entre em contato com cepfcerrado@iieb.org.br")
 
 
+###########################################################################################################
+# FUNÇÕES DE SEGURANÇA
+###########################################################################################################
 
 
+def validar_df(df, nome, colunas_obrigatorias=None):
+    """
+    Valida se um DataFrame tem dados e as colunas necessárias.
+
+    Parâmetros:
+    - df: DataFrame
+    - nome: nome amigável (para mensagem)
+    - colunas_obrigatorias: lista de colunas obrigatórias
+
+    Retorna:
+    - (bool, lista_erros)
+    """
+    erros = []
+
+    if df.empty:
+        erros.append(f"{nome} está vazio")
+
+    if colunas_obrigatorias:
+        for col in colunas_obrigatorias:
+            if col not in df.columns:
+                erros.append(f"{nome} não possui a coluna '{col}'")
+
+    return len(erros) == 0, erros
 
 
+def safe_col(df, col, default=None):
+    """
+    Retorna uma coluna com segurança.
+    Se não existir, retorna valor padrão.
+    """
+    if col in df.columns:
+        return df[col]
+    return default
 
+
+def safe_get(row, col, default=None):
+    """
+    Acesso seguro a valores de uma linha (Series).
+    """
+    return row[col] if col in row else default
