@@ -32,7 +32,11 @@ col_pessoas = db["pessoas"]
 df_pessoas = pd.DataFrame(list(col_pessoas.find({}, {"senha": 0})))
 
 # Converte ObjectId para string
-df_pessoas["_id"] = df_pessoas["_id"].astype(str)
+if "_id" in df_pessoas.columns:
+    df_pessoas["_id"] = df_pessoas["_id"].astype(str)
+else:
+    st.warning("Pessoas sem campo '_id'.")
+    df_pessoas["_id"] = ""
 
 # Renomeia as colunas
 df_pessoas = df_pessoas.rename(columns={
@@ -46,13 +50,17 @@ df_pessoas = df_pessoas.rename(columns={
 })
 
 # Ordena por Nome
-df_pessoas = df_pessoas.sort_values(by="Nome")
+if "Nome" in df_pessoas.columns:
+    df_pessoas = df_pessoas.sort_values(by="Nome")
 
 # Projetos
 col_projetos = db["projetos"]
 df_projetos = pd.DataFrame(list(col_projetos.find()))
 # Converte objectId para string
-df_projetos['_id'] = df_projetos['_id'].astype(str)
+if "_id" in df_projetos.columns:
+    df_projetos["_id"] = df_projetos["_id"].astype(str)
+else:
+    st.warning("Projetos sem campo '_id'.")
 
 
 
@@ -107,11 +115,17 @@ def editar_pessoa(_id: str):
         options=["ativo", "inativo"],
         index=0 if pessoa.get("status", "ativo") == "ativo" else 1
     )
+    
+    if "codigo" in df_projetos.columns:
+        opcoes_projetos = df_projetos["codigo"].dropna().astype(str).tolist()
+    else:
+        opcoes_projetos = []
+        st.warning("Projetos sem coluna 'codigo'.")
 
     # Projetos
     projetos = st.multiselect(
         "Projetos",
-        options=df_projetos["codigo"].tolist(),
+        options=opcoes_projetos,
         default=pessoa.get("projetos", []),
     )
 
@@ -160,9 +174,13 @@ st.header('Visitantes')
 st.divider()
 
 # Separando só os visitantes
-df_visitantes = df_pessoas[
-    df_pessoas["Tipo de usuário"] == "visitante"
-]
+if "Tipo de usuário" in df_pessoas.columns:
+    df_visitantes = df_pessoas[
+        df_pessoas["Tipo de usuário"] == "visitante"
+    ]
+else:
+    df_visitantes = pd.DataFrame()
+    st.warning("Coluna 'Tipo de usuário' não encontrada.")
 
 st.write('')
 

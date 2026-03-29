@@ -131,7 +131,7 @@ else:
 
 
 # Logo do sidebar
-st.logo("images/logo_fundo_ecos.pngsvg", size='large')
+st.logo("images/logo_fundo_ecos.png", size='large')
 
 # Título da página
 st.header("Convidar pessoa")

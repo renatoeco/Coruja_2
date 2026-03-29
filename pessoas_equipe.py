@@ -33,7 +33,11 @@ col_pessoas = db["pessoas"]
 df_pessoas = pd.DataFrame(list(col_pessoas.find({}, {"senha": 0})))
 
 # Converte ObjectId para string
-df_pessoas["_id"] = df_pessoas["_id"].astype(str)
+if "_id" in df_pessoas.columns:
+    df_pessoas["_id"] = df_pessoas["_id"].astype(str)
+else:
+    st.warning("Pessoas sem campo '_id'.")
+    df_pessoas["_id"] = ""
 
 # Renomeia as colunas
 df_pessoas = df_pessoas.rename(columns={
@@ -47,13 +51,18 @@ df_pessoas = df_pessoas.rename(columns={
 })
 
 # Ordena por Nome
-df_pessoas = df_pessoas.sort_values(by="Nome")
+if "Nome" in df_pessoas.columns:
+    df_pessoas = df_pessoas.sort_values(by="Nome")
 
 # Projetos
 col_projetos = db["projetos"]
 df_projetos = pd.DataFrame(list(col_projetos.find()))
-# Converte objectId para string
-df_projetos['_id'] = df_projetos['_id'].astype(str)
+
+# Converte ObjectId para string (somente se existir)
+if "_id" in df_projetos.columns:
+    df_projetos["_id"] = df_projetos["_id"].astype(str)
+else:
+    st.warning("Projetos sem campo '_id'.")
 
 
 
@@ -137,13 +146,17 @@ def editar_pessoa(_id: str):
     # Projetos
     # ===============================
     # Opções existentes no banco
-    opcoes_projetos = (
-        df_projetos["codigo"]
-        .dropna()
-        .astype(str)
-        .sort_values()
-        .tolist()
-    )
+    if "codigo" in df_projetos.columns:
+        opcoes_projetos = (
+            df_projetos["codigo"]
+            .dropna()
+            .astype(str)
+            .sort_values()
+            .tolist()
+        )
+    else:
+        opcoes_projetos = []
+        st.warning("Projetos sem coluna 'codigo'.")
 
     # Projetos cadastrados na pessoa (podem conter inválidos)
     projetos_pessoa = pessoa.get("projetos", [])
@@ -232,9 +245,13 @@ st.divider()
 
 
 # Separando só a equipe e administradores
-df_equipe = df_pessoas[
-    df_pessoas["Tipo de usuário"].isin(["admin", "equipe"])
-]
+if "Tipo de usuário" in df_pessoas.columns:
+    df_equipe = df_pessoas[
+        df_pessoas["Tipo de usuário"].isin(["admin", "equipe"])
+    ]
+else:
+    df_equipe = pd.DataFrame()
+    st.warning("Coluna 'Tipo de usuário' não encontrada.")
 
 
 st.write('')

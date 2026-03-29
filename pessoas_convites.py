@@ -33,10 +33,14 @@ col_projetos = db["projetos"]
 ###########################################################################################################
 
 # PROJETOS
-
-df_projetos = pd.DataFrame(list(col_projetos.find()))
 # Converte objectId para string
-df_projetos['_id'] = df_projetos['_id'].astype(str)
+df_projetos = pd.DataFrame(list(col_projetos.find()))
+
+# Converte ObjectId para string (somente se existir)
+if "_id" in df_projetos.columns:
+    df_projetos["_id"] = df_projetos["_id"].astype(str)
+else:
+    st.warning("Projetos sem campo '_id'.")
 
 
 # PESSOAS
@@ -44,8 +48,18 @@ df_projetos['_id'] = df_projetos['_id'].astype(str)
 # 1) Busca todos os documentos, mas já exclui a coluna 'senha'
 df_pessoas = pd.DataFrame(list(col_pessoas.find({}, {"senha": 0})))
 
+if "_id" in df_pessoas.columns:
+    df_pessoas["_id"] = df_pessoas["_id"].astype(str)
+else:
+    st.warning("Pessoas sem campo '_id'.")
+    df_pessoas["_id"] = ""
+
 # 2) Filtra apenas os registros com status 'convidado'
-df_pendentes = df_pessoas[df_pessoas["status"] == "convidado"]
+if "status" in df_pessoas.columns:
+    df_pendentes = df_pessoas[df_pessoas["status"] == "convidado"]
+else:
+    df_pendentes = pd.DataFrame()
+    st.warning("Coluna 'status' não encontrada.")
 
 
 # # 1) Busca todos os documentos, incluindo a senha
@@ -140,11 +154,17 @@ def editar_pessoa(_id: str):
     #     options=["ativo", "inativo"],
     #     index=0 if pessoa.get("status", "ativo") == "ativo" else 1
     # )
+    
+    if "codigo" in df_projetos.columns:
+        opcoes_projetos = df_projetos["codigo"].dropna().astype(str).tolist()
+    else:
+        opcoes_projetos = []
+        st.warning("Projetos sem coluna 'codigo'.")
 
     # Projetos
     projetos = st.multiselect(
         "Projetos",
-        options=df_projetos["codigo"].tolist(),
+        options=opcoes_projetos,
         default=pessoa.get("projetos", []),
     )
 
@@ -186,7 +206,7 @@ def editar_pessoa(_id: str):
 
 
 # Logo do sidebar
-st.logo("images/logo_fundo_ecos.pngsvg", size='large')
+st.logo("images/logo_fundo_ecos.png", size='large')
 
 st.header('Convites pendentes')
 

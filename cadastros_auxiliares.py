@@ -52,11 +52,16 @@ col_editais = db["editais"]
 # TRATAMENTO DOS DADOS
 ###########################################################################################################
 
-# Editais
-df_editais = pd.DataFrame(list(col_editais.find()))
 
 #  Converte id para string
-df_editais["_id"] = df_editais["_id"].astype(str)
+df_editais = pd.DataFrame(list(col_editais.find()))
+
+# Converte ObjectId para string (seguro)
+if "_id" in df_editais.columns:
+    df_editais["_id"] = df_editais["_id"].astype(str)
+else:
+    st.warning("Editais sem campo '_id'.")
+    df_editais["_id"] = ""
 
 
 
@@ -66,6 +71,12 @@ df_editais["_id"] = df_editais["_id"].astype(str)
 # Funções
 ###########################################################################################################
 
+
+def buscar_edital_seguro(codigo):
+    edital = col_editais.find_one({"codigo_edital": codigo})
+    if not edital:
+        st.warning("Edital não encontrado.")
+    return edital
 
 # ==========================================================
 # FUNÇÃO: FORMULÁRIO DE NOVA PERGUNTA
@@ -83,7 +94,7 @@ def formulario_nova_pergunta(perguntas, edital_selecionado):
     # ------------------------------------------------------
     # TÍTULO
     # ------------------------------------------------------
-    st.markdown("##### Cadastrar nova pergunta", help="Use asteriscos para **\**negrito**\** e para *\*itálico*\*.")
+    st.markdown("##### Cadastrar nova pergunta", help=r"Use asteriscos para **\**negrito**\** e para *\*itálico*\*.")
 
     # ------------------------------------------------------
     # TIPO DE PERGUNTA
@@ -332,7 +343,11 @@ with aba_perguntas:
     # SELEÇÃO DO EDITAL
     # ------------------------------------------------------
 
-    lista_editais = df_editais["codigo_edital"].unique().tolist()
+    if "codigo_edital" in df_editais.columns:
+        lista_editais = df_editais["codigo_edital"].dropna().astype(str).unique().tolist()
+    else:
+        lista_editais = []
+        st.warning("Editais sem campo 'codigo_edital'.")
 
     edital_selecionado_perguntas = st.selectbox(
         "Selecione o Edital:",
@@ -351,9 +366,7 @@ with aba_perguntas:
         # BUSCA O EDITAL
         # ------------------------------------------------------
 
-        edital_perguntas = col_editais.find_one(
-            {"codigo_edital": edital_selecionado_perguntas}
-        )
+        edital_perguntas = buscar_edital_seguro(edital_selecionado_perguntas)
 
         perguntas = sorted(
             edital_perguntas.get("perguntas_relatorio", []),
@@ -565,7 +578,7 @@ with aba_perguntas:
                     with st.container(horizontal=True, horizontal_alignment="left"):
 
                         # -------- SALVAR --------
-                        if st.button("Salvar alterações", type="primary", icon=":material/save:"):
+                        if st.button("Salvar alterações", type="primary", icon=":material/save:", key="salvar_pergunta_edicao"):
 
                             # Validações
                             if not texto.strip():
@@ -693,7 +706,17 @@ with aba_pesquisas:
     # SELEÇÃO DO EDITAL
     # ------------------------------------------------------
 
-    lista_editais = df_editais["codigo_edital"].unique().tolist()
+    if "codigo_edital" in df_editais.columns:
+        lista_editais = (
+            df_editais["codigo_edital"]
+            .dropna()
+            .astype(str)
+            .unique()
+            .tolist()
+        )
+    else:
+        lista_editais = []
+        st.warning("Campo 'codigo_edital' não encontrado.")
 
     edital_selecionado_pesquisas = st.selectbox(
         "Selecione o Edital:",
@@ -716,9 +739,7 @@ with aba_pesquisas:
         # BUSCA DO EDITAL NO BANCO
         # ------------------------------------------------------
 
-        edital_pesquisas = col_editais.find_one(
-            {"codigo_edital": edital_selecionado_pesquisas}
-        )
+        edital_pesquisas = buscar_edital_seguro(edital_selecionado_pesquisas)
 
         pesquisas = sorted(
             edital_pesquisas.get("pesquisas_relatorio", []),
@@ -953,7 +974,17 @@ with aba_direcoes:
     # SELEÇÃO DO EDITAL (PRIMEIRO PASSO)
     # ======================================================
 
-    lista_editais = df_editais["codigo_edital"].unique().tolist()
+    if "codigo_edital" in df_editais.columns:
+        lista_editais = (
+            df_editais["codigo_edital"]
+            .dropna()
+            .astype(str)
+            .unique()
+            .tolist()
+        )
+    else:
+        lista_editais = []
+        st.warning("Campo 'codigo_edital' não encontrado na coleção de editais.")
 
     edital_selecionado_direcoes = st.selectbox(
         "Selecione o Edital:",
@@ -962,11 +993,6 @@ with aba_direcoes:
         key="edital_selecionado_direcoes",
         width=300
     )
-
-
-
-
-
 
 
     if not edital_selecionado_direcoes:
@@ -1045,9 +1071,7 @@ with aba_direcoes:
         # BUSCA DO EDITAL NO BANCO
         # ======================================================
 
-        edital_direcoes = col_editais.find_one(
-            {"codigo_edital": edital_selecionado_direcoes}
-        )
+        edital_direcoes = buscar_edital_seguro(edital_selecionado_direcoes)
 
         direcoes = sorted(
             edital_direcoes.get("direcoes_estrategicas", []),
@@ -1376,7 +1400,17 @@ with aba_indicadores:
     # SELEÇÃO DO EDITAL
     # ======================================================
 
-    lista_editais = df_editais["codigo_edital"].unique().tolist()
+    if "codigo_edital" in df_editais.columns:
+        lista_editais = (
+            df_editais["codigo_edital"]
+            .dropna()
+            .astype(str)
+            .unique()
+            .tolist()
+        )
+    else:
+        lista_editais = []
+        st.warning("Campo 'codigo_edital' não encontrado na coleção de editais.")
 
     edital_selecionado_indicadores = st.selectbox(
         "Selecione o Edital:",
@@ -1633,7 +1667,7 @@ with aba_publicos:
             }
         )
 
-        if st.button("Salvar alterações", icon=":material/save:", type="primary"):
+        if st.button("Salvar alterações", icon=":material/save:", type="primary", key="salvar_publicos"):
 
             if "publico" not in df_editado.columns:
                 st.error("Nenhum dado válido para salvar.")
@@ -1757,7 +1791,7 @@ with aba_beneficios:
             width=500
         )
 
-        if st.button("Salvar alterações", icon=":material/save:", type="primary"):
+        if st.button("Salvar alterações", icon=":material/save:", type="primary", key="salvar_beneficios"):
 
             if "beneficio" not in df_editado.columns:
                 st.error("Nenhum dado válido para salvar.")
