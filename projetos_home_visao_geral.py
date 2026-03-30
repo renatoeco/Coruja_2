@@ -391,7 +391,7 @@ else:
     # -------------------------------------------------
     with col1:
         total_atrasados = len(projetos_atrasados)
-        st.metric("", total_atrasados)
+        st.metric("label", total_atrasados, label_visibility="hidden")
         st.write("")
 
     # -------------------------------------------------

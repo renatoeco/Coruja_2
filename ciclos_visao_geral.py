@@ -23,8 +23,8 @@ df_ciclos = pd.DataFrame(list(col_ciclos.find()))
 col_editais = db["editais"]
 df_editais = pd.DataFrame(list(col_editais.find()))
 
-col_investidores = db["investidores"]
-df_investidores = pd.DataFrame(list(col_investidores.find()))
+# col_investidores = db["investidores"]
+# df_investidores = pd.DataFrame(list(col_investidores.find()))
 
 col_doadores = db["doadores"]
 df_doadores = pd.DataFrame(list(col_doadores.find()))
@@ -43,7 +43,7 @@ df_ciclos = df_ciclos.rename(columns={
         "codigo_ciclo": "Código",
         "nome_ciclo": "Nome",
         "data_lancamento": "Data de Lançamento",
-        "investidores": "Investidores",
+        #"investidores": "Investidores",
         "doadores": "Doadores"
     }.items() if col in df_ciclos.columns
 })
@@ -59,12 +59,12 @@ df_editais = df_editais.rename(columns={
 })
 
 # Renomear as colunas de df_investidores
-df_investidores = df_investidores.rename(columns={
-    col: novo for col, novo in {
-        "sigla_investidor": "Sigla",
-        "nome_investidor": "Nome",
-    }.items() if col in df_investidores.columns
-})
+# df_investidores = df_investidores.rename(columns={
+#     col: novo for col, novo in {
+#         "sigla_investidor": "Sigla",
+#         "nome_investidor": "Nome",
+#     }.items() if col in df_investidores.columns
+# })
 
 # Renomear as colunas de df_doadores
 df_doadores = df_doadores.rename(columns={
@@ -81,8 +81,8 @@ if "_id" in df_ciclos.columns:
 if "_id" in df_editais.columns:
     df_editais["_id"] = df_editais["_id"].astype(str)
 
-if "_id" in df_investidores.columns:
-    df_investidores["_id"] = df_investidores["_id"].astype(str)
+# if "_id" in df_investidores.columns:
+#     df_investidores["_id"] = df_investidores["_id"].astype(str)
 
 if "_id" in df_doadores.columns:
     df_doadores["_id"] = df_doadores["_id"].astype(str)
@@ -101,8 +101,8 @@ erros_gerais += erros
 valido_editais, erros = validar_df(df_editais, "Editais", ["Código"])
 erros_gerais += erros
 
-valido_investidores, erros = validar_df(df_investidores, "Investidores", ["Sigla"])
-erros_gerais += erros
+# valido_investidores, erros = validar_df(df_investidores, "Investidores", ["Sigla"])
+# erros_gerais += erros
 
 valido_doadores, erros = validar_df(df_doadores, "Doadores", ["Sigla"])
 erros_gerais += erros
@@ -144,7 +144,7 @@ def pluralizar(qtd, singular, plural):
 # --- FILTROS ---
 with st.expander("**Filtros**"):
 
-    col_filtros = st.columns(4)
+    col_filtros = st.columns(3)
 
     with col_filtros[0]:
         filtro_ciclo = st.selectbox(
@@ -164,16 +164,16 @@ with st.expander("**Filtros**"):
             )
         )
 
-    with col_filtros[2]:
-        filtro_investidor = st.selectbox(
-            "Investidor:",
-                options=["Todos"] + (
-                    sorted(df_investidores["Sigla"].dropna().unique().tolist())
-                    if "Sigla" in df_investidores.columns else []
-            )
-        )
+    # with col_filtros[2]:
+    #     filtro_investidor = st.selectbox(
+    #         "Investidor:",
+    #             options=["Todos"] + (
+    #                 sorted(df_investidores["Sigla"].dropna().unique().tolist())
+    #                 if "Sigla" in df_investidores.columns else []
+    #         )
+    #     )
 
-    with col_filtros[3]:
+    with col_filtros[2]:
         filtro_doador = st.selectbox(
             "Doador:",
                 options=["Todos"] + (
@@ -186,7 +186,7 @@ with st.expander("**Filtros**"):
 # --- Inicializa dataframes filtrados ---
 df_ciclos_filtrado = df_ciclos.copy()
 df_editais_filtrado = df_editais.copy()
-df_investidores_filtrado = df_investidores.copy()
+#df_investidores_filtrado = df_investidores.copy()
 df_doadores_filtrado = df_doadores.copy()
 
 
@@ -199,10 +199,10 @@ if filtro_ciclo != "Todos" and "Código" in df_ciclos.columns:
     df_editais_filtrado = df_editais[df_editais["Fase operacional"] == filtro_ciclo]
 
     # Investidores e doadores relacionados
-    investidores_rel = df_ciclos_filtrado["Investidores"].explode().dropna().unique().tolist()
+    #investidores_rel = df_ciclos_filtrado["Investidores"].explode().dropna().unique().tolist()
     doadores_rel = df_ciclos_filtrado["Doadores"].explode().dropna().unique().tolist()
 
-    df_investidores_filtrado = df_investidores[df_investidores["Sigla"].isin(investidores_rel)]
+    #df_investidores_filtrado = df_investidores[df_investidores["Sigla"].isin(investidores_rel)]
     df_doadores_filtrado = df_doadores[df_doadores["Sigla"].isin(doadores_rel)]
 
 
@@ -216,26 +216,26 @@ elif filtro_edital != "Todos" and "Código" in df_editais.columns:
         
     df_ciclos_filtrado = df_ciclos[df_ciclos["Código"] == ciclo_rel]
 
-    investidores_rel = df_ciclos_filtrado["Investidores"].explode().dropna().unique().tolist()
+    #investidores_rel = df_ciclos_filtrado["Investidores"].explode().dropna().unique().tolist()
     doadores_rel = df_ciclos_filtrado["Doadores"].explode().dropna().unique().tolist()
 
-    df_investidores_filtrado = df_investidores[df_investidores["Sigla"].isin(investidores_rel)]
+    #df_investidores_filtrado = df_investidores[df_investidores["Sigla"].isin(investidores_rel)]
     df_doadores_filtrado = df_doadores[df_doadores["Sigla"].isin(doadores_rel)]
 
 
 # --- FILTRO POR INVESTIDOR ---
-elif filtro_investidor != "Todos" and "Investidores" in df_ciclos.columns:
-    df_ciclos_filtrado = df_ciclos[
-        df_ciclos["Investidores"].apply(lambda x: filtro_investidor in x if isinstance(x, list) else False)
-    ]
+# elif filtro_investidor != "Todos" and "Investidores" in df_ciclos.columns:
+#     df_ciclos_filtrado = df_ciclos[
+#         df_ciclos["Investidores"].apply(lambda x: filtro_investidor in x if isinstance(x, list) else False)
+#     ]
 
-    codigos_ciclos_rel = df_ciclos_filtrado["Código"].unique().tolist()
-    df_editais_filtrado = df_editais[df_editais["Fase operacional"].isin(codigos_ciclos_rel)]
+#     codigos_ciclos_rel = df_ciclos_filtrado["Código"].unique().tolist()
+#     df_editais_filtrado = df_editais[df_editais["Fase operacional"].isin(codigos_ciclos_rel)]
 
-    df_investidores_filtrado = df_investidores[df_investidores["Sigla"] == filtro_investidor]
+#     df_investidores_filtrado = df_investidores[df_investidores["Sigla"] == filtro_investidor]
 
-    doadores_rel = df_ciclos_filtrado["Doadores"].explode().dropna().unique().tolist()
-    df_doadores_filtrado = df_doadores[df_doadores["Sigla"].isin(doadores_rel)]
+#     doadores_rel = df_ciclos_filtrado["Doadores"].explode().dropna().unique().tolist()
+#     df_doadores_filtrado = df_doadores[df_doadores["Sigla"].isin(doadores_rel)]
 
 
 # --- FILTRO POR DOADOR ---
@@ -247,8 +247,8 @@ elif filtro_doador != "Todos" and "Doadores" in df_ciclos.columns:
     codigos_ciclos_rel = df_ciclos_filtrado["Código"].unique().tolist()
     df_editais_filtrado = df_editais[df_editais["Fase operacional"].isin(codigos_ciclos_rel)]
 
-    investidores_rel = df_ciclos_filtrado["Investidores"].explode().dropna().unique().tolist()
-    df_investidores_filtrado = df_investidores[df_investidores["Sigla"].isin(investidores_rel)]
+    #investidores_rel = df_ciclos_filtrado["Investidores"].explode().dropna().unique().tolist()
+    #df_investidores_filtrado = df_investidores[df_investidores["Sigla"].isin(investidores_rel)]
 
     df_doadores_filtrado = df_doadores[df_doadores["Sigla"] == filtro_doador]
 
@@ -264,23 +264,26 @@ elif filtro_doador != "Todos" and "Doadores" in df_ciclos.columns:
 st.write('')
 
 # Fases Operacionais ------------------------------------------------------
-st.subheader(pluralizar(len(df_ciclos_filtrado), "fase operacional", "fases operacionais"))
+st.subheader(pluralizar(len(df_ciclos_filtrado), "Fase Operacional", "Fases Operacionais"))
 st.dataframe(
     df_ciclos_filtrado,
     hide_index=True,
-    column_order=['Código', 'Nome', 'Data de Lançamento', 'Investidores', 'Doadores']
+    column_order=['Código', 'Nome', 'Data de Lançamento', 'Doadores']
 )
 st.write('')
 
 # EDITAIS ------------------------------------------------------
-st.subheader(pluralizar(len(df_editais_filtrado), "edital", "editais"))
+st.subheader(pluralizar(len(df_editais_filtrado), "Edital", "Editais"))
 
 # Formata a coluna para dd/mm/yyyy
 if "Data de Lançamento" in df_editais_filtrado.columns:
-    df_editais_filtrado["Data de Lançamento"] = (
-        pd.to_datetime(df_editais_filtrado["Data de Lançamento"])
-        .dt.strftime("%d/%m/%Y")
-    )
+            df_editais_filtrado["Data de Lançamento"] = (
+            pd.to_datetime(
+                df_editais_filtrado["Data de Lançamento"],
+                dayfirst=True  
+            )
+            .dt.strftime("%d/%m/%Y")
+        )
 
 st.dataframe(
     df_editais_filtrado,
@@ -290,16 +293,16 @@ st.dataframe(
 st.write('')
 
 # INVESTIDORES ------------------------------------------------------
-st.subheader(pluralizar(len(df_investidores_filtrado), "investidor", "investidores"))
-st.dataframe(
-    df_investidores_filtrado,
-    hide_index=True,
-    column_order=['Sigla', 'Nome']
-)
-st.write('')
+# st.subheader(pluralizar(len(df_investidores_filtrado), "investidor", "investidores"))
+# st.dataframe(
+#     df_investidores_filtrado,
+#     hide_index=True,
+#     column_order=['Sigla', 'Nome']
+# )
+# st.write('')
 
 # DOADORES ------------------------------------------------------
-st.subheader(pluralizar(len(df_doadores_filtrado), "doador", "doadores"))
+st.subheader(pluralizar(len(df_doadores_filtrado), "Doador", "Doadores"))
 st.dataframe(
     df_doadores_filtrado,
     hide_index=True,
