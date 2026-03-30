@@ -6,15 +6,15 @@ import time
 from io import BytesIO
 
 
+
 st.set_page_config(page_title="Beneficiários", page_icon=":material/group:")
-
-
 
 
 
 ###########################################################################################################
 # CONEXÃO COM O BANCO DE DADOS MONGODB
 ###########################################################################################################
+
 
 # Conecta-se ao banco de dados MongoDB (usa cache automático para melhorar performance)
 db = conectar_mongo_coruja()
@@ -25,10 +25,10 @@ db = conectar_mongo_coruja()
 col_pessoas = db["pessoas"]
 
 
-
 ###########################################################################################################
 # TRATAMENTO DOS DADOS
 ###########################################################################################################
+
 
 # Busca todos os documentos, mas exclui o campo "senha"
 df_pessoas = pd.DataFrame(list(col_pessoas.find({}, {"senha": 0})))
@@ -62,9 +62,6 @@ if "_id" in df_projetos.columns:
     df_projetos["_id"] = df_projetos["_id"].astype(str)
 else:
     st.warning("Projetos sem campo '_id'.")
-
-
-
 
 
 ###########################################################################################################
@@ -141,9 +138,6 @@ def editar_pessoa(_id: str):
         st.rerun()
 
 
-
-
-
 ###########################################################################################################
 # INTERFACE
 ###########################################################################################################
@@ -164,115 +158,102 @@ else:
     st.warning("Coluna 'Tipo de usuário' não encontrada.")
 
 
-
-
-
-
-
-
-
 ###########################################################################################################
 # EXPORTAÇÃO DE PESSOAS
 ###########################################################################################################
 
-st.write('')
+# st.write('')
 
-# Inicializa variáveis de estado caso ainda não existam
-if "xlsx_pessoas" not in st.session_state:
-    st.session_state.xlsx_pessoas = None
+# # Inicializa variáveis de estado caso ainda não existam
+# if "xlsx_pessoas" not in st.session_state:
+#     st.session_state.xlsx_pessoas = None
 
-if "tabela_gerada" not in st.session_state:
-    st.session_state.tabela_gerada = False
+# if "tabela_gerada" not in st.session_state:
+#     st.session_state.tabela_gerada = False
 
-with st.container(horizontal=True, horizontal_alignment="right"):
+# with st.container(horizontal=True, horizontal_alignment="right"):
 
-    # Popover para download da tabela
-    with st.popover("Baixar tabela", width=200):
+#     # Popover para download da tabela
+#     with st.popover("Baixar tabela", width=200):
 
-        # Fragment para isolar a renderização dos botões
-        @st.fragment
-        def fragment_exportacao():
+#         # Fragment para isolar a renderização dos botões
+#         @st.fragment
+#         def fragment_exportacao():
 
-            # BOTÃO PARA GERAR A TABELA ------------------------------------------------
-            if st.button("Gerar tabela", icon=":material/settings:", width="stretch"):
+#             # BOTÃO PARA GERAR A TABELA ------------------------------------------------
+#             if st.button("Gerar tabela", icon=":material/settings:", width="stretch"):
 
-                # Filtra apenas usuários do tipo beneficiario
-                df_export = df_pessoas[
-                    df_pessoas["Tipo de usuário"] == "beneficiario"
-                ].copy()
+#                 # Filtra apenas usuários do tipo beneficiario
+#                 df_export = df_pessoas[
+#                     df_pessoas["Tipo de usuário"] == "beneficiario"
+#                 ].copy()
 
-                # Mantém apenas as colunas necessárias
-                colunas_export = [
-                    col for col in [
-                        "Nome",
-                        "E-mail",
-                        "Telefone",
-                        "Status",
-                        "Projetos"
-                    ] if col in df_export.columns
-                ]
+#                 # Mantém apenas as colunas necessárias
+#                 colunas_export = [
+#                     col for col in [
+#                         "Nome",
+#                         "E-mail",
+#                         "Telefone",
+#                         "Status",
+#                         "Projetos"
+#                     ] if col in df_export.columns
+#                 ]
 
-                df_export = df_export[colunas_export]
+#                 df_export = df_export[colunas_export]
 
-                # Renomeia coluna Nome para Nome completo
-                df_export = df_export.rename(columns={
-                    "Nome": "Nome completo"
-                })
+#                 # Renomeia coluna Nome para Nome completo
+#                 df_export = df_export.rename(columns={
+#                     "Nome": "Nome completo"
+#                 })
 
-                # Converte lista de projetos em string separada por vírgula
-                def tratar_projetos(valor):
-                    if isinstance(valor, list):
-                        return ", ".join(valor)
-                    if isinstance(valor, str):
-                        return valor
-                    return ""
+#                 # Converte lista de projetos em string separada por vírgula
+#                 def tratar_projetos(valor):
+#                     if isinstance(valor, list):
+#                         return ", ".join(valor)
+#                     if isinstance(valor, str):
+#                         return valor
+#                     return ""
 
-                df_export["Projetos"] = df_export["Projetos"].apply(tratar_projetos)
+#                 df_export["Projetos"] = df_export["Projetos"].apply(tratar_projetos)
 
-                # Cria arquivo XLSX em memória
-                buffer = BytesIO()
+#                 # Cria arquivo XLSX em memória
+#                 buffer = BytesIO()
 
-                # Salva dataframe no Excel
-                with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-                    df_export.to_excel(writer, index=False, sheet_name="Pessoas")
+#                 # Salva dataframe no Excel
+#                 with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+#                     df_export.to_excel(writer, index=False, sheet_name="Pessoas")
 
-                # Move o cursor do buffer para o início
-                buffer.seek(0)
+#                 # Move o cursor do buffer para o início
+#                 buffer.seek(0)
 
-                # Armazena o arquivo em memória
-                st.session_state.xlsx_pessoas = buffer
+#                 # Armazena o arquivo em memória
+#                 st.session_state.xlsx_pessoas = buffer
 
-                # Marca que a tabela foi gerada
-                st.session_state.tabela_gerada = True
-
-
-
-            # BOTÃO DE DOWNLOAD -------------------------------------------------------
-            if st.session_state.tabela_gerada:
-
-                st.caption("Tabela gerada! Clique para baixar.")
-
-                st.download_button(
-                    label="Baixar tabela",
-                    data=st.session_state.xlsx_pessoas,
-                    file_name="beneficiarios.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    icon=":material/download:",
-                    type="primary",
-                    width="stretch"
-                )
-
-        # Executa o fragment
-        fragment_exportacao()
+#                 # Marca que a tabela foi gerada
+#                 st.session_state.tabela_gerada = True
 
 
 
+#             # BOTÃO DE DOWNLOAD -------------------------------------------------------
+#             if st.session_state.tabela_gerada:
 
+#                 st.caption("Tabela gerada! Clique para baixar.")
+
+#                 st.download_button(
+#                     label="Baixar tabela",
+#                     data=st.session_state.xlsx_pessoas,
+#                     file_name="beneficiarios.xlsx",
+#                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+#                     icon=":material/download:",
+#                     type="primary",
+#                     width="stretch"
+#                 )
+
+#         # Executa o fragment
+#         fragment_exportacao()
 
 
 st.divider()
-
-
 
 st.write('')
 
