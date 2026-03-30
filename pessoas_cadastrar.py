@@ -137,461 +137,219 @@ st.logo("images/logo_fundo_ecos.png", size='large')
 st.header("Convidar pessoa")
 
 
-opcao_cadastro = st.radio("label", ["Convite individual", "Convite em massa"], key="opcao_cadastro", horizontal=True, label_visibility="hidden")
+# ---------------------------------------------------------------------------------------------
+# CONVITE DE PESSOAS (ÚNICO FLUXO COM DATA_EDITOR)
+# ---------------------------------------------------------------------------------------------
 
-st.write('')
+st.write("")
+st.write("Preencha os dados abaixo para convidar uma ou mais pessoas:")
 
+# ---------------------------------------------------------------------------------------------
+# DATAFRAME BASE
+# ---------------------------------------------------------------------------------------------
+df_base = pd.DataFrame({
+    "nome_completo": [""],
+    "tipo_usuario": [""],
+    "e_mail": [""],
+    "telefone": [""],
+    "projetos": [[]],
+})
 
+# ---------------------------------------------------------------------------------------------
+# LISTAS AUXILIARES
+# ---------------------------------------------------------------------------------------------
 
+# TODOS os tipos disponíveis
+tipos_usuario = ["", "admin", "equipe", "beneficiario", "visitante"]
 
+# ---------------------------------------------------------------------------------------------
+# DATA EDITOR
+# ---------------------------------------------------------------------------------------------
+df_editado = st.data_editor(
+    df_base,
+    num_rows="dynamic",
+    width="stretch",
+    column_config={
+        "nome_completo": st.column_config.TextColumn("Nome completo", width=250),
 
-# --------------------------
-# FORMULÁRIO DE CADASTRO
-# --------------------------
-if opcao_cadastro == "Convite individual":
+        "tipo_usuario": st.column_config.SelectboxColumn(
+            "Tipo de usuário",
+            options=["", "admin", "equipe", "beneficiario", "visitante"],
+            width=150
+        ),
 
-    # --- campos do formulário que vamos controlar ---
-    CAMPOS_FORM_PESSOA = {
-        "nome_completo_novo": "",
-        "tipo_novo_usuario": "",
-        "e_mail": "",
-        "telefone": "",
-        "projetos_escolhidos": []  # multiselect espera lista
+        "e_mail": st.column_config.TextColumn("E-mail", width=200),
+
+        "telefone": st.column_config.TextColumn("Telefone", width=150),
+
+        "projetos": st.column_config.MultiselectColumn(
+            "Projetos",
+            options=projetos,  # lista vinda do banco
+            width="large",
+        ),
     }
+)
 
-    # --- limpeza no topo: se o flag estiver setado, reseta APENAS esses campos ---
-    if st.session_state.get("limpar_form_pessoa", False):
-        for k, default in CAMPOS_FORM_PESSOA.items():
-            st.session_state[k] = default
-        # remove o flag para não ficar em loop
-        st.session_state.pop("limpar_form_pessoa", None)
-        # re-renderiza com campos zerados (não necessário sempre, mas seguro)
-        st.rerun()
+st.write("")
 
+# ---------------------------------------------------------------------------------------------
+# BOTÃO DE SALVAR
+# ---------------------------------------------------------------------------------------------
+if st.button(":material/save: Convidar pessoas", type="primary"):
 
-    col1, col2 = st.columns(2)
+    df = df_editado.copy()
 
-    # --- Inputs com keys que coincidem com as chaves do session_state ---
-    nome_completo_novo = col1.text_input("Nome completo", key="nome_completo_novo")
+    # -----------------------------------------------------------------------------------------
+    # LIMPEZA DE LINHAS VAZIAS
+    # -----------------------------------------------------------------------------------------
+    df = df.dropna(how="all")
 
-    # depende do tipo de usuário logado (ex.: tipo_usuario vem do login)
-    if tipo_usuario == "equipe":
-        tipo_novo_usuario = col2.selectbox(
-            "Tipo de usuário", ["", "beneficiario", "visitante"], key="tipo_novo_usuario"
+    df = df[
+        df.apply(
+            lambda row: any(
+                str(v).strip() not in ["", "[]", "nan", "None"]
+                for v in row
+            ),
+            axis=1
         )
-    elif tipo_usuario == "admin":
-        tipo_novo_usuario = col2.selectbox(
-            "Tipo de usuário", ["", "admin", "equipe", "beneficiario", "visitante"], key="tipo_novo_usuario"
-        )
+    ]
 
-    col1, col2 = st.columns(2)
+    if df.empty:
+        st.error("Nenhum dado válido para cadastro.")
+        st.stop()
 
-    e_mail = col1.text_input("E-mail", key="e_mail")
-    e_mail = e_mail.strip()
-    
-    telefone = col2.text_input("Telefone", key="telefone")
+    # -----------------------------------------------------------------------------------------
+    # VALIDAÇÕES
+    # -----------------------------------------------------------------------------------------
+    registros_validos = []
+    erros = []
 
-    # Garante que a key exista com lista vazia caso ainda não exista
-    if "projetos_escolhidos" not in st.session_state:
-        st.session_state["projetos_escolhidos"] = []
+    # Emails existentes
+    existentes = pd.DataFrame(list(col_pessoas.find({}, {"e_mail": 1})))
+    emails_existentes = existentes["e_mail"].tolist() if not existentes.empty else []
 
-    # Agora cria o multiselect sem passar default
-    projetos_escolhidos = st.multiselect(
-        "Projetos",
-        projetos,
-        key="projetos_escolhidos"
-    )
+    # Projetos válidos
+    codigos_validos = df_projetos["codigo"].astype(str).str.strip().unique() if not df_projetos.empty else []
 
+    for idx, row in df.iterrows():
 
+        linha_num = idx + 1
 
-    st.write("")
-    submit_button = st.button("Salvar", icon=":material/save:", type="primary", width=150)
+        nome = str(row["nome_completo"]).strip()
+        tipo = str(row["tipo_usuario"]).strip()
+        email = str(row["e_mail"]).strip()
+        telefone = str(row["telefone"]).strip()
+        projetos_lista = row["projetos"]
 
+        # garantir que é lista
+        if not isinstance(projetos_lista, list):
+            projetos_lista = []
 
+        identificador = f"Linha {linha_num} ({nome if nome else email})"
 
-    if submit_button:
-        # 1) Validações
-        if not st.session_state["nome_completo_novo"] or not st.session_state["tipo_novo_usuario"] \
-        or not st.session_state["e_mail"] or not st.session_state["telefone"]:
-            st.error(":material/error: Todos os campos obrigatórios devem ser preenchidos.")
-            st.stop()
+        # -----------------------------
+        # CAMPOS OBRIGATÓRIOS
+        # -----------------------------
+        if not nome or not tipo or not email:
+            erros.append(f"{identificador}: Campos obrigatórios não preenchidos.")
+            continue
 
-        if not validar_email(st.session_state["e_mail"]):
-            st.error(":material/error: E-mail inválido.")
-            st.stop()
+        # -----------------------------
+        # EMAIL
+        # -----------------------------
+        if not validar_email(email):
+            erros.append(f"{identificador}: E-mail inválido.")
+            continue
 
-        if col_pessoas.find_one({"e_mail": st.session_state["e_mail"]}):
-            st.error(f":material/error: O e-mail '{st.session_state['e_mail']}' já está cadastrado.")
-            st.stop()
+        if email in emails_existentes:
+            erros.append(f"{identificador}: E-mail já cadastrado.")
+            continue
 
-        # 2) Gera código de 6 dígitos
-        codigo_6_digitos = gerar_codigo_aleatorio()
+        # -----------------------------
+        # PROJETOS
+        # -----------------------------
+        projetos_lista = row["projetos"]
 
-        # 3) Monta documento a inserir no MongoDB
-        novo_doc = {
-            "nome_completo": st.session_state["nome_completo_novo"],
-            "tipo_usuario": st.session_state["tipo_novo_usuario"],
-            "e_mail": st.session_state["e_mail"],
-            "telefone": st.session_state["telefone"],
+        # garantir que é lista
+        if not isinstance(projetos_lista, list):
+            projetos_lista = []
+
+        # validar projetos
+        invalidos = [p for p in projetos_lista if p not in codigos_validos]
+
+        if invalidos:
+            erros.append(f"{identificador}: Projetos inválidos {invalidos}.")
+            continue
+
+        # -----------------------------
+        # GERAR CÓDIGO
+        # -----------------------------
+        codigo = gerar_codigo_aleatorio()
+
+        # -----------------------------
+        # DOCUMENTO FINAL
+        # -----------------------------
+        doc = {
+            "nome_completo": nome,
+            "tipo_usuario": tipo,
+            "e_mail": email,
             "status": "convidado",
-            "projetos": st.session_state.get("projetos_escolhidos", []),
+            "codigo_convite": codigo,
             "data_convite": datetime.datetime.now().strftime("%d/%m/%Y"),
-            "senha": None,
-            "codigo_convite": codigo_6_digitos
+            "senha": None
         }
 
-        # 4) Inserir no banco
-        col_pessoas.insert_one(novo_doc)
+        if telefone:
+            doc["telefone"] = telefone
 
-        with st.spinner("Cadastrando pessoa... aguarde..."):
+        if projetos_lista:
+            doc["projetos"] = projetos_lista
 
-            time.sleep(2)
+        registros_validos.append(doc)
 
-            st.success(":material/check: Pessoa cadastrada com sucesso no banco de dados!")
+    # -----------------------------------------------------------------------------------------
+    # EXIBIÇÃO DE ERROS
+    # -----------------------------------------------------------------------------------------
+    if erros:
+        st.error("Alguns dados precisam ser corrigidos:")
+        for e in erros:
+            st.write(f"- {e}")
+        st.stop()
 
-            # 5) Envio do e-mail de convite
-            enviado = enviar_email_convite(
-                nome_completo=st.session_state["nome_completo_novo"],
-                email_destino=st.session_state["e_mail"],
-                codigo=codigo_6_digitos
+    # -----------------------------------------------------------------------------------------
+    # INSERÇÃO
+    # -----------------------------------------------------------------------------------------
+    if registros_validos:
+
+        resultado = col_pessoas.insert_many(registros_validos)
+
+        st.success(f"{len(resultado.inserted_ids)} pessoas cadastradas com sucesso!")
+
+        # -------------------------------------------------------------------------------------
+        # ENVIO DE E-MAILS
+        # -------------------------------------------------------------------------------------
+        progress_bar = st.progress(0)
+        status = st.empty()
+
+        total = len(registros_validos)
+
+        for i, pessoa in enumerate(registros_validos):
+
+            status.write(f"Enviando e-mail para {pessoa['e_mail']}...")
+
+            enviar_email_convite(
+                nome_completo=pessoa["nome_completo"],
+                email_destino=pessoa["e_mail"],
+                codigo=pessoa["codigo_convite"]
             )
 
+            progress_bar.progress((i + 1) / total)
 
+            time.sleep(1)
 
-            # 6) Limpar campos do formulário e rerun
-            st.session_state["limpar_form_pessoa"] = True
-            time.sleep(6)
-            st.rerun()
+        status.empty()
 
+        st.success("Convites enviados com sucesso!")
 
-
-
-
-
-
-# ----------------------------
-#   CONVITE EM MASSA
-# ----------------------------
-
-
-
-elif opcao_cadastro == "Convite em massa":
-
-    # Inicializa o 'key' do file_uploader se ele não existir
-    if 'uploader_key' not in st.session_state:
-        st.session_state['uploader_key'] = str(uuid.uuid4())
-
-    st.write('**Convite em massa disponível apenas para usuários(as) do tipo "beneficiário".**')
-
-    st.write('')
-
-    st.write("Baixe aqui o modelo de tabela para convite em massa:")
-
-    with open("modelos/modelo_convite_pessoas_em_massa.xlsx", "rb") as f:
-        st.download_button(
-            label=":material/download: Baixar modelo XLSX",
-            data=f,
-            file_name="modelo_convite_pessoas_em_massa.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
-
-    st.divider()
-
-    # ------------------------------
-    # Upload
-    # ------------------------------
-    arquivo = st.file_uploader(
-        "Envie um arquivo XLSX preenchido para convidar múltiplas pessoas:",
-        type=["xlsx"],
-        key=st.session_state['uploader_key'],
-        width=400
-    )
-
-    st.write("")
-
-    if arquivo is not None:
-        try:
-            df_upload = pd.read_excel(arquivo)
-
-            st.write(":material/check: Arquivo carregado com sucesso!")
-
-            # ==========================================================
-            # Renomear colunas do modelo para padronizar
-            # ==========================================================
-            
-            if "projetos (códigos separados por vírgula) (opcional)" in df_upload.columns:
-                df_upload.rename(columns={"projetos (códigos separados por vírgula) (opcional)": "projetos"}, inplace=True)
-
-            # ==========================================================
-            # 0) Validar se o arquivo está vazio
-            # ==========================================================
-            if df_upload.empty or df_upload.dropna(how="all").empty:
-                st.error(
-                    ":material/error: O arquivo enviado está vazio!\n\n"
-                    "Nenhum cadastro foi realizado. Corrija os dados e carregue novamente."
-                )
-                st.stop()
-
-            # Exibir com index iniciado em 1
-            st.dataframe(df_index1(df_upload))
-            st.write("")
-
-            # ==========================================================
-            # 1) Validar colunas obrigatórias
-            # ==========================================================
-            colunas_obrigatorias = ["nome_completo", "e_mail"]
-            faltando = [c for c in colunas_obrigatorias if c not in df_upload.columns]
-            if faltando:
-                st.error(
-                    f":material/error: Faltam colunas obrigatórias no arquivo: {faltando}\n\n"
-                    "Nenhum cadastro foi realizado. Corrija os dados e carregue novamente."
-                )
-                st.stop()
-
-            # Criar colunas opcionais se não existirem
-            if "telefone (opcional)" not in df_upload.columns:
-                df_upload["telefone (opcional)"] = ""
-            if "projetos" not in df_upload.columns:
-                df_upload["projetos"] = ""
-
-            # ==========================================================
-            # 2) Validar e-mails
-            # ==========================================================
-            df_upload["e_mail"] = df_upload["e_mail"].astype(str).str.strip()
-            invalidos_email = df_upload[~df_upload["e_mail"].apply(validar_email)]
-            if not invalidos_email.empty:
-                st.error(
-                    ":material/error: Existem e-mails inválidos!\n\n"
-                    "Nenhum cadastro foi realizado. Corrija os dados e carregue novamente."
-                )
-                st.dataframe(df_index1(invalidos_email))
-                st.stop()
-
-            # ==========================================================
-            # 3) Verificar duplicidade interna no arquivo
-            # ==========================================================
-            dup_email = df_upload[df_upload.duplicated("e_mail", keep=False)]
-            if not dup_email.empty:
-                st.error(
-                    ":material/error: Existem e-mails duplicados dentro do próprio arquivo.\n\n"
-                    "Nenhum cadastro foi realizado. Corrija os dados e carregue novamente."
-                )
-                st.subheader("E-mails duplicados")
-                st.dataframe(df_index1(dup_email))
-                st.stop()
-
-
-
-            # ==========================================================
-            # 4) Verificar duplicidades no banco
-            # ==========================================================
-            existentes = pd.DataFrame(list(col_pessoas.find({}, {"e_mail": 1})))
-            conflitos_email = []
-            if not existentes.empty:
-                for _, row in df_upload.iterrows():
-                    if row["e_mail"] in existentes["e_mail"].values:
-                        conflitos_email.append(row.to_dict())
-            if conflitos_email:
-                st.error(
-                    ":material/error: Existem e-mails que já estão cadastrados no banco de dados!\n\n"
-                    "Nenhum cadastro foi realizado. Corrija os dados e carregue novamente."
-                )
-                st.write("**E-mails já existentes:**")
-                st.dataframe(df_index1(pd.DataFrame(conflitos_email)))
-                st.stop()
-
-
-            # ==========================================================
-            # 5) Validar projetos no banco
-            # ==========================================================
-
-            # Códigos válidos vindos da tabela de projetos
-            codigos_validos = df_projetos["codigo"].astype(str).str.strip().unique()
-
-            # Converte cada célula da coluna "projetos" em lista
-            df_upload["projetos"] = df_upload["projetos"].apply(
-                lambda x:
-                    [] if pd.isna(x) or str(x).strip() == "" or str(x).strip().lower() == "nan"
-                    else [p.strip() for p in str(x).split(",") if p.strip()]
-            )
-
-            # Verifica se há algum código inválido
-            invalidos_projetos = df_upload[df_upload["projetos"].apply(
-                lambda lst: any(codigo not in codigos_validos for codigo in lst)
-            )]
-
-            if not invalidos_projetos.empty:
-                st.error(
-                    ":material/error: Existem projetos com códigos inválidos ou inexistentes no banco!\n\n"
-                    "Nenhum cadastro foi realizado. Corrija os dados e carregue novamente."
-                )
-                st.dataframe(df_index1(invalidos_projetos))
-                st.stop()
-
-
-            # # ==========================================================
-            # # 5) Verificar duplicidades no banco
-            # # ==========================================================
-            # existentes = pd.DataFrame(list(col_pessoas.find({}, {"e_mail": 1})))
-            # conflitos_email = []
-            # if not existentes.empty:
-            #     for _, row in df_upload.iterrows():
-            #         if row["e_mail"] in existentes["e_mail"].values:
-            #             conflitos_email.append(row.to_dict())
-            # if conflitos_email:
-            #     st.error(
-            #         ":material/error: Existem e-mails que já estão cadastrados no banco de dados!\n\n"
-            #         "Nenhum cadastro foi realizado. Corrija os dados e carregue novamente."
-            #     )
-            #     st.write("**E-mails já existentes:**")
-            #     st.dataframe(df_index1(pd.DataFrame(conflitos_email)))
-            #     st.stop()
-
-
-            #     # ==========================================================
-            #     # 6) Validar projetos no banco
-            #     # ==========================================================
-
-            #     # Criar lista de códigos válidos a partir do banco
-            #     codigos_validos = df_projetos["codigo"].astype(str).str.strip().unique()
-
-            #     # Transformar a coluna projetos do upload em lista (aceitando vazio)
-            #     df_upload["projetos"] = df_upload["projetos"].apply(
-            #         lambda x:
-            #             [] if pd.isna(x) or str(x).strip() == "" or str(x).strip().lower() == "nan"
-            #             else [p.strip() for p in str(x).split(",") if p.strip()]
-            #     )
-
-            #     # Verificar códigos inválidos
-            #     invalidos_projetos = df_upload[df_upload["projetos"].apply(
-            #         lambda lst: any(codigo not in codigos_validos for codigo in lst)
-            #     )]
-
-            #     if not invalidos_projetos.empty:
-            #         st.error(
-            #             ":material/error: Existem projetos com códigos inválidos ou inexistentes no banco!\n\n"
-            #             "Nenhum cadastro foi realizado. Corrija os dados e carregue novamente."
-            #         )
-            #         st.dataframe(df_index1(invalidos_projetos))
-            #         st.stop()
-
-
-
-            # ==========================================================
-            # 7) Inserir no banco + Enviar e-mails de convite
-            # ==========================================================
-            if st.button(":material/save: Confirmar e convidar pessoas", type="primary"):
-
-                registros = []
-                for _, row in df_upload.iterrows():
-
-                    # gera código único para cada pessoa
-                    codigo_6_digitos_massa = gerar_codigo_aleatorio()
-
-                    doc = {
-                        "nome_completo": row["nome_completo"],
-                        "tipo_usuario": "beneficiario",
-                        "e_mail": row["e_mail"],
-                        "status": "convidado",
-                        "codigo_convite": codigo_6_digitos_massa,
-                        "data_convite": datetime.datetime.now().strftime("%d/%m/%Y"),
-                        "senha": None
-                    }
-
-                    if pd.notna(row["telefone (opcional)"]) and str(row["telefone (opcional)"]).strip():
-                        doc["telefone"] = str(row["telefone (opcional)"]).strip()
-
-                    if row["projetos"]:
-                        doc["projetos"] = row["projetos"]
-
-                    registros.append(doc)
-
-                # 1) Inserção em massa no banco
-                resultado = col_pessoas.insert_many(registros)
-
-                st.success(f":material/check: {len(resultado.inserted_ids)} pessoas cadastradas no banco de dados!")
-                st.write('')
-
-                # 2) Envio de e-mails com barra de progresso
-
-                st.write('')
-
-                progress_bar = st.progress(0)
-                status_text = st.empty()
-
-                total = len(registros)
-                falhas = []  # <- LISTA PARA ARMAZENAR FALHAS
-
-
-
-                status_line = st.empty()   # <-- Placeholder que será atualizado a cada iteração
-
-                with st.spinner("Enviando e-mails... Aguarde..."):
-
-                    for i, pessoa in enumerate(registros):
-
-                        nome = pessoa["nome_completo"]
-                        email = pessoa["e_mail"]
-                        codigo = pessoa["codigo_convite"]
-
-                        # Mostra mensagem atual (não acumula)
-                        status_line.write(f"Enviando e-mail para **{email}**...")
-
-                        try:
-                            enviar_email_convite(
-                                nome_completo=nome,
-                                email_destino=email,
-                                codigo=codigo
-                            )
-
-                        except Exception as e:
-                            falhas.append((email, str(e)))
-                            status_line.error(f":material/error: Falha ao enviar e-mail para {email}. Erro: {e}")
-
-                        progress_bar.progress((i + 1) / total)
-
-                        time.sleep(2)
-
-                # Após terminar, limpar o placeholder
-                status_line.empty()
-
-
-
-
-
-
-                # --- Relatório final ---
-
-                sucessos = total - len(falhas)
-
-                if len(falhas) == 0:
-                    st.success(f":material/check: Todos os {sucessos} convites foram enviados com sucesso!")
-                else:
-                    st.success(f":material/check: {sucessos} convites foram enviados com sucesso.")
-                    st.warning(f":material/warning: Porém, {len(falhas)} e-mails não puderam ser enviados.")
-                    
-                    st.write("### E-mails com falha:")
-                    for email, motivo in falhas:
-                        st.write(f"- **{email}** — erro: {motivo}")
-
-                # Resetar uploader
-                st.session_state['uploader_key'] = str(uuid.uuid4())
-                time.sleep(3)
-                st.rerun()
-
-
-
-        except Exception as e:
-            st.error(
-                ":material/error: Erro ao processar o arquivo.\n\n"
-                "Nenhum cadastro foi realizado. Corrija os dados e carregue novamente."
-            )
-            st.exception(e)
-
-
-
-
-
-
-
-
+        time.sleep(2)
+        st.rerun()
