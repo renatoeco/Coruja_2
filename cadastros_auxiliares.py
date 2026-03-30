@@ -309,17 +309,15 @@ st.write('')
 
 
 
-aba_perguntas, aba_pesquisas, aba_direcoes, aba_indicadores, aba_publicos, aba_beneficios, aba_categorias_despesa, aba_corredores, aba_kbas = st.tabs([
+
+#aba_perguntas, aba_pesquisas, aba_direcoes, aba_indicadores, aba_publicos, aba_beneficios, aba_categorias_despesa, aba_corredores, aba_kbas = st.tabs([
+aba_perguntas, aba_direcoes, aba_indicadores, aba_publicos, aba_categorias_despesa = st.tabs([
 # aba_perguntas, aba_pesquisas, aba_beneficiarios, aba_direcoes, aba_indicadores, aba_categorias_despesa, aba_corredores, aba_kbas, aba_tipos_manejo = st.tabs([
     'Perguntas do Relatório',
-    'Pesquisas',
-    'Direções Estratégicas',
-    'Indicadores de portifólio',
+    'Linhas Temáticas',
+    'Indicadores por Edital',
     'Públicos',
-    'Benefícios',
     'Categorias de despesa',
-    'Corredores',
-    'KBAs',
     # 'Tipos de manejo',
 ])
 
@@ -694,280 +692,274 @@ with aba_perguntas:
 # ABA PESQUISAS
 # ==========================================================
 
-with aba_pesquisas:
+# with aba_pesquisas:
 
-    # ------------------------------------------------------
-    # TÍTULO DA ABA
-    # ------------------------------------------------------
-    st.subheader("Pesquisas / Ferramentas de Monitoramento")
-    st.write("")
+#     # ------------------------------------------------------
+#     # TÍTULO DA ABA
+#     # ------------------------------------------------------
+#     st.subheader("Pesquisas / Ferramentas de Monitoramento")
+#     st.write("")
 
-    # ------------------------------------------------------
-    # SELEÇÃO DO EDITAL
-    # ------------------------------------------------------
+#     # ------------------------------------------------------
+#     # SELEÇÃO DO EDITAL
+#     # ------------------------------------------------------
 
-    if "codigo_edital" in df_editais.columns:
-        lista_editais = (
-            df_editais["codigo_edital"]
-            .dropna()
-            .astype(str)
-            .unique()
-            .tolist()
-        )
-    else:
-        lista_editais = []
-        st.warning("Campo 'codigo_edital' não encontrado.")
+#     if "codigo_edital" in df_editais.columns:
+#         lista_editais = (
+#             df_editais["codigo_edital"]
+#             .dropna()
+#             .astype(str)
+#             .unique()
+#             .tolist()
+#         )
+#     else:
+#         lista_editais = []
+#         st.warning("Campo 'codigo_edital' não encontrado.")
 
-    edital_selecionado_pesquisas = st.selectbox(
-        "Selecione o Edital:",
-        options=[""] + lista_editais,
-        index=0,
-        key="edital_selecionado_pesquisas",
-        width=300
-    )
+#     edital_selecionado_pesquisas = st.selectbox(
+#         "Selecione o Edital:",
+#         options=[""] + lista_editais,
+#         index=0,
+#         key="edital_selecionado_pesquisas",
+#         width=300
+#     )
 
 
-    # Caso nenhum edital seja selecionado
-    if not edital_selecionado_pesquisas:
-        st.caption("Selecione um edital para continuar.")
+#     # Caso nenhum edital seja selecionado
+#     if not edital_selecionado_pesquisas:
+#         st.caption("Selecione um edital para continuar.")
 
-    else:
-
-        st.write('')
+#     else:
+
+#         st.write('')
 
-        # ------------------------------------------------------
-        # BUSCA DO EDITAL NO BANCO
-        # ------------------------------------------------------
-
-        edital_pesquisas = buscar_edital_seguro(edital_selecionado_pesquisas)
-
-        pesquisas = sorted(
-            edital_pesquisas.get("pesquisas_relatorio", []),
-            key=lambda x: x.get("nome_pesquisa", "")
-        )
-
-        # ======================================================
-        # ABAS INTERNAS
-        # ======================================================
+#         # ------------------------------------------------------
+#         # BUSCA DO EDITAL NO BANCO
+#         # ------------------------------------------------------
+
+#         edital_pesquisas = buscar_edital_seguro(edital_selecionado_pesquisas)
+
+#         pesquisas = sorted(
+#             edital_pesquisas.get("pesquisas_relatorio", []),
+#             key=lambda x: x.get("nome_pesquisa", "")
+#         )
+
+#         # ======================================================
+#         # ABAS INTERNAS
+#         # ======================================================
 
-        aba_visualizar_pesquisas, aba_nova_pesquisa, aba_editar_pesquisa = st.tabs([
-            "Pesquisas cadastradas",
-            "Nova pesquisa",
-            "Editar / Excluir"
-        ])
+#         aba_visualizar_pesquisas, aba_nova_pesquisa, aba_editar_pesquisa = st.tabs([
+#             "Pesquisas cadastradas",
+#             "Nova pesquisa",
+#             "Editar / Excluir"
+#         ])
 
 
 
 
-        # ======================================================
-        # ABA 1 — VISUALIZAR
-        # ======================================================
+#         # ======================================================
+#         # ABA 1 — VISUALIZAR
+#         # ======================================================
 
 
-        with aba_visualizar_pesquisas:
+#         with aba_visualizar_pesquisas:
 
-            if not pesquisas:
-                st.caption("Nenhuma pesquisa cadastrada.")
-            else:
-                for idx, pesquisa in enumerate(pesquisas, start=1):
+#             if not pesquisas:
+#                 st.caption("Nenhuma pesquisa cadastrada.")
+#             else:
+#                 for idx, pesquisa in enumerate(pesquisas, start=1):
 
-                    icone = ":material/attach_file:" if pesquisa.get("upload_arquivo") else ""
+#                     icone = ":material/attach_file:" if pesquisa.get("upload_arquivo") else ""
 
-                    st.markdown(
-                        f"**{idx}. {pesquisa.get('nome_pesquisa')}** {icone}"
-                    )
+#                     st.markdown(
+#                         f"**{idx}. {pesquisa.get('nome_pesquisa')}** {icone}"
+#                     )
 
 
 
 
-        # ======================================================
-        # ABA 2 — NOVA PESQUISA
-        # ======================================================
+#         # ======================================================
+#         # ABA 2 — NOVA PESQUISA
+#         # ======================================================
 
-        with aba_nova_pesquisa:
+#         with aba_nova_pesquisa:
 
-            with st.form("form_nova_pesquisa", border=False, clear_on_submit=True):
+#             with st.form("form_nova_pesquisa", border=False, clear_on_submit=True):
 
-                # ----------------------------------------------
-                # CAMPO: NOME DA PESQUISA
-                # ----------------------------------------------
-                nome_pesquisa = st.text_input(
-                    "Nome da pesquisa",
-                    help=(
-                        'Para inserir um link use "nome_da_pesquisa - \\[texto_do_link\\](url_do_link)". '
-                        'Exemplo: "Pesquisa de monitoramento final - \\[clique aqui para acessar o formulário\\](https://docs.google.com/forms)"'
-                    )
-                )
+#                 # ----------------------------------------------
+#                 # CAMPO: NOME DA PESQUISA
+#                 # ----------------------------------------------
+#                 nome_pesquisa = st.text_input(
+#                     "Nome da pesquisa",
+#                     help=(
+#                         'Para inserir um link use "nome_da_pesquisa - \\[texto_do_link\\](url_do_link)". '
+#                         'Exemplo: "Pesquisa de monitoramento final - \\[clique aqui para acessar o formulário\\](https://docs.google.com/forms)"'
+#                     )
+#                 )
 
-                # ----------------------------------------------
-                # CAMPO: UPLOAD DE ARQUIVO
-                # ----------------------------------------------
-                upload_arquivo = st.checkbox(
-                    "Haverá upload de arquivo?",
-                    value=False
-                )
+#                 # ----------------------------------------------
+#                 # CAMPO: UPLOAD DE ARQUIVO
+#                 # ----------------------------------------------
+#                 upload_arquivo = st.checkbox(
+#                     "Haverá upload de arquivo?",
+#                     value=False
+#                 )
 
-                st.write("")
+#                 st.write("")
 
-                # ----------------------------------------------
-                # BOTÃO SALVAR
-                # ----------------------------------------------
-                salvar_pesquisa = st.form_submit_button(
-                    "Adicionar pesquisa",
-                    type="primary",
-                    icon=":material/save:",
-                    key="btn_salvar_pesquisa"
-                )
-
-                # ----------------------------------------------
-                # AÇÃO AO SALVAR
-                # ----------------------------------------------
-                if salvar_pesquisa:
-
-                    if not nome_pesquisa.strip():
-                        st.warning("O nome da pesquisa não pode ficar vazio.")
-                    else:
-                        nova_pesquisa = {
-                            "id": str(ObjectId()),
-                            "nome_pesquisa": nome_pesquisa.strip(),
-                            "upload_arquivo": upload_arquivo
-                        }
-
-                        col_editais.update_one(
-                            {"codigo_edital": edital_selecionado_pesquisas},
-                            {
-                                "$push": {
-                                    "pesquisas_relatorio": nova_pesquisa
-                                }
-                            }
-                        )
-
-                        st.success(":material/check: Pesquisa cadastrada com sucesso!")
-                        time.sleep(3)
-                        st.rerun()
-
-
-
-
-
-
-
-
-
-        # ======================================================
-        # ABA 3 — EDITAR / EXCLUIR
-        # ======================================================
-
-        with aba_editar_pesquisa:
-
-            if not pesquisas:
-                st.caption("Nenhuma pesquisa cadastrada.")
-
-            else:
-                st.markdown("##### Selecione uma pesquisa para EDITAR ou EXCLUIR")
-
-                # ----------------------------------------------
-                # MAPA DE PESQUISAS
-                # ----------------------------------------------
-                mapa_pesquisas = {
-                    p["nome_pesquisa"]: p for p in pesquisas
-                }
-
-                selecionada = st.selectbox(
-                    "",
-                    list(mapa_pesquisas.keys())
-                )
-
-                # Pesquisa selecionada
-                pesquisa_atual = mapa_pesquisas[selecionada]
-
-                st.divider()
-
-                # ----------------------------------------------
-                # CAMPOS DE EDIÇÃO
-                # ----------------------------------------------
-
-                novo_nome = st.text_input(
-                    "Nome da pesquisa",
-                    value=pesquisa_atual.get("nome_pesquisa", "")
-                )
-
-                upload_arquivo = st.checkbox(
-                    "Haverá upload de arquivo?",
-                    value=pesquisa_atual.get("upload_arquivo", False)
-                )
-
-                st.write("")
-
-                # ----------------------------------------------
-                # BOTÕES DE AÇÃO
-                # ----------------------------------------------
-                with st.container(horizontal=True, horizontal_alignment="left"):
-
-                    # -------- SALVAR --------
-                    if st.button(
-                        "Salvar alterações",
-                        type="primary",
-                        icon=":material/save:",
-                        key="btn_editar_pesquisa"
-                    ):
-
-                        if not novo_nome.strip():
-                            st.warning("O nome da pesquisa não pode ficar vazio.")
-                        else:
-                            pesquisas_atualizadas = [
-                                {
-                                    **p,
-                                    "nome_pesquisa": novo_nome.strip(),
-                                    "upload_arquivo": upload_arquivo
-                                } if p["id"] == pesquisa_atual["id"] else p
-                                for p in pesquisas
-                            ]
-
-                            col_editais.update_one(
-                                {"codigo_edital": edital_selecionado_pesquisas},
-                                {"$set": {"pesquisas_relatorio": pesquisas_atualizadas}}
-                            )
-
-                            st.success(":material/check: Pesquisa atualizada com sucesso!")
-                            time.sleep(3)
-                            st.rerun()
-
-                    # -------- EXCLUIR --------
-                    if st.button(
-                        "Excluir pesquisa",
-                        icon=":material/delete:",
-                        key="btn_excluir_pesquisa"
-                    ):
-
-                        pesquisas_atualizadas = [
-                            p for p in pesquisas
-                            if p["id"] != pesquisa_atual["id"]
-                        ]
-
-                        col_editais.update_one(
-                            {"codigo_edital": edital_selecionado_pesquisas},
-                            {"$set": {"pesquisas_relatorio": pesquisas_atualizadas}}
-                        )
-
-                        st.success(":material/check: Pesquisa excluída com sucesso!")
-                        time.sleep(3)
-                        st.rerun()
-
-
-
-
-
-
+#                 # ----------------------------------------------
+#                 # BOTÃO SALVAR
+#                 # ----------------------------------------------
+#                 salvar_pesquisa = st.form_submit_button(
+#                     "Adicionar pesquisa",
+#                     type="primary",
+#                     icon=":material/save:",
+#                     key="btn_salvar_pesquisa"
+#                 )
+
+#                 # ----------------------------------------------
+#                 # AÇÃO AO SALVAR
+#                 # ----------------------------------------------
+#                 if salvar_pesquisa:
+
+#                     if not nome_pesquisa.strip():
+#                         st.warning("O nome da pesquisa não pode ficar vazio.")
+#                     else:
+#                         nova_pesquisa = {
+#                             "id": str(ObjectId()),
+#                             "nome_pesquisa": nome_pesquisa.strip(),
+#                             "upload_arquivo": upload_arquivo
+#                         }
+
+#                         col_editais.update_one(
+#                             {"codigo_edital": edital_selecionado_pesquisas},
+#                             {
+#                                 "$push": {
+#                                     "pesquisas_relatorio": nova_pesquisa
+#                                 }
+#                             }
+#                         )
+
+#                         st.success(":material/check: Pesquisa cadastrada com sucesso!")
+#                         time.sleep(3)
+#                         st.rerun()
+
+
+
+
+
+
+
+
+
+#         # ======================================================
+#         # ABA 3 — EDITAR / EXCLUIR
+#         # ======================================================
+
+#         with aba_editar_pesquisa:
+
+#             if not pesquisas:
+#                 st.caption("Nenhuma pesquisa cadastrada.")
+
+#             else:
+#                 st.markdown("##### Selecione uma pesquisa para EDITAR ou EXCLUIR")
+
+#                 # ----------------------------------------------
+#                 # MAPA DE PESQUISAS
+#                 # ----------------------------------------------
+#                 mapa_pesquisas = {
+#                     p["nome_pesquisa"]: p for p in pesquisas
+#                 }
+
+#                 selecionada = st.selectbox(
+#                     "",
+#                     list(mapa_pesquisas.keys())
+#                 )
+
+#                 # Pesquisa selecionada
+#                 pesquisa_atual = mapa_pesquisas[selecionada]
+
+#                 st.divider()
+
+#                 # ----------------------------------------------
+#                 # CAMPOS DE EDIÇÃO
+#                 # ----------------------------------------------
+
+#                 novo_nome = st.text_input(
+#                     "Nome da pesquisa",
+#                     value=pesquisa_atual.get("nome_pesquisa", "")
+#                 )
+
+#                 upload_arquivo = st.checkbox(
+#                     "Haverá upload de arquivo?",
+#                     value=pesquisa_atual.get("upload_arquivo", False)
+#                 )
+
+#                 st.write("")
+
+#                 # ----------------------------------------------
+#                 # BOTÕES DE AÇÃO
+#                 # ----------------------------------------------
+#                 with st.container(horizontal=True, horizontal_alignment="left"):
+
+#                     # -------- SALVAR --------
+#                     if st.button(
+#                         "Salvar alterações",
+#                         type="primary",
+#                         icon=":material/save:",
+#                         key="btn_editar_pesquisa"
+#                     ):
+
+#                         if not novo_nome.strip():
+#                             st.warning("O nome da pesquisa não pode ficar vazio.")
+#                         else:
+#                             pesquisas_atualizadas = [
+#                                 {
+#                                     **p,
+#                                     "nome_pesquisa": novo_nome.strip(),
+#                                     "upload_arquivo": upload_arquivo
+#                                 } if p["id"] == pesquisa_atual["id"] else p
+#                                 for p in pesquisas
+#                             ]
+
+#                             col_editais.update_one(
+#                                 {"codigo_edital": edital_selecionado_pesquisas},
+#                                 {"$set": {"pesquisas_relatorio": pesquisas_atualizadas}}
+#                             )
+
+#                             st.success(":material/check: Pesquisa atualizada com sucesso!")
+#                             time.sleep(3)
+#                             st.rerun()
+
+#                     # -------- EXCLUIR --------
+#                     if st.button(
+#                         "Excluir pesquisa",
+#                         icon=":material/delete:",
+#                         key="btn_excluir_pesquisa"
+#                     ):
+
+#                         pesquisas_atualizadas = [
+#                             p for p in pesquisas
+#                             if p["id"] != pesquisa_atual["id"]
+#                         ]
+
+#                         col_editais.update_one(
+#                             {"codigo_edital": edital_selecionado_pesquisas},
+#                             {"$set": {"pesquisas_relatorio": pesquisas_atualizadas}}
+#                         )
+
+#                         st.success(":material/check: Pesquisa excluída com sucesso!")
+#                         time.sleep(3)
+#                         st.rerun()
 
 
 # ==========================================================
-# ABA DIREÇÕES ESTRATÉGICAS (POR EDITAL)
+# ABA LINHAS TEMÁTICAS (POR EDITAL)
 # ==========================================================
 
 with aba_direcoes:
 
-    st.subheader("Direções Estratégicas")
+    st.subheader("Linhas Temáticas")
     st.write("")
 
     # ======================================================
@@ -1030,23 +1022,6 @@ with aba_direcoes:
 
         # # 🔽 AQUI CONTINUA TODO O RESTO DA LÓGICA
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     # # Se nenhum edital for selecionado, para execução
     # if not edital_selecionado_direcoes:
     #     st.caption("Selecione um edital para continuar.")
@@ -1054,19 +1029,7 @@ with aba_direcoes:
 
     # st.write("")
 
-        # ======================================================
-        # RADIO DE MODO (APÓS SELECIONAR EDITAL)
-        # ======================================================
-
-        modo_gestao = st.radio(
-            "Gerenciar:",
-            options=["Direções estratégicas", "Subcategorias"],
-            horizontal=True,
-            index=0
-        )
-
-        st.write("")
-
+        
         # ======================================================
         # BUSCA DO EDITAL NO BANCO
         # ======================================================
@@ -1078,314 +1041,190 @@ with aba_direcoes:
             key=lambda x: x.get("tema", "")
         )
 
-        # ======================================================
-        # ======================================================
-        # MODO 1 — DIREÇÕES ESTRATÉGICAS
-        # ======================================================
-        # ======================================================
+        aba_visualizar_direcoes, aba_nova_direcao, aba_editar_direcao = st.tabs([
+            "Linhas temáticas cadastradas",
+            "Nova linha temática",
+            "Editar / Excluir"
+        ])
 
-        if modo_gestao == "Direções estratégicas":
+        # -------------------------
+        # VISUALIZAR
+        # -------------------------
 
-            aba_visualizar_direcoes, aba_nova_direcao, aba_editar_direcao = st.tabs([
-                "Direções cadastradas",
-                "Nova direção estratégica",
-                "Editar / Excluir"
-            ])
+        with aba_visualizar_direcoes:
 
-            # -------------------------
-            # VISUALIZAR
-            # -------------------------
+            if not direcoes:
+                st.caption("Nenhuma linha temática cadastrada.")
+            else:
+                for idx, direcao in enumerate(direcoes, start=1):
+                    st.markdown(f"**{idx}. {direcao.get('tema')}**")
 
-            with aba_visualizar_direcoes:
+        # -------------------------
+        # NOVA DIREÇÃO
+        # -------------------------
 
-                if not direcoes:
-                    st.caption("Nenhuma direção estratégica cadastrada.")
-                else:
-                    for idx, direcao in enumerate(direcoes, start=1):
-                        st.markdown(f"**{idx}. {direcao.get('tema')}**")
+        with aba_nova_direcao:
 
-            # -------------------------
-            # NOVA DIREÇÃO
-            # -------------------------
+            with st.form("form_nova_direcao", border=False, clear_on_submit=True):
 
-            with aba_nova_direcao:
+                tema_direcao = st.text_input("Linha Temática")
 
-                with st.form("form_nova_direcao", border=False, clear_on_submit=True):
+                st.write("")
 
-                    tema_direcao = st.text_input("Direção estratégica")
+                salvar_direcao = st.form_submit_button(
+                    "Adicionar linha temática",
+                    type="primary",
+                    icon=":material/save:"
+                )
 
-                    st.write("")
+                if salvar_direcao:
 
-                    salvar_direcao = st.form_submit_button(
-                        "Adicionar direção estratégica",
+                    if not tema_direcao.strip():
+                        st.warning("A linha temática não pode ficar vazia.")
+                    else:
+
+                        nova_direcao = {
+                            "id": str(ObjectId()),
+                            "tema": tema_direcao.strip(),
+                            "subcategorias": []
+                        }
+
+                        col_editais.update_one(
+                            {"codigo_edital": edital_selecionado_direcoes},
+                            {"$push": {"direcoes_estrategicas": nova_direcao}}
+                        )
+
+                        st.success("Linha temática cadastrada com sucesso!", icon=":material/check:")
+                        time.sleep(2)
+                        st.rerun()
+
+        # -------------------------
+        # EDITAR / EXCLUIR
+        # -------------------------
+
+        with aba_editar_direcao:
+
+            if not direcoes:
+                st.caption("Nenhuma linha temática cadastrada.")
+            else:
+
+                mapa_direcoes = {d["tema"]: d for d in direcoes}
+
+                selecionada = st.selectbox(
+                    "Selecione a Linha Temática para editar ou excluir:",
+                    list(mapa_direcoes.keys())
+                )
+
+                direcao_atual = mapa_direcoes[selecionada]
+
+                st.write('')
+                novo_tema = st.text_input(
+                    "Editar:",
+                    value=direcao_atual.get("tema", "")
+                )
+
+                st.write("")
+
+
+                # --------------------------------------------------
+                # CONTROLE DE ESTADO DA CONFIRMAÇÃO
+                # --------------------------------------------------
+
+                confirm_key = f"confirmar_exclusao_{direcao_atual['id']}"
+
+                if confirm_key not in st.session_state:
+                    st.session_state[confirm_key] = False
+
+
+                with st.container(horizontal=True):
+
+                    # --------------------------------------------------
+                    # BOTÃO SALVAR
+                    # --------------------------------------------------
+
+                    if st.button(
+                        "Salvar alterações",
                         type="primary",
-                        icon=":material/save:"
-                    )
+                        icon=":material/save:",
+                        width=250
+                    ):
 
-                    if salvar_direcao:
-
-                        if not tema_direcao.strip():
-                            st.warning("A direção estratégica não pode ficar vazia.")
+                        if not novo_tema.strip():
+                            st.warning("A linha temática não pode ficar vazia.")
                         else:
 
-                            nova_direcao = {
-                                "id": str(ObjectId()),
-                                "tema": tema_direcao.strip(),
-                                "subcategorias": []
-                            }
+                            direcoes_atualizadas = [
+                                {
+                                    **d,
+                                    "tema": novo_tema.strip()
+                                } if d["id"] == direcao_atual["id"] else d
+                                for d in direcoes
+                            ]
 
                             col_editais.update_one(
                                 {"codigo_edital": edital_selecionado_direcoes},
-                                {"$push": {"direcoes_estrategicas": nova_direcao}}
+                                {"$set": {"direcoes_estrategicas": direcoes_atualizadas}}
                             )
 
-                            st.success("Direção estratégica cadastrada com sucesso!", icon=":material/check:")
-                            time.sleep(2)
+                            st.success("Linha temática atualizada com sucesso!", icon=":material/check:")
+                            time.sleep(3)
                             st.rerun()
 
-            # -------------------------
-            # EDITAR / EXCLUIR
-            # -------------------------
-
-            with aba_editar_direcao:
-
-                if not direcoes:
-                    st.caption("Nenhuma direção estratégica cadastrada.")
-                else:
-
-                    mapa_direcoes = {d["tema"]: d for d in direcoes}
-
-                    selecionada = st.selectbox(
-                        "Selecione a Direção estratégica para editar ou excluir:",
-                        list(mapa_direcoes.keys())
-                    )
-
-                    direcao_atual = mapa_direcoes[selecionada]
-
-                    st.write('')
-                    novo_tema = st.text_input(
-                        "Editar:",
-                        value=direcao_atual.get("tema", "")
-                    )
-
-                    st.write("")
-
-
-
-
                     # --------------------------------------------------
-                    # CONTROLE DE ESTADO DA CONFIRMAÇÃO
+                    # BOTÃO EXCLUIR (PASSO 1)
                     # --------------------------------------------------
 
-                    confirm_key = f"confirmar_exclusao_{direcao_atual['id']}"
+                    if st.button(
+                        "Excluir linha",
+                        icon=":material/delete:",
+                        width=250
+                    ):
+                        st.session_state[confirm_key] = True
 
-                    if confirm_key not in st.session_state:
-                        st.session_state[confirm_key] = False
 
+                # --------------------------------------------------
+                # CONFIRMAÇÃO (PASSO 2)
+                # --------------------------------------------------
+
+                if st.session_state[confirm_key]:
+
+                    st.warning(
+                        f"Tem certeza que deseja excluir a linha temática:\n\n**{direcao_atual.get('tema')}** ?"
+                    )
 
                     with st.container(horizontal=True):
 
-                        # --------------------------------------------------
-                        # BOTÃO SALVAR
-                        # --------------------------------------------------
-
                         if st.button(
-                            "Salvar alterações",
+                            "Confirmar exclusão",
                             type="primary",
-                            icon=":material/save:",
-                            width=250
+                            icon=":material/delete:",
+                            key=f"confirmar_btn_{direcao_atual['id']}"
                         ):
 
-                            if not novo_tema.strip():
-                                st.warning("A direção estratégica não pode ficar vazia.")
-                            else:
+                            direcoes_atualizadas = [
+                                d for d in direcoes
+                                if d["id"] != direcao_atual["id"]
+                            ]
 
-                                direcoes_atualizadas = [
-                                    {
-                                        **d,
-                                        "tema": novo_tema.strip()
-                                    } if d["id"] == direcao_atual["id"] else d
-                                    for d in direcoes
-                                ]
+                            col_editais.update_one(
+                                {"codigo_edital": edital_selecionado_direcoes},
+                                {"$set": {"direcoes_estrategicas": direcoes_atualizadas}}
+                            )
 
-                                col_editais.update_one(
-                                    {"codigo_edital": edital_selecionado_direcoes},
-                                    {"$set": {"direcoes_estrategicas": direcoes_atualizadas}}
-                                )
+                            st.session_state[confirm_key] = False
 
-                                st.success("Direção estratégica atualizada com sucesso!", icon=":material/check:")
-                                time.sleep(3)
-                                st.rerun()
-
-                        # --------------------------------------------------
-                        # BOTÃO EXCLUIR (PASSO 1)
-                        # --------------------------------------------------
+                            st.success("Linha temática excluída com sucesso!", icon=":material/check:")
+                            time.sleep(2)
+                            st.rerun()
 
                         if st.button(
-                            "Excluir direção",
-                            icon=":material/delete:",
-                            width=250
+                            "Cancelar",
+                            key=f"cancelar_btn_{direcao_atual['id']}"
                         ):
-                            st.session_state[confirm_key] = True
-
-
-                    # --------------------------------------------------
-                    # CONFIRMAÇÃO (PASSO 2)
-                    # --------------------------------------------------
-
-                    if st.session_state[confirm_key]:
-
-                        st.warning(
-                            f"Tem certeza que deseja excluir a direção estratégica:\n\n**{direcao_atual.get('tema')}** ?"
-                        )
-
-                        with st.container(horizontal=True):
-
-                            if st.button(
-                                "Confirmar exclusão",
-                                type="primary",
-                                icon=":material/delete:",
-                                key=f"confirmar_btn_{direcao_atual['id']}"
-                            ):
-
-                                direcoes_atualizadas = [
-                                    d for d in direcoes
-                                    if d["id"] != direcao_atual["id"]
-                                ]
-
-                                col_editais.update_one(
-                                    {"codigo_edital": edital_selecionado_direcoes},
-                                    {"$set": {"direcoes_estrategicas": direcoes_atualizadas}}
-                                )
-
-                                st.session_state[confirm_key] = False
-
-                                st.success("Direção estratégica excluída com sucesso!", icon=":material/check:")
-                                time.sleep(2)
-                                st.rerun()
-
-                            if st.button(
-                                "Cancelar",
-                                key=f"cancelar_btn_{direcao_atual['id']}"
-                            ):
-                                st.session_state[confirm_key] = False
-                                time.sleep(3)
-                                st.rerun()
-
-
-
-
-
-
-        # ======================================================
-        # ======================================================
-        # MODO 2 — SUBCATEGORIAS
-        # ======================================================
-        # ======================================================
-
-        if modo_gestao == "Subcategorias":
-
-            if not direcoes:
-                st.warning("Nenhuma direção estratégica cadastrada.")
-                st.stop()
-
-            # --------------------------------------------------
-            # SELECIONAR DIREÇÃO
-            # --------------------------------------------------
-
-            mapa_direcoes = {d["tema"]: d for d in direcoes}
-
-            direcao_selecionada_nome = st.selectbox(
-                "Selecione a Direção Estratégica:",
-                list(mapa_direcoes.keys())
-            )
-
-            direcao_selecionada = mapa_direcoes[direcao_selecionada_nome]
-
-            st.write("")
-
-            # --------------------------------------------------
-            # CARREGAR SUBCATEGORIAS EXISTENTES
-            # --------------------------------------------------
-
-            subcategorias_existentes = direcao_selecionada.get("subcategorias", [])
-
-            if subcategorias_existentes:
-                df_sub = pd.DataFrame(subcategorias_existentes)
-                df_sub = df_sub.rename(columns={
-                    "nome_subcategoria": "Subcategorias da direção estratégica"
-                })
-            else:
-                df_sub = pd.DataFrame({
-                    "Subcategorias da direção estratégica": pd.Series(dtype="str")
-                })
-
-            # --------------------------------------------------
-            # DATA EDITOR
-            # --------------------------------------------------
-
-            df_editado = st.data_editor(
-                df_sub,
-                num_rows="dynamic",
-                hide_index=True
-            )
-
-            st.write("")
-
-            # --------------------------------------------------
-            # BOTÃO SALVAR
-            # --------------------------------------------------
-
-            if st.button(
-                "Salvar",
-                type="primary",
-                icon=":material/save:",
-                width=200
-            ):
-
-                # Normalização
-                df_editado = df_editado.dropna()
-                df_editado["Subcategorias da direção estratégica"] = (
-                    df_editado["Subcategorias da direção estratégica"]
-                    .astype(str)
-                    .str.strip()
-                )
-
-                df_editado = df_editado[
-                    df_editado["Subcategorias da direção estratégica"] != ""
-                ]
-
-                nova_lista_subcategorias = [
-                    {"nome_subcategoria": row}
-                    for row in df_editado["Subcategorias da direção estratégica"].tolist()
-                ]
-
-                # Atualiza apenas a direção selecionada
-                direcoes_atualizadas = [
-                    {
-                        **d,
-                        "subcategorias": nova_lista_subcategorias
-                    } if d["id"] == direcao_selecionada["id"] else d
-                    for d in direcoes
-                ]
-
-                col_editais.update_one(
-                    {"codigo_edital": edital_selecionado_direcoes},
-                    {"$set": {"direcoes_estrategicas": direcoes_atualizadas}}
-                )
-
-                st.success("Subcategorias atualizadas com sucesso!", icon=":material/check:")
-                time.sleep(3)
-                st.rerun()
-
-
-
-
-
-
-
-
-
+                            st.session_state[confirm_key] = False
+                            time.sleep(3)
+                            st.rerun()
+  
 
 # ==========================================================
 # ABA INDICADORES (POR EDITAL)
@@ -1393,7 +1232,7 @@ with aba_direcoes:
 
 with aba_indicadores:
 
-    st.subheader("Indicadores de portifólio")
+    st.subheader("Indicadores por Edital")
     st.write("")
 
     # ======================================================
@@ -1734,129 +1573,129 @@ with aba_publicos:
 # ==========================================================
 
 
-with aba_beneficios:
+# with aba_beneficios:
 
-    st.subheader("Tipos de benefício")
-    st.write('')
+#     st.subheader("Tipos de benefício")
+#     st.write('')
 
-    # 1) Carrega documentos da coleção (ordenados)
-    dados_beneficios = list(
-        col_beneficios.find({}, {"beneficio": 1}).sort("beneficio", 1)
-    )
+#     # 1) Carrega documentos da coleção (ordenados)
+#     dados_beneficios = list(
+#         col_beneficios.find({}, {"beneficio": 1}).sort("beneficio", 1)
+#     )
 
-    df_beneficios = pd.DataFrame(dados_beneficios)
+#     df_beneficios = pd.DataFrame(dados_beneficios)
 
-    # Converte ObjectId para string
-    if "_id" in df_beneficios.columns:
-        df_beneficios["_id"] = df_beneficios["_id"].astype(str)
-    else:
-        df_beneficios["_id"] = ""
+#     # Converte ObjectId para string
+#     if "_id" in df_beneficios.columns:
+#         df_beneficios["_id"] = df_beneficios["_id"].astype(str)
+#     else:
+#         df_beneficios["_id"] = ""
 
-    editar_beneficios = st.toggle("Editar", key="editar_beneficios")
-    st.write('')
+#     editar_beneficios = st.toggle("Editar", key="editar_beneficios")
+#     st.write('')
 
-    # -------------------------
-    # MODO VISUALIZAÇÃO
-    # -------------------------
-    if not editar_beneficios:
-        if df_beneficios.empty:
-            st.caption("Nenhum tipo de benefício cadastrado.")
-        else:
-            st.dataframe(
-                df_beneficios[["beneficio"]].sort_values("beneficio"),
-                hide_index=True,
-                width=500
-            )
+#     # -------------------------
+#     # MODO VISUALIZAÇÃO
+#     # -------------------------
+#     if not editar_beneficios:
+#         if df_beneficios.empty:
+#             st.caption("Nenhum tipo de benefício cadastrado.")
+#         else:
+#             st.dataframe(
+#                 df_beneficios[["beneficio"]].sort_values("beneficio"),
+#                 hide_index=True,
+#                 width=500
+#             )
 
-    # -------------------------
-    # MODO EDIÇÃO
-    # -------------------------
-    else:
-        st.write("Edite, adicione e exclua linhas.")
+#     # -------------------------
+#     # MODO EDIÇÃO
+#     # -------------------------
+#     else:
+#         st.write("Edite, adicione e exclua linhas.")
 
-        if df_beneficios.empty:
+#         if df_beneficios.empty:
             
-            df_editor = pd.DataFrame(
-                {"beneficio": pd.Series(dtype="str")}
-            )
-        else:
-            df_editor = df_beneficios[["beneficio"]].copy()
-            df_editor["beneficio"] = df_editor["beneficio"].astype(str)
+#             df_editor = pd.DataFrame(
+#                 {"beneficio": pd.Series(dtype="str")}
+#             )
+#         else:
+#             df_editor = df_beneficios[["beneficio"]].copy()
+#             df_editor["beneficio"] = df_editor["beneficio"].astype(str)
 
-        df_editado = st.data_editor(
-            df_editor,
-            num_rows="dynamic",
-            hide_index=True,
-            key="editor_beneficios",
-            width=500
-        )
+#         df_editado = st.data_editor(
+#             df_editor,
+#             num_rows="dynamic",
+#             hide_index=True,
+#             key="editor_beneficios",
+#             width=500
+#         )
 
-        if st.button("Salvar alterações", icon=":material/save:", type="primary", key="salvar_beneficios"):
+#         if st.button("Salvar alterações", icon=":material/save:", type="primary", key="salvar_beneficios"):
 
-            if "beneficio" not in df_editado.columns:
-                st.error("Nenhum dado válido para salvar.")
-                st.stop()
+#             if "beneficio" not in df_editado.columns:
+#                 st.error("Nenhum dado válido para salvar.")
+#                 st.stop()
 
-            # -------------------------
-            # NORMALIZAÇÃO
-            # -------------------------
-            df_editado["beneficio"] = (
-                df_editado["beneficio"]
-                .astype(str)
-                .str.strip()
-            )
-            df_editado = df_editado[df_editado["beneficio"] != ""]
+#             # -------------------------
+#             # NORMALIZAÇÃO
+#             # -------------------------
+#             df_editado["beneficio"] = (
+#                 df_editado["beneficio"]
+#                 .astype(str)
+#                 .str.strip()
+#             )
+#             df_editado = df_editado[df_editado["beneficio"] != ""]
 
-            if df_editado.empty:
-                st.warning("Nenhum tipo de benefício informado.")
-                st.stop()
+#             if df_editado.empty:
+#                 st.warning("Nenhum tipo de benefício informado.")
+#                 st.stop()
 
-            df_editado = df_editado.sort_values("beneficio")
+#             df_editado = df_editado.sort_values("beneficio")
 
-            # -------------------------
-            # VERIFICA DUPLICADOS
-            # -------------------------
-            lista_editada = df_editado["beneficio"].tolist()
-            duplicados_local = {
-                x for x in lista_editada if lista_editada.count(x) > 1
-            }
+#             # -------------------------
+#             # VERIFICA DUPLICADOS
+#             # -------------------------
+#             lista_editada = df_editado["beneficio"].tolist()
+#             duplicados_local = {
+#                 x for x in lista_editada if lista_editada.count(x) > 1
+#             }
 
-            if duplicados_local:
-                st.error(
-                    f"Existem valores duplicados na lista: "
-                    f"{', '.join(duplicados_local)}"
-                )
-                st.stop()
+#             if duplicados_local:
+#                 st.error(
+#                     f"Existem valores duplicados na lista: "
+#                     f"{', '.join(duplicados_local)}"
+#                 )
+#                 st.stop()
 
-            valores_orig = (
-                set(df_beneficios["beneficio"])
-                if "beneficio" in df_beneficios.columns
-                else set()
-            )
-            valores_editados = set(lista_editada)
+#             valores_orig = (
+#                 set(df_beneficios["beneficio"])
+#                 if "beneficio" in df_beneficios.columns
+#                 else set()
+#             )
+#             valores_editados = set(lista_editada)
 
-            # -------------------------
-            # REMOVIDOS
-            # -------------------------
-            for beneficio in valores_orig - valores_editados:
-                col_beneficios.delete_one({"beneficio": beneficio})
+#             # -------------------------
+#             # REMOVIDOS
+#             # -------------------------
+#             for beneficio in valores_orig - valores_editados:
+#                 col_beneficios.delete_one({"beneficio": beneficio})
 
-            # -------------------------
-            # NOVOS
-            # -------------------------
-            for beneficio in valores_editados - valores_orig:
-                if col_beneficios.find_one({"beneficio": beneficio}):
-                    st.error(
-                        f"O valor '{beneficio}' já existe "
-                        "e não será inserido."
-                    )
-                    st.stop()
+#             # -------------------------
+#             # NOVOS
+#             # -------------------------
+#             for beneficio in valores_editados - valores_orig:
+#                 if col_beneficios.find_one({"beneficio": beneficio}):
+#                     st.error(
+#                         f"O valor '{beneficio}' já existe "
+#                         "e não será inserido."
+#                     )
+#                     st.stop()
 
-                col_beneficios.insert_one({"beneficio": beneficio})
+#                 col_beneficios.insert_one({"beneficio": beneficio})
 
-            st.success("Tipos de benefício atualizados com sucesso!")
-            time.sleep(3)
-            st.rerun()
+#             st.success("Tipos de benefício atualizados com sucesso!")
+#             time.sleep(3)
+#             st.rerun()
 
 
 
@@ -2014,171 +1853,171 @@ with aba_categorias_despesa:
 # ABA CORREDORES
 # ==========================================================
 
-with aba_corredores:
+# with aba_corredores:
 
-    st.subheader("Corredores")
-    st.write("")
+#     st.subheader("Corredores")
+#     st.write("")
 
-    # -----------------------------------
-    # Carregar dados da coleção
-    # -----------------------------------
-    dados_corredores = list(
-        col_corredores.find(
-            {},
-            {"id_corredor": 1, "nome_corredor": 1}
-        ).sort("nome_corredor", 1)
-    )
+#     # -----------------------------------
+#     # Carregar dados da coleção
+#     # -----------------------------------
+#     dados_corredores = list(
+#         col_corredores.find(
+#             {},
+#             {"id_corredor": 1, "nome_corredor": 1}
+#         ).sort("nome_corredor", 1)
+#     )
 
-    df_corredores = pd.DataFrame(dados_corredores)
+#     df_corredores = pd.DataFrame(dados_corredores)
 
-    # Garante colunas
-    if df_corredores.empty:
-        df_corredores = pd.DataFrame(
-            columns=["id_corredor", "nome_corredor"]
-        )
+#     # Garante colunas
+#     if df_corredores.empty:
+#         df_corredores = pd.DataFrame(
+#             columns=["id_corredor", "nome_corredor"]
+#         )
 
-    # Remove _id do Mongo (não será usado)
-    if "_id" in df_corredores.columns:
-        df_corredores = df_corredores.drop(columns=["_id"])
+#     # Remove _id do Mongo (não será usado)
+#     if "_id" in df_corredores.columns:
+#         df_corredores = df_corredores.drop(columns=["_id"])
 
-    editar_corredores = st.toggle(
-        "Editar",
-        key="editar_corredores"
-    )
+#     editar_corredores = st.toggle(
+#         "Editar",
+#         key="editar_corredores"
+#     )
 
-    st.write("")
+#     st.write("")
 
-    # ==================================================
-    # MODO VISUALIZAÇÃO
-    # ==================================================
-    if not editar_corredores:
+#     # ==================================================
+#     # MODO VISUALIZAÇÃO
+#     # ==================================================
+#     if not editar_corredores:
 
-        if df_corredores.empty:
-            st.caption("Nenhum corredor cadastrado.")
-        else:
+#         if df_corredores.empty:
+#             st.caption("Nenhum corredor cadastrado.")
+#         else:
 
-            df_tabela = (
-                df_corredores
-                .sort_values("nome_corredor")
-                .reset_index(drop=True)
-                .rename(columns={
-                    "id_corredor": "ID do corredor",
-                    "nome_corredor": "Nome do corredor"
-                })
-            )
+#             df_tabela = (
+#                 df_corredores
+#                 .sort_values("nome_corredor")
+#                 .reset_index(drop=True)
+#                 .rename(columns={
+#                     "id_corredor": "ID do corredor",
+#                     "nome_corredor": "Nome do corredor"
+#                 })
+#             )
 
-            st.dataframe(df_tabela,
-                         hide_index=True, 
-                         )
+#             st.dataframe(df_tabela,
+#                          hide_index=True, 
+#                          )
 
-    # ==================================================
-    # MODO EDIÇÃO
-    # ==================================================
-    else:
+#     # ==================================================
+#     # MODO EDIÇÃO
+#     # ==================================================
+#     else:
 
-        st.write("Edite, adicione e exclua corredores.")
+#         st.write("Edite, adicione e exclua corredores.")
 
-        df_editor = df_corredores.copy()
+#         df_editor = df_corredores.copy()
 
-        # Normalização defensiva
-        df_editor["id_corredor"] = (
-            df_editor["id_corredor"]
-            .astype(str)
-            .str.strip()
-        )
-        df_editor["nome_corredor"] = (
-            df_editor["nome_corredor"]
-            .astype(str)
-            .str.strip()
-        )
+#         # Normalização defensiva
+#         df_editor["id_corredor"] = (
+#             df_editor["id_corredor"]
+#             .astype(str)
+#             .str.strip()
+#         )
+#         df_editor["nome_corredor"] = (
+#             df_editor["nome_corredor"]
+#             .astype(str)
+#             .str.strip()
+#         )
 
-        df_editado = st.data_editor(
-            df_editor,
-            num_rows="dynamic",
-            hide_index=True,
-            key="editor_corredores",
-            # width=700,
-            column_config={
-                "id_corredor": st.column_config.TextColumn(
-                    "ID do corredor",
-                    required=True,
-                    help="Identificador único do corredor (texto livre)",
-                    width=20
-                ),
-                "nome_corredor": st.column_config.TextColumn(
-                    "Nome do corredor",
-                    required=True,
-                    width=900
-                ),
-            }
-        )
+#         df_editado = st.data_editor(
+#             df_editor,
+#             num_rows="dynamic",
+#             hide_index=True,
+#             key="editor_corredores",
+#             # width=700,
+#             column_config={
+#                 "id_corredor": st.column_config.TextColumn(
+#                     "ID do corredor",
+#                     required=True,
+#                     help="Identificador único do corredor (texto livre)",
+#                     width=20
+#                 ),
+#                 "nome_corredor": st.column_config.TextColumn(
+#                     "Nome do corredor",
+#                     required=True,
+#                     width=900
+#                 ),
+#             }
+#         )
 
-        if st.button(
-            "Salvar alterações",
-            icon=":material/save:",
-            type="primary"
-        ):
+#         if st.button(
+#             "Salvar alterações",
+#             icon=":material/save:",
+#             type="primary"
+#         ):
 
-            # Remove linhas vazias
-            df_salvar = df_editado.copy()
+#             # Remove linhas vazias
+#             df_salvar = df_editado.copy()
 
-            df_salvar["id_corredor"] = (
-                df_salvar["id_corredor"]
-                .astype(str)
-                .str.strip()
-            )
-            df_salvar["nome_corredor"] = (
-                df_salvar["nome_corredor"]
-                .astype(str)
-                .str.strip()
-            )
+#             df_salvar["id_corredor"] = (
+#                 df_salvar["id_corredor"]
+#                 .astype(str)
+#                 .str.strip()
+#             )
+#             df_salvar["nome_corredor"] = (
+#                 df_salvar["nome_corredor"]
+#                 .astype(str)
+#                 .str.strip()
+#             )
 
-            df_salvar = df_salvar[
-                (df_salvar["id_corredor"] != "")
-                & (df_salvar["nome_corredor"] != "")
-            ]
+#             df_salvar = df_salvar[
+#                 (df_salvar["id_corredor"] != "")
+#                 & (df_salvar["nome_corredor"] != "")
+#             ]
 
-            if df_salvar.empty:
-                st.warning("Nenhum corredor válido para salvar.")
-                st.stop()
+#             if df_salvar.empty:
+#                 st.warning("Nenhum corredor válido para salvar.")
+#                 st.stop()
 
-            # ===========================
-            # VALIDAÇÃO DE DUPLICADOS
-            # ===========================
-            duplicados_id = df_salvar[
-                df_salvar["id_corredor"].duplicated()
-            ]["id_corredor"].tolist()
+#             # ===========================
+#             # VALIDAÇÃO DE DUPLICADOS
+#             # ===========================
+#             duplicados_id = df_salvar[
+#                 df_salvar["id_corredor"].duplicated()
+#             ]["id_corredor"].tolist()
 
-            duplicados_nome = df_salvar[
-                df_salvar["nome_corredor"].duplicated()
-            ]["nome_corredor"].tolist()
+#             duplicados_nome = df_salvar[
+#                 df_salvar["nome_corredor"].duplicated()
+#             ]["nome_corredor"].tolist()
 
-            if duplicados_id:
-                st.error(
-                    "IDs de corredor duplicados: "
-                    f"{', '.join(set(duplicados_id))}"
-                )
-                st.stop()
+#             if duplicados_id:
+#                 st.error(
+#                     "IDs de corredor duplicados: "
+#                     f"{', '.join(set(duplicados_id))}"
+#                 )
+#                 st.stop()
 
-            if duplicados_nome:
-                st.error(
-                    "Nomes de corredor duplicados: "
-                    f"{', '.join(set(duplicados_nome))}"
-                )
-                st.stop()
+#             if duplicados_nome:
+#                 st.error(
+#                     "Nomes de corredor duplicados: "
+#                     f"{', '.join(set(duplicados_nome))}"
+#                 )
+#                 st.stop()
 
-            # ===========================
-            # SINCRONIZAÇÃO COM O BANCO
-            # ===========================
-            col_corredores.delete_many({})
+#             # ===========================
+#             # SINCRONIZAÇÃO COM O BANCO
+#             # ===========================
+#             col_corredores.delete_many({})
 
-            col_corredores.insert_many(
-                df_salvar.to_dict(orient="records")
-            )
+#             col_corredores.insert_many(
+#                 df_salvar.to_dict(orient="records")
+#             )
 
-            st.success("Corredores atualizados com sucesso!", icon=":material/check:")
-            time.sleep(3)
-            st.rerun()
+#             st.success("Corredores atualizados com sucesso!", icon=":material/check:")
+#             time.sleep(3)
+#             st.rerun()
 
 
 
@@ -2189,179 +2028,170 @@ with aba_corredores:
 # ABA KBAs
 # ==========================================================
 
-with aba_kbas:
+# with aba_kbas:
 
-    st.subheader("KBAs")
-    st.write("")
+#     st.subheader("KBAs")
+#     st.write("")
 
-    # -----------------------------------
-    # Carregar dados da coleção
-    # -----------------------------------
-    dados_kbas = list(
-        col_kbas.find(
-            {},
-            {"id_kba": 1, "nome_kba": 1}
-        ).sort("nome_kba", 1)
-    )
+#     # -----------------------------------
+#     # Carregar dados da coleção
+#     # -----------------------------------
+#     dados_kbas = list(
+#         col_kbas.find(
+#             {},
+#             {"id_kba": 1, "nome_kba": 1}
+#         ).sort("nome_kba", 1)
+#     )
 
-    df_kbas = pd.DataFrame(dados_kbas)
+#     df_kbas = pd.DataFrame(dados_kbas)
 
-    # Garante colunas
-    if df_kbas.empty:
-        df_kbas = pd.DataFrame(
-            columns=["id_kba", "nome_kba"]
-        )
+#     # Garante colunas
+#     if df_kbas.empty:
+#         df_kbas = pd.DataFrame(
+#             columns=["id_kba", "nome_kba"]
+#         )
 
-    # Remove _id do Mongo
-    if "_id" in df_kbas.columns:
-        df_kbas = df_kbas.drop(columns=["_id"])
+#     # Remove _id do Mongo
+#     if "_id" in df_kbas.columns:
+#         df_kbas = df_kbas.drop(columns=["_id"])
 
-    editar_kbas = st.toggle(
-        "Editar",
-        key="editar_kbas"
-    )
+#     editar_kbas = st.toggle(
+#         "Editar",
+#         key="editar_kbas"
+#     )
 
-    st.write("")
+#     st.write("")
 
-    # ==================================================
-    # MODO VISUALIZAÇÃO
-    # ==================================================
-    if not editar_kbas:
+#     # ==================================================
+#     # MODO VISUALIZAÇÃO
+#     # ==================================================
+#     if not editar_kbas:
 
-        if df_kbas.empty:
-            st.caption("Nenhuma KBA cadastrada.")
-        else:
+#         if df_kbas.empty:
+#             st.caption("Nenhuma KBA cadastrada.")
+#         else:
 
-            df_tabela = (
-                df_kbas
-                .sort_values("nome_kba")
-                .reset_index(drop=True)
-                .rename(columns={
-                    "id_kba": "ID da KBA",
-                    "nome_kba": "Nome da KBA"
-                })
-            )
+#             df_tabela = (
+#                 df_kbas
+#                 .sort_values("nome_kba")
+#                 .reset_index(drop=True)
+#                 .rename(columns={
+#                     "id_kba": "ID da KBA",
+#                     "nome_kba": "Nome da KBA"
+#                 })
+#             )
 
-            st.dataframe(
-                df_tabela,
-                hide_index=True
-            )
+#             st.dataframe(
+#                 df_tabela,
+#                 hide_index=True
+#             )
 
-    # ==================================================
-    # MODO EDIÇÃO
-    # ==================================================
-    else:
+#     # ==================================================
+#     # MODO EDIÇÃO
+#     # ==================================================
+#     else:
 
-        st.write("Edite, adicione e exclua KBAs.")
+#         st.write("Edite, adicione e exclua KBAs.")
 
-        df_editor = df_kbas.copy()
+#         df_editor = df_kbas.copy()
 
-        # Normalização defensiva
-        df_editor["id_kba"] = (
-            df_editor["id_kba"]
-            .astype(str)
-            .str.strip()
-        )
-        df_editor["nome_kba"] = (
-            df_editor["nome_kba"]
-            .astype(str)
-            .str.strip()
-        )
+#         # Normalização defensiva
+#         df_editor["id_kba"] = (
+#             df_editor["id_kba"]
+#             .astype(str)
+#             .str.strip()
+#         )
+#         df_editor["nome_kba"] = (
+#             df_editor["nome_kba"]
+#             .astype(str)
+#             .str.strip()
+#         )
 
-        df_editado = st.data_editor(
-            df_editor,
-            num_rows="dynamic",
-            hide_index=True,
-            key="editor_kbas",
-            column_config={
-                "id_kba": st.column_config.TextColumn(
-                    "ID da KBA",
-                    required=True,
-                    help="Identificador único da KBA (texto livre)",
-                    width=20
-                ),
-                "nome_kba": st.column_config.TextColumn(
-                    "Nome da KBA",
-                    required=True,
-                    width=900
-                ),
-            }
-        )
+#         df_editado = st.data_editor(
+#             df_editor,
+#             num_rows="dynamic",
+#             hide_index=True,
+#             key="editor_kbas",
+#             column_config={
+#                 "id_kba": st.column_config.TextColumn(
+#                     "ID da KBA",
+#                     required=True,
+#                     help="Identificador único da KBA (texto livre)",
+#                     width=20
+#                 ),
+#                 "nome_kba": st.column_config.TextColumn(
+#                     "Nome da KBA",
+#                     required=True,
+#                     width=900
+#                 ),
+#             }
+#         )
 
-        if st.button(
-            "Salvar alterações",
-            icon=":material/save:",
-            type="primary",
-            key="salvar_kbas"
-        ):
-
-
-            # Remove linhas vazias
-            df_salvar = df_editado.copy()
-
-            df_salvar["id_kba"] = (
-                df_salvar["id_kba"]
-                .astype(str)
-                .str.strip()
-            )
-            df_salvar["nome_kba"] = (
-                df_salvar["nome_kba"]
-                .astype(str)
-                .str.strip()
-            )
-
-            df_salvar = df_salvar[
-                (df_salvar["id_kba"] != "")
-                & (df_salvar["nome_kba"] != "")
-            ]
-
-            if df_salvar.empty:
-                st.warning("Nenhuma KBA válida para salvar.")
-                st.stop()
-
-            # ===========================
-            # VALIDAÇÃO DE DUPLICADOS
-            # ===========================
-            duplicados_id = df_salvar[
-                df_salvar["id_kba"].duplicated()
-            ]["id_kba"].tolist()
-
-            duplicados_nome = df_salvar[
-                df_salvar["nome_kba"].duplicated()
-            ]["nome_kba"].tolist()
-
-            if duplicados_id:
-                st.error(
-                    "IDs de KBA duplicados: "
-                    f"{', '.join(set(duplicados_id))}"
-                )
-                st.stop()
-
-            if duplicados_nome:
-                st.error(
-                    "Nomes de KBA duplicados: "
-                    f"{', '.join(set(duplicados_nome))}"
-                )
-                st.stop()
-
-            # ===========================
-            # SINCRONIZAÇÃO COM O BANCO
-            # ===========================
-            col_kbas.delete_many({})
-
-            col_kbas.insert_many(
-                df_salvar.to_dict(orient="records")
-            )
-
-            st.success("KBAs atualizadas com sucesso!")
-            time.sleep(3)
-            st.rerun()
+#         if st.button(
+#             "Salvar alterações",
+#             icon=":material/save:",
+#             type="primary",
+#             key="salvar_kbas"
+#         ):
 
 
+#             # Remove linhas vazias
+#             df_salvar = df_editado.copy()
 
+#             df_salvar["id_kba"] = (
+#                 df_salvar["id_kba"]
+#                 .astype(str)
+#                 .str.strip()
+#             )
+#             df_salvar["nome_kba"] = (
+#                 df_salvar["nome_kba"]
+#                 .astype(str)
+#                 .str.strip()
+#             )
 
+#             df_salvar = df_salvar[
+#                 (df_salvar["id_kba"] != "")
+#                 & (df_salvar["nome_kba"] != "")
+#             ]
 
+#             if df_salvar.empty:
+#                 st.warning("Nenhuma KBA válida para salvar.")
+#                 st.stop()
 
+#             # ===========================
+#             # VALIDAÇÃO DE DUPLICADOS
+#             # ===========================
+#             duplicados_id = df_salvar[
+#                 df_salvar["id_kba"].duplicated()
+#             ]["id_kba"].tolist()
 
+#             duplicados_nome = df_salvar[
+#                 df_salvar["nome_kba"].duplicated()
+#             ]["nome_kba"].tolist()
 
+#             if duplicados_id:
+#                 st.error(
+#                     "IDs de KBA duplicados: "
+#                     f"{', '.join(set(duplicados_id))}"
+#                 )
+#                 st.stop()
 
+#             if duplicados_nome:
+#                 st.error(
+#                     "Nomes de KBA duplicados: "
+#                     f"{', '.join(set(duplicados_nome))}"
+#                 )
+#                 st.stop()
+
+#             # ===========================
+#             # SINCRONIZAÇÃO COM O BANCO
+#             # ===========================
+#             col_kbas.delete_many({})
+
+#             col_kbas.insert_many(
+#                 df_salvar.to_dict(orient="records")
+#             )
+
+#             st.success("KBAs atualizadas com sucesso!")
+#             time.sleep(3)
+#             st.rerun()
