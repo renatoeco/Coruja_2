@@ -44,7 +44,6 @@ else:
 df_pessoas = df_pessoas.rename(columns={
     "nome_completo": "Nome",
     "tipo_usuario": "Tipo de usuário",
-    "tipo_beneficiario": "Tipo de beneficiário",
     "e_mail": "E-mail",
     "telefone": "Telefone",
     "status": "Status",
@@ -100,17 +99,6 @@ def editar_pessoa(_id: str):
         else 0
     )
 
-    # Tipo de beneficiário — só aparece se tipo_usuario == beneficiario
-    tipo_beneficiario = None
-    if tipo_usuario == "beneficiario":
-        tipo_beneficiario = st.selectbox(
-            "Tipo de beneficiário",
-            options=["técnico", "financeiro"],
-            index=["técnico", "financeiro"].index(pessoa.get("tipo_beneficiario", "técnico"))
-            if pessoa.get("tipo_beneficiario") in ["técnico", "financeiro"]
-            else 0
-        )
-
     # Status
     status = st.selectbox(
         "Status",
@@ -144,13 +132,6 @@ def editar_pessoa(_id: str):
             "status": status,
             "projetos": projetos
         }
-
-        # Adiciona tipo_beneficiario apenas se aplicável
-        if tipo_beneficiario:
-            update_data["tipo_beneficiario"] = tipo_beneficiario
-        else:
-            # Remove o campo se existir no documento anterior
-            col_pessoas.update_one({"_id": ObjectId(_id)}, {"$unset": {"tipo_beneficiario": ""}})
 
         # Atualiza o registro
         col_pessoas.update_one({"_id": ObjectId(_id)}, {"$set": update_data})
@@ -343,27 +324,12 @@ for _, row in df_benef.iterrows():
     # TELEFONE -----------------
     col4.write(row["Telefone"])
 
-
     # TIPO DE USUÁRIO -----------------
     tipo_usuario = row.get("Tipo de usuário", "").strip()
-    tipo_beneficiario = row.get("Tipo de beneficiário", "").strip() if "Tipo de beneficiário" in row else ""
 
-    # Se for beneficiário, concatena o tipo_beneficiario
-    if tipo_usuario.lower() == "beneficiario" and tipo_beneficiario:
-        tipo_exibido = f"{tipo_usuario} ({tipo_beneficiario})"
-    else:
-        tipo_exibido = tipo_usuario
+    tipo_exibido = tipo_usuario
 
     col5.write(tipo_exibido)
-
-
-
-    # # TIPO DE USUÁRIO -----------------
-    # tipo_usuario = str(row.get("Tipo de usuário", "")).strip()
-
-    # # Exibição
-    # col5.write(tipo_usuario)
-
 
     # STATUS -----------------       
     col6.write(row["Status"])

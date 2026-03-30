@@ -137,7 +137,7 @@ st.logo("images/logo_fundo_ecos.png", size='large')
 st.header("Convidar pessoa")
 
 
-opcao_cadastro = st.radio("", ["Convite individual", "Convite em massa"], key="opcao_cadastro", horizontal=True)
+opcao_cadastro = st.radio("label", ["Convite individual", "Convite em massa"], key="opcao_cadastro", horizontal=True, label_visibility="hidden")
 
 st.write('')
 
@@ -154,7 +154,6 @@ if opcao_cadastro == "Convite individual":
     CAMPOS_FORM_PESSOA = {
         "nome_completo_novo": "",
         "tipo_novo_usuario": "",
-        "tipo_beneficiario": "",   # string; só usado quando beneficiário
         "e_mail": "",
         "telefone": "",
         "projetos_escolhidos": []  # multiselect espera lista
@@ -184,16 +183,6 @@ if opcao_cadastro == "Convite individual":
         tipo_novo_usuario = col2.selectbox(
             "Tipo de usuário", ["", "admin", "equipe", "beneficiario", "visitante"], key="tipo_novo_usuario"
         )
-
-    # mostra apenas se selecionado beneficiário
-    if st.session_state.get("tipo_novo_usuario") == "beneficiario":
-        tipo_beneficiario = col2.selectbox(
-            "Tipo de beneficiário", ["", "técnico", "financeiro"], key="tipo_beneficiario"
-        )
-    else:
-        # garante que o key exista (útil para limpeza/validação)
-        if "tipo_beneficiario" not in st.session_state:
-            st.session_state["tipo_beneficiario"] = ""
 
     col1, col2 = st.columns(2)
 
@@ -227,10 +216,6 @@ if opcao_cadastro == "Convite individual":
             st.error(":material/error: Todos os campos obrigatórios devem ser preenchidos.")
             st.stop()
 
-        if st.session_state["tipo_novo_usuario"] == "beneficiario" and not st.session_state.get("tipo_beneficiario"):
-            st.error(":material/error: O campo 'Tipo de beneficiário' é obrigatório para beneficiários.")
-            st.stop()
-
         if not validar_email(st.session_state["e_mail"]):
             st.error(":material/error: E-mail inválido.")
             st.stop()
@@ -254,9 +239,6 @@ if opcao_cadastro == "Convite individual":
             "senha": None,
             "codigo_convite": codigo_6_digitos
         }
-
-        if st.session_state["tipo_novo_usuario"] == "beneficiario":
-            novo_doc["tipo_beneficiario"] = st.session_state.get("tipo_beneficiario")
 
         # 4) Inserir no banco
         col_pessoas.insert_one(novo_doc)
@@ -336,9 +318,7 @@ elif opcao_cadastro == "Convite em massa":
             # ==========================================================
             # Renomear colunas do modelo para padronizar
             # ==========================================================
-            if "tipo_beneficiario (técnico ou financeiro)" in df_upload.columns:
-                df_upload.rename(columns={"tipo_beneficiario (técnico ou financeiro)": "tipo_beneficiario"}, inplace=True)
-
+            
             if "projetos (códigos separados por vírgula) (opcional)" in df_upload.columns:
                 df_upload.rename(columns={"projetos (códigos separados por vírgula) (opcional)": "projetos"}, inplace=True)
 
@@ -359,7 +339,7 @@ elif opcao_cadastro == "Convite em massa":
             # ==========================================================
             # 1) Validar colunas obrigatórias
             # ==========================================================
-            colunas_obrigatorias = ["nome_completo", "e_mail", "tipo_beneficiario"]
+            colunas_obrigatorias = ["nome_completo", "e_mail"]
             faltando = [c for c in colunas_obrigatorias if c not in df_upload.columns]
             if faltando:
                 st.error(
@@ -388,32 +368,7 @@ elif opcao_cadastro == "Convite em massa":
                 st.stop()
 
             # ==========================================================
-            # 3) Validar tipo_beneficiario
-            # ==========================================================
-            valores_validos_benef = ["técnico", "financeiro"]
-            df_upload["tipo_beneficiario"] = df_upload["tipo_beneficiario"].astype(str).str.strip()
-
-            invalidos_benef = df_upload[~df_upload["tipo_beneficiario"].isin(valores_validos_benef)]
-            if not invalidos_benef.empty:
-                st.error(
-                    ":material/error: Existem registros com 'tipo_beneficiario' inválido!\n"
-                    "Os valores válidos são: técnico ou financeiro.\n\n"
-                    "Nenhum cadastro foi realizado. Corrija os dados e carregue novamente."
-                )
-                st.dataframe(df_index1(invalidos_benef))
-                st.stop()
-
-            erros_benef = df_upload[df_upload["tipo_beneficiario"] == ""]
-            if not erros_benef.empty:
-                st.error(
-                    ":material/error: Todos os registros devem ter o campo 'tipo_beneficiario' preenchido.\n\n"
-                    "Nenhum cadastro foi realizado. Corrija os dados e carregue novamente."
-                )
-                st.dataframe(df_index1(erros_benef))
-                st.stop()
-
-            # ==========================================================
-            # 4) Verificar duplicidade interna no arquivo
+            # 3) Verificar duplicidade interna no arquivo
             # ==========================================================
             dup_email = df_upload[df_upload.duplicated("e_mail", keep=False)]
             if not dup_email.empty:
@@ -428,7 +383,7 @@ elif opcao_cadastro == "Convite em massa":
 
 
             # ==========================================================
-            # 5) Verificar duplicidades no banco
+            # 4) Verificar duplicidades no banco
             # ==========================================================
             existentes = pd.DataFrame(list(col_pessoas.find({}, {"e_mail": 1})))
             conflitos_email = []
@@ -447,7 +402,7 @@ elif opcao_cadastro == "Convite em massa":
 
 
             # ==========================================================
-            # 6) Validar projetos no banco
+            # 5) Validar projetos no banco
             # ==========================================================
 
             # Códigos válidos vindos da tabela de projetos
@@ -472,16 +427,6 @@ elif opcao_cadastro == "Convite em massa":
                 )
                 st.dataframe(df_index1(invalidos_projetos))
                 st.stop()
-
-
-
-
-
-
-
-
-
-
 
 
             # # ==========================================================
@@ -546,7 +491,6 @@ elif opcao_cadastro == "Convite em massa":
                     doc = {
                         "nome_completo": row["nome_completo"],
                         "tipo_usuario": "beneficiario",
-                        "tipo_beneficiario": row["tipo_beneficiario"],
                         "e_mail": row["e_mail"],
                         "status": "convidado",
                         "codigo_convite": codigo_6_digitos_massa,
