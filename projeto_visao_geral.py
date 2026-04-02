@@ -582,7 +582,7 @@ if not editar_cadastro:
 
     # st.write(f"**Padrinho/Madrinha:** {df_projeto['padrinho'].values[0]}")
 
-    # ---------- DIREÇÕES ESTRATÉGICAS ----------
+    # ---------- Linhas Temáticas ----------
 
     if "direcoes_estrategicas" in df_projeto.columns:
 
@@ -594,7 +594,7 @@ if not editar_cadastro:
 
     if direcoes:
 
-        with st.popover("**Direções estratégicas**", type="tertiary"):
+        with st.popover("**Linhas temáticas**", type="tertiary"):
 
             for item in direcoes:
 
@@ -616,7 +616,7 @@ if not editar_cadastro:
 
     else:
         st.markdown(
-            "**Direções estratégicas:** <span style='color:#c46a00; font-style:italic;'>não cadastradas</span>",
+            "**Linhas temáticas:** <span style='color:#c46a00; font-style:italic;'>não cadastradas</span>",
             unsafe_allow_html=True
         )
 
@@ -1453,7 +1453,7 @@ else:
 
     aba_info, aba_direcoes_publico, aba_contratos = st.tabs([
         "Informações cadastrais",
-        "Direções estratégicas e Público",
+        "Linhas temáticas e Público",
         "Contrato e Emendas"
     ])
 
@@ -1816,7 +1816,7 @@ else:
         col1, col2 = st.columns(2, gap="large")
 
         # ======================================================
-        # COLUNA 1 — DIREÇÕES ESTRATÉGICAS
+        # COLUNA 1 — Linhas Temáticas
         # ======================================================
 
 
@@ -1826,12 +1826,12 @@ else:
 
             st.write('')
 
-            st.markdown("##### Direções estratégicas")
+            st.markdown("##### Linhas temáticas")
     
             st.write('')
 
             # --------------------------------------------------
-            # BUSCA DIREÇÕES DO EDITAL
+            # BUSCA LINHAS DO EDITAL
             # --------------------------------------------------
 
             edital_nome = projeto.get("edital")
@@ -1847,7 +1847,7 @@ else:
             estrutura_final = []
 
             # --------------------------------------------------
-            # LOOP DIREÇÕES
+            # LOOP LINHAS
             # --------------------------------------------------
 
             for direcao in sorted(direcoes_edital, key=lambda x: x.get("tema", "")):
@@ -1915,7 +1915,7 @@ else:
             st.write('')
 
             if st.button(
-                "Salvar direções estratégicas",
+                "Salvar linhas temáticas",
                 icon=":material/save:",
                 type="primary",
                 key="btn_salvar_direcoes"
@@ -1930,7 +1930,7 @@ else:
                     }
                 )
 
-                st.success("Direções estratégicas atualizadas com sucesso!", icon=":material/check:")
+                st.success("Linhas temáticas atualizadas com sucesso!", icon=":material/check:")
                 time.sleep(3)
                 st.rerun()
 
