@@ -374,7 +374,7 @@ df_filtrado = df_filtrado.sort_values(by="sigla", ignore_index=True)
 st.divider()
 
 larguras_colunas = [2, 2, 5, 2, 2, 2]
-col_labels = ["Código", "Sigla", "Organização", "Padrinho/Madrinha", "Status", "Abrir"]
+col_labels = ["Código", "Sigla", "Organização", "Ponto Focal", "Status", "Abrir"]
 
 # Cabeçalhos
 cols = st.columns(larguras_colunas)

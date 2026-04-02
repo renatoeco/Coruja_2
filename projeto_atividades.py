@@ -4492,21 +4492,17 @@ with salvaguardas:
         if aplicavel == "Sim" and categoria:
             categorias_filtradas.append(categoria)
 
-
-
-
     # Determina automaticamente a categoria geral
     # prioridade: A > B > C
-
-    if "Categoria A" in categorias_filtradas:
+    
+    if not categorias_filtradas:
+        categoria_geral = "Não avaliado"
+    elif "Categoria A" in categorias_filtradas:
         categoria_geral = "Categoria A"
     elif "Categoria B" in categorias_filtradas:
         categoria_geral = "Categoria B"
-    elif "Categoria C" in categorias_filtradas:
+    else:
         categoria_geral = "Categoria C"
-
-
-
 
     # Coluna 4 — mostra o resultado calculado
     col4.write('Resultado final:')
