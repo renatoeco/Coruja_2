@@ -56,7 +56,7 @@ def enviar_email(destinatario, codigo):
     senha = st.secrets["senhas"]["senha_email"]
 
     # Conteúdo do e_mail
-    assunto = f"Código de Verificação - CEPF Gestão: {codigo}"
+    assunto = f"Código de Verificação - Coruja 2 Gestão: {codigo}"
     corpo = f"""
     <html>
         <body>
