@@ -570,15 +570,15 @@ if not editar_cadastro:
 
 
 
-    # Padrinho
+    # Ponto Focal
     valor = df_projeto["padrinho"].values[0]
     if pd.isna(valor) or str(valor).strip() == "":
         st.markdown(
-            "**Padrinho/Madrinha:** <span style='color:#c46a00; font-style:italic;'>não cadastrado</span>",
+            "**Ponto focal:** <span style='color:#c46a00; font-style:italic;'>não cadastrado</span>",
             unsafe_allow_html=True
         )
     else:
-        st.write(f"**Padrinho/Madrinha:** {valor}")
+        st.write(f"**Ponto focal:** {valor}")
 
     # st.write(f"**Padrinho/Madrinha:** {df_projeto['padrinho'].values[0]}")
 
@@ -1608,7 +1608,7 @@ else:
             ]["nome_completo"].tolist()
 
             padrinho_madrinha = st.multiselect(
-                "Padrinho / Madrinha",
+                "Ponto focal",
                 options=opcoes_padrinho_madrinha,
                 default=padrinhos_atuais
             )
