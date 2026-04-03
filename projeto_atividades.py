@@ -127,24 +127,9 @@ col_pessoas = db["pessoas"]
 
 #     return "indefinido"
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # ==================================================
 # Função para renderizar a interface de ações da equipe, no modo análise da solicitação de remanejamento
 # ==================================================
-
 
 
 def renderizar_acoes_remanejamento(item, idx):
@@ -179,7 +164,7 @@ def renderizar_acoes_remanejamento(item, idx):
                 for campo, valor in alteracoes.items():
 
                     set_updates[
-                        f"plano_trabalho.componentes.$[].entregas.$[].atividades.$[atv].{campo}"
+                        f"plano_trabalho.componentes.$[].atividades.$[atv].{campo}"
                     ] = valor
 
 
@@ -205,7 +190,6 @@ def renderizar_acoes_remanejamento(item, idx):
             elif "add_atividade" in item:
 
                 componente_nome = item.get("componente")
-                entrega_nome = item.get("entrega")
 
                 descricao = item.get("add_atividade")
                 data_inicio = item.get("data_inicio")
@@ -226,7 +210,7 @@ def renderizar_acoes_remanejamento(item, idx):
                     {"codigo": codigo_projeto_atual},
                     {
                         "$push": {
-                            "plano_trabalho.componentes.$[comp].entregas.$[ent].atividades": nova_atividade
+                            "plano_trabalho.componentes.$[comp].atividades": nova_atividade
                         },
                         "$set": {
                             f"plano_trabalho.remanejamentos_atividades.{idx}.status_remanejamento": "aceito",
@@ -235,7 +219,6 @@ def renderizar_acoes_remanejamento(item, idx):
                     },
                     array_filters=[
                         {"comp.componente": componente_nome},
-                        {"ent.entrega": entrega_nome}
                     ]
                 )
 
@@ -247,14 +230,13 @@ def renderizar_acoes_remanejamento(item, idx):
             elif "del_atividade" in item:
 
                 componente_nome = item.get("componente")
-                entrega_nome = item.get("entrega")
                 atividade_id = item.get("atividade_id")
 
                 col_projetos.update_one(
                     {"codigo": codigo_projeto_atual},
                     {
                         "$pull": {
-                            "plano_trabalho.componentes.$[comp].entregas.$[ent].atividades": {
+                            "plano_trabalho.componentes.$[comp].atividades": {
                                 "id": atividade_id
                             }
                         },
@@ -265,7 +247,6 @@ def renderizar_acoes_remanejamento(item, idx):
                     },
                     array_filters=[
                         {"comp.componente": componente_nome},
-                        {"ent.entrega": entrega_nome}
                     ]
                 )
 
@@ -409,16 +390,9 @@ def renderizar_acoes_remanejamento(item, idx):
                     st.rerun()
 
 
-
-
-
-
-
 # ==================================================
 # Função auxiliar do badge de status dos remanejamentos de atividade
 # ==================================================
-
-
 def renderizar_badge_status(status):
 
     if status == "aceito":
@@ -445,15 +419,6 @@ def renderizar_badge_status(status):
         """,
         unsafe_allow_html=True
     )
-
-
-
-
-
-
-
-
-
 
 
 # ==================================================
@@ -522,6 +487,25 @@ def renderizar_card_del(item, idx):
                 st.caption(f"Motivo: {item['motivo_recusa']}")
 
 
+def remover_linhas_vazias(df):
+    """
+    Remove linhas totalmente vazias de um DataFrame.
+
+    Considera vazio:
+    - NaN
+    - string vazia ""
+    - espaços em branco
+    """
+
+    df = df.copy()
+
+    # Substitui strings vazias/espacos por NaN
+    df = df.replace(r'^\s*$', pd.NA, regex=True)
+
+    # Remove linhas onde TODOS os campos são NaN
+    df = df.dropna(how="all")
+
+    return df
 
 
 # ==================================================
@@ -535,7 +519,6 @@ def renderizar_card_add(item):
     status = item.get("status_remanejamento")
 
     componente = item.get("componente")
-    entrega = item.get("entrega")
 
     atividade = item.get("add_atividade")
     data_inicio = item.get("data_inicio")
@@ -564,8 +547,7 @@ def renderizar_card_add(item):
 
         st.write("")
 
-        st.write(f"**Componente:** {componente}")
-        st.write(f"**Entrega:** {entrega}")
+        st.write(f"**Objetivo específico:** {componente}")
 
         st.write("")
 
@@ -670,11 +652,10 @@ def renderizar_card_alteracao(
     atividade_bd = None
 
     for comp in plano_trabalho_dict.get("componentes", []):
-        for ent in comp.get("entregas", []):
-            for atv in ent.get("atividades", []):
-                if atv.get("id") == atividade_id:
-                    atividade_bd = atv
-                    break
+        for atv in comp.get("atividades", []):
+            if atv.get("id") == atividade_id:
+                atividade_bd = atv
+                break
 
     antes = item.get("antes", {})
     depois = item.get("depois", {})
@@ -1390,7 +1371,6 @@ def enviar_email_nova_atividade_aprovada(
     organizacao = projeto.get("organizacao")
 
     componente = item_remanejamento.get("componente")
-    entrega = item_remanejamento.get("entrega")
 
     atividade = item_remanejamento.get("add_atividade")
     data_inicio = item_remanejamento.get("data_inicio")
@@ -1465,13 +1445,8 @@ def enviar_email_nova_atividade_aprovada(
         <table width="100%">
 
         <tr>
-            <td style="padding:6px 10px; border:1px solid #ddd;"><strong>Componente</strong></td>
+            <td style="padding:6px 10px; border:1px solid #ddd;"><strong>Objetivo específico</strong></td>
             <td style="padding:6px 10px; border:1px solid #ddd;">{componente}</td>
-        </tr>
-
-        <tr>
-            <td style="padding:6px 10px; border:1px solid #ddd;"><strong>Entrega</strong></td>
-            <td style="padding:6px 10px; border:1px solid #ddd;">{entrega}</td>
         </tr>
 
         <tr>
@@ -2011,16 +1986,16 @@ def enviar_email_remocao_atividade_recusada(
 
 
 # Função auxiliar que salva lista de impactos no banco
-def salvar_impactos(chave, impactos, codigo_projeto):
-    """
-    Salva lista de impactos no banco.
-    """
-    resultado = col_projetos.update_one(
-        {"codigo": codigo_projeto},
-        {"$set": {chave: impactos}}
-    )
+# def salvar_impactos(chave, impactos, codigo_projeto):
+#     """
+#     Salva lista de impactos no banco.
+#     """
+#     resultado = col_projetos.update_one(
+#         {"codigo": codigo_projeto},
+#         {"$set": {chave: impactos}}
+#     )
 
-    return resultado.modified_count == 1
+#     return resultado.modified_count == 1
 
 
 # DIÁLOGO: VER RELATOS 
@@ -2050,11 +2025,10 @@ def dialog_relatos():
     relatos_encontrados = []
 
     for componente in projeto.get("plano_trabalho", {}).get("componentes", []):
-        for entrega in componente.get("entregas", []):
-            for atv in entrega.get("atividades", []):
-                if atv.get("id") == atividade.get("id"):
-                    relatos_encontrados = atv.get("relatos", [])
-                    break
+        for atv in componente.get("atividades", []):
+            if atv.get("id") == atividade.get("id"):
+                relatos_encontrados = atv.get("relatos", [])
+                break
 
     if not relatos_encontrados:
         st.info("Esta atividade ainda não possui relatos.")
@@ -2166,7 +2140,7 @@ projeto_dict = df_projeto.iloc[0].to_dict()
 # Blocos principais do documento
 plano_trabalho_dict = projeto_dict.get("plano_trabalho", {}) or {}
 financeiro_dict = projeto_dict.get("financeiro", {}) or {}
-salvaguardas_dict = projeto_dict.get("salvaguardas", {}) or {}
+#salvaguardas_dict = projeto_dict.get("salvaguardas", {}) or {}
 
 
 
@@ -2228,7 +2202,8 @@ with col_identificacao:
 
 
 
-plano_trabalho, impactos, indicadores, monitoramento, salvaguardas, remanejamentos = st.tabs(["Plano de trabalho", "Impactos", "Indicadores do Portifólio", "Plano de Monitoramento", "Salvaguardas", "Remanejamentos"])
+#plano_trabalho, impactos, indicadores, monitoramento, salvaguardas, remanejamentos = st.tabs(["Plano de trabalho", "Impactos", "Indicadores do Portifólio", "Plano de Monitoramento", "Salvaguardas", "Remanejamentos"])
+plano_trabalho, indicadores, monitoramento, remanejamentos = st.tabs(["Plano de trabalho", "Indicadores do Portifólio", "Plano de Monitoramento", "Remanejamentos"])
 
 
 
@@ -2291,81 +2266,72 @@ with plano_trabalho:
             # Percorre componentes
             for componente in componentes:
 
-                st.markdown(f"#### {componente.get('componente', 'Componente sem nome')}")
+                st.markdown(f"#### {componente.get('componente', 'Objetivo específico sem nome')}")
 
-                # Percorre entregas
-                for entrega in componente.get("entregas", []):
+                atividades = componente.get("atividades", [])
 
-                    st.markdown(f"##### {entrega.get('entrega', 'Entrega sem nome')}")
+                if not atividades:
+                    st.caption("Nenhuma atividade cadastrada neste objetivo específico.")
+                    continue
 
-                    atividades = entrega.get("atividades", [])
+                # Calcular o status das atividades
+                atividades_processadas = []
 
-                    if not atividades:
-                        st.caption("Nenhuma atividade cadastrada nesta entrega.")
-                        continue
+                for a in atividades:
 
-                    # Converte para DataFrame
+                    status = calcular_status_atividade(a)
 
-                    # Calcular o status das atividades
-                    atividades_processadas = []
+                    atividades_processadas.append({
+                        "Atividade": a.get("atividade"),
+                        "Data de início": a.get("data_inicio"),
+                        "Data de fim": a.get("data_fim"),
+                        "Status": status,
+                        "Porcentagem": a.get("porcentagem_atv", 0)
+                    })
 
-                    for a in atividades:
+                df_atividades = pd.DataFrame(atividades_processadas)
 
-                        status = calcular_status_atividade(a)
+                st.dataframe(
+                    df_atividades[
+                        ["Atividade", "Data de início", "Data de fim", "Status", "Porcentagem"]
+                    ],
+                    hide_index=True,
+                    column_config={
 
-                        atividades_processadas.append({
-                            "Atividade": a.get("atividade"),
-                            "Data de início": a.get("data_inicio"),
-                            "Data de fim": a.get("data_fim"),
-                            "Status": status,
-                            "Porcentagem": a.get("porcentagem_atv", 0)
-                        })
+                        "Atividade": st.column_config.TextColumn(
+                            "Atividade",
+                            width=700
+                        ),
 
-                    df_atividades = pd.DataFrame(atividades_processadas)
+                        "Data de início": st.column_config.TextColumn(
+                            "Data de início",
+                            width=20
+                        ),
+
+                        "Data de fim": st.column_config.TextColumn(
+                            "Data de fim",
+                            width=20
+                        ),
+
+                        "Status": st.column_config.TextColumn(
+                            "Status",
+                            width=20
+                        ),
+
+                        "Porcentagem": st.column_config.ProgressColumn(
+                            "Porcentagem",
+                            min_value=0,
+                            max_value=100,
+                            format="%d%%",
+                            width=20
+                        )
+
+                    }
+                )
 
 
 
-                    st.dataframe(
-                        df_atividades[
-                            ["Atividade", "Data de início", "Data de fim", "Status", "Porcentagem"]
-                        ],
-                        hide_index=True,
-                        column_config={
-
-                            "Atividade": st.column_config.TextColumn(
-                                "Atividade",
-                                width=700
-                            ),
-
-                            "Data de início": st.column_config.TextColumn(
-                                "Data de início",
-                                width=20
-                            ),
-
-                            "Data de fim": st.column_config.TextColumn(
-                                "Data de fim",
-                                width=20
-                            ),
-
-                            "Status": st.column_config.TextColumn(
-                                "Status",
-                                width=20
-                            ),
-
-                            "Porcentagem": st.column_config.ProgressColumn(
-                                "Porcentagem",
-                                min_value=0,
-                                max_value=100,
-                                format="%d%%",
-                                width=20
-                            )
-
-                        }
-                    )
-
- 
-
-                    st.write("")
+                st.write("")
 
 
     # ===============================================================================================
@@ -2377,74 +2343,53 @@ with plano_trabalho:
         # Escolha do que editar
         opcao_editar_pt = st.radio(
             "O que deseja editar?",
-            ["Atividades", "Entregas", "Componentes"],
+            ["Atividades", "Objetivos Específicos"],
             horizontal=True
         )
 
 
 
         if opcao_editar_pt == "Atividades":
-
-
-            # ============================================================
-            # Carregar plano de trabalho
-            # ============================================================
-
+            
             plano_trabalho = (
                 df_projeto["plano_trabalho"].values[0]
                 if "plano_trabalho" in df_projeto.columns else {}
             )
+            
+            # Lista de componentes
+            opcoes_componentes = [
+                c for c in componentes
+            ]
 
-            componentes = plano_trabalho.get("componentes", [])
+            nomes_componentes = [
+                c.get("componente") for c in componentes
+            ]
 
-            if not componentes:
-                st.caption("Nenhum componente cadastrado. Cadastre componentes antes de adicionar atividades.")
+            if not nomes_componentes:
+                st.write("")
+                st.caption("Nenhum objetivo específico cadastrado. Cadastre objetivos específicos antes de adicionar atividades.")
                 st.stop()
-
-
-            # ============================================================
-            # Montar lista de entregas
-            # ============================================================
-
-            lista_entregas = []
-
-            for comp in componentes:
-                for ent in comp.get("entregas", []):
-                    lista_entregas.append({
-                        "label": ent["entrega"],
-                        "componente": comp,
-                        "entrega": ent
-                    })
-
-            if not lista_entregas:
-                st.warning("Nenhuma entrega cadastrada. Cadastre entregas antes de adicionar atividades.")
-                st.stop()
-
-            lista_entregas = sorted(lista_entregas, key=lambda x: x["label"].lower())
-
-
-            # ============================================================
-            # Selectbox de entrega
-            # ============================================================
-
-            nome_entrega_sel = st.selectbox(
-                "Selecione a entrega:",
-                [item["label"] for item in lista_entregas],
-                key="select_entrega_ativ"
+                
+            componente_nome = st.selectbox(
+                "Selecione o objetivo específico",
+                [""] + nomes_componentes
             )
 
-            item_sel = next(item for item in lista_entregas if item["label"] == nome_entrega_sel)
-
-            componente_sel = item_sel["componente"]
-            entrega_sel = item_sel["entrega"]
-
-            st.write('')
+            # Recupera o componente selecionado
+            componente_sel = next(
+                (c for c in componentes if c.get("componente") == componente_nome),
+                None
+            )
+            
+            if not componente_sel:
+                st.caption("Selecione um objetivo específico.")
+                st.stop()
 
             # ============================================================
             # Carregar atividades existentes
             # ============================================================
 
-            atividades_exist = entrega_sel.get("atividades", [])
+            atividades_exist = componente_sel.get("atividades", [])
 
             lista_atividades = []
             for a in atividades_exist:
@@ -2512,9 +2457,6 @@ with plano_trabalho:
                 }
             )
 
-
-
-
             # ============================================================
             # Botão salvar
             # ============================================================
@@ -2525,16 +2467,6 @@ with plano_trabalho:
                 type="secondary",
                 key="btn_salvar_atividades"
             )
-
-
-
-
-
-
-
-
-
-
 
             # ============================================================
             # Validação + Salvamento
@@ -2556,31 +2488,46 @@ with plano_trabalho:
 
                     return valor
 
-
-
                 # ----------------------------------------------------------
                 # Validação linha a linha
                 # ----------------------------------------------------------
+                # Remove linhas completamente vazias
+                df_editado = remover_linhas_vazias(df_editado)
+
                 for idx, row in df_editado.iterrows():
 
                     atividade = str(row["atividade"]).strip()
-                    data_inicio_raw = str(row["data_inicio"]).strip()
-                    data_fim_raw = str(row["data_fim"]).strip()
 
-                    if atividade == "":
-                        erros.append(f"Linha {idx + 1}: o nome da atividade não pode estar vazio.")
+                    # Aqui NÃO converte para string ainda — mantém tipo original
+                    data_inicio = row["data_inicio"]
+                    data_fim = row["data_fim"]
 
-                    data_inicio = valida_data(data_inicio_raw, idx + 1, "Data de início")
-                    data_fim = valida_data(data_fim_raw, idx + 1, "Data de término")
+                    # ----------------------------------------------------------
+                    # Detecta linha parcialmente preenchida
+                    # ----------------------------------------------------------
+                    campos_preenchidos = [
+                        atividade != "",
+                        not pd.isna(data_inicio),
+                        not pd.isna(data_fim)
+                    ]
 
-                    if data_inicio and data_fim and atividade != "":
+                    # Se pelo menos 1 campo foi preenchido mas não todos → erro
+                    if any(campos_preenchidos) and not all(campos_preenchidos):
+                        erros.append(
+                            f"Linha {idx + 1}: preencha todos os campos antes de salvar."
+                        )
+                        continue
+
+                    # ----------------------------------------------------------
+                    # Linha válida → adiciona
+                    # ----------------------------------------------------------
+                    if all(campos_preenchidos):
+
                         atividades_final.append({
                             "atividade": atividade,
                             "data_inicio": pd.to_datetime(data_inicio).strftime("%d/%m/%Y"),
                             "data_fim": pd.to_datetime(data_fim).strftime("%d/%m/%Y"),
                         })
-                    
-
 
                 # ----------------------------------------------------------
                 # Se houver erros → apenas exibe
@@ -2633,21 +2580,6 @@ with plano_trabalho:
                                 "relatos": []
                             })
 
-
-                    # ------------------------------------------------------
-                    # Atualiza apenas a entrega selecionada
-                    # ------------------------------------------------------
-                    entregas_atualizadas = []
-
-                    for e in componente_sel["entregas"]:
-                        if e["id"] == entrega_sel["id"]:
-                            entregas_atualizadas.append({
-                                **e,
-                                "atividades": nova_lista
-                            })
-                        else:
-                            entregas_atualizadas.append(e)
-
                     # ------------------------------------------------------
                     # Atualiza apenas o componente correspondente
                     # ------------------------------------------------------
@@ -2657,7 +2589,7 @@ with plano_trabalho:
                         if c["id"] == componente_sel["id"]:
                             componentes_atualizados.append({
                                 **c,
-                                "entregas": entregas_atualizadas
+                                "atividades": nova_lista
                             })
                         else:
                             componentes_atualizados.append(c)
@@ -2677,138 +2609,11 @@ with plano_trabalho:
                     else:
                         st.error("Erro ao atualizar atividades.")
 
-
-
-
-
-
         # ===========================================================================================
-        # EDIÇÃO DE ENTREGAS
+        # EDIÇÃO DE OBJETIVOS ESPECÍFICOS
         # ===========================================================================================
 
-        if opcao_editar_pt == "Entregas":
-
-            if not componentes:
-                st.warning("Cadastre um componente primeiro.")
-                st.stop()
-
-            # Mapa nome → componente
-            mapa = {c["componente"]: c for c in componentes}
-
-            nome = st.selectbox("Componente", list(mapa.keys()))
-            componente = mapa[nome]
-
-            entregas_existentes = componente.get("entregas", [])
-
-            st.write('')
-
-            # --------------------------------------------------
-            # DataFrame para edição
-            # --------------------------------------------------
-            if entregas_existentes:
-
-                df_entregas = pd.DataFrame({
-                    "entrega": [e.get("entrega", "") for e in entregas_existentes],
-                    "Indicadores": [e.get("indicadores_doador", []) for e in entregas_existentes]
-                })
-
-            else:
-
-                df_entregas = pd.DataFrame({
-                    "entrega": pd.Series(dtype="str"),
-                    "Indicadores": pd.Series(dtype="object")  # precisa ser object para lista
-                })
-
-
-
-
-
-            df_editado = st.data_editor(
-                df_entregas,
-                num_rows="dynamic",
-                hide_index=True,
-                column_config={
-                    "Indicadores": st.column_config.MultiselectColumn(
-                        "Indicadores",
-                        options=lista_indicadores_edital
-                    )
-                }
-            )
-
-
-            salvar = st.button(
-                "Salvar entregas",
-                icon=":material/save:",
-                type="secondary"
-            )
-
-
-
-            if salvar:
-
-                nova_lista = []
-                erro_validacao = False
-
-                entregas_existentes = componente.get("entregas", [])
-
-                for idx, row in df_editado.iterrows():
-
-                    nome_entrega = str(row["entrega"]).strip()
-                    indicadores_linha = row.get("Indicadores") or []
-
-                    if not nome_entrega:
-                        continue
-
-                    if not indicadores_linha:
-                        st.error(f"A entrega '{nome_entrega}' deve ter ao menos um indicador.")
-                        erro_validacao = True
-                        continue
-
-                    # --------------------------------------------------
-                    # Preserva entrega existente se existir
-                    # --------------------------------------------------
-                    if idx < len(entregas_existentes):
-                        entrega_antiga = entregas_existentes[idx]
-
-                        nova_lista.append({
-                            **entrega_antiga,
-                            "entrega": nome_entrega,
-                            "indicadores_doador": indicadores_linha
-                        })
-
-                    else:
-                        # Nova entrega criada
-                        nova_lista.append({
-                            "id": str(bson.ObjectId()),
-                            "entrega": nome_entrega,
-                            "indicadores_doador": indicadores_linha,
-                            "atividades": [],
-                            "indicadores_projeto": []
-                        })
-
-                if not erro_validacao:
-
-                    for c in componentes:
-                        if c["componente"] == nome:
-                            c["entregas"] = nova_lista
-
-                    col_projetos.update_one(
-                        {"codigo": codigo_projeto_atual},
-                        {"$set": {"plano_trabalho.componentes": componentes}}
-                    )
-
-                    st.success("Entregas atualizadas com sucesso!", icon=":material/check:")
-                    time.sleep(3)
-                    st.rerun()
-
-
-
-
-        # ===========================================================================================
-        # EDIÇÃO DE COMPONENTES
-        # ===========================================================================================
-
-        if opcao_editar_pt == "Componentes":
+        if opcao_editar_pt == "Objetivos Específicos":
 
             st.write("")
 
@@ -2834,7 +2639,12 @@ with plano_trabalho:
                 df_componentes,
                 num_rows="dynamic",
                 hide_index=True,
-                key="editor_componentes"
+                key="editor_componentes",
+                column_config={
+                    "componente": st.column_config.TextColumn(
+                        label="Objetivos Específicos"  # <-- nome exibido
+                    )
+                }
             )
 
             salvar = st.button(
@@ -2843,17 +2653,17 @@ with plano_trabalho:
                 type="secondary"
             )
 
-
             if salvar:
 
                 # Limpa nomes vazios
-                df_editado["componente"] = df_editado["componente"].astype(str).str.strip()
-                df_editado = df_editado[df_editado["componente"] != ""]
+                remover_linhas_vazias(df_editado)
 
                 novos_componentes = []
 
                 componentes_existentes = componentes
-
+                
+                # Remove linhas completamente vazias
+                df_editado = remover_linhas_vazias(df_editado)
                 for idx, row in df_editado.iterrows():
 
                     nome_componente = row["componente"]
@@ -2878,7 +2688,7 @@ with plano_trabalho:
                         novos_componentes.append({
                             "id": str(bson.ObjectId()),
                             "componente": nome_componente,
-                            "entregas": []
+                            "atividades": []
                         })
 
                 col_projetos.update_one(
@@ -2886,186 +2696,182 @@ with plano_trabalho:
                     {"$set": {"plano_trabalho.componentes": novos_componentes}}
                 )
 
-                st.success("Componentes atualizados com sucesso!", icon=":material/check:")
+                st.success("Objetivos específicos atualizados com sucesso!", icon=":material/check:")
                 time.sleep(3)
                 st.rerun()
-
-
-
-
 
 
 # ###################################################################################################
 # IMPACTOS
 # ###################################################################################################
 
-with impactos:
+# with impactos:
 
-    # ============================================================
-    # CONTROLE DE MODO DE EDIÇÃO
-    # ============================================================
+#     # ============================================================
+#     # CONTROLE DE MODO DE EDIÇÃO
+#     # ============================================================
 
-    if st.session_state.tipo_usuario in ["admin", "equipe"]:
-        with st.container(horizontal=True, horizontal_alignment="right"):
-            modo_edicao = st.toggle("Modo de edição", key="editar_impactos")
-    else:
-        modo_edicao = False
+#     if st.session_state.tipo_usuario in ["admin", "equipe"]:
+#         with st.container(horizontal=True, horizontal_alignment="right"):
+#             modo_edicao = st.toggle("Modo de edição", key="editar_impactos")
+#     else:
+#         modo_edicao = False
 
 
-    # ============================================================
-    # COLUNAS
-    # ============================================================
+#     # ============================================================
+#     # COLUNAS
+#     # ============================================================
 
-    col_lp, col_cp = st.columns(2, gap="large")
+#     col_lp, col_cp = st.columns(2, gap="large")
 
-    # ============================================================
-    # IMPACTOS DE LONGO PRAZO
-    # ============================================================
+#     # ============================================================
+#     # IMPACTOS DE LONGO PRAZO
+#     # ============================================================
 
-    with col_lp:
-        st.subheader("Impactos de longo prazo")
-        st.write("*Entre 3 a 5 anos após o final do projeto*")
+#     with col_lp:
+#         st.subheader("Impactos de longo prazo")
+#         st.write("*Entre 3 a 5 anos após o final do projeto*")
 
-        impactos_lp = (
-            df_projeto["impactos_longo_prazo"].values[0]
-            if "impactos_longo_prazo" in df_projeto.columns
-            else []
-        )
+#         impactos_lp = (
+#             df_projeto["impactos_longo_prazo"].values[0]
+#             if "impactos_longo_prazo" in df_projeto.columns
+#             else []
+#         )
 
-        # ========================
-        # MODO VISUALIZAÇÃO
-        # ========================
-        if not modo_edicao:
+#         # ========================
+#         # MODO VISUALIZAÇÃO
+#         # ========================
+#         if not modo_edicao:
 
-            if not impactos_lp:
-                st.caption("Não há impactos de longo prazo cadastrados")
+#             if not impactos_lp:
+#                 st.caption("Não há impactos de longo prazo cadastrados")
                 
 
-            else:
-                for i, impacto in enumerate(impactos_lp, 1):
-                    st.write(f"**{i}.** {impacto['texto']}")
+#             else:
+#                 for i, impacto in enumerate(impactos_lp, 1):
+#                     st.write(f"**{i}.** {impacto['texto']}")
 
-        # ========================
-        # MODO EDIÇÃO
-        # ========================
-        else:
-            df_lp = pd.DataFrame(
-                [{"texto": i["texto"]} for i in impactos_lp] or [{"texto": ""}]
-            )
+#         # ========================
+#         # MODO EDIÇÃO
+#         # ========================
+#         else:
+#             df_lp = pd.DataFrame(
+#                 [{"texto": i["texto"]} for i in impactos_lp] or [{"texto": ""}]
+#             )
 
-            # df_lp = pd.DataFrame(impactos_lp or [{"texto": ""}])
+#             # df_lp = pd.DataFrame(impactos_lp or [{"texto": ""}])
 
-            df_editado_lp = st.data_editor(
-                df_lp,
-                num_rows="dynamic",
-                hide_index=True,
-                key="editor_lp",
-                column_config={
-                    "texto": st.column_config.TextColumn(
-                        "Impacto de longo prazo",
-                        width=600
-                    )
-                }
-            )
+#             df_editado_lp = st.data_editor(
+#                 df_lp,
+#                 num_rows="dynamic",
+#                 hide_index=True,
+#                 key="editor_lp",
+#                 column_config={
+#                     "texto": st.column_config.TextColumn(
+#                         "Impacto de longo prazo",
+#                         width=600
+#                     )
+#                 }
+#             )
 
-            if st.button("Salvar", key="save_lp", icon=":material/save:"):
-                impactos_salvar = []
+#             if st.button("Salvar", key="save_lp", icon=":material/save:"):
+#                 impactos_salvar = []
 
-                for i, row in df_editado_lp.iterrows():
-                    texto = str(row["texto"]).strip()
-                    if texto:
-                        impacto_id = (
-                            impactos_lp[i]["id"]
-                            if i < len(impactos_lp)
-                            else str(bson.ObjectId())
-                        )
+#                 for i, row in df_editado_lp.iterrows():
+#                     texto = str(row["texto"]).strip()
+#                     if texto:
+#                         impacto_id = (
+#                             impactos_lp[i]["id"]
+#                             if i < len(impactos_lp)
+#                             else str(bson.ObjectId())
+#                         )
 
-                        impactos_salvar.append({
-                            "id": impacto_id,
-                            "texto": texto
-                        })
+#                         impactos_salvar.append({
+#                             "id": impacto_id,
+#                             "texto": texto
+#                         })
 
-                if salvar_impactos("impactos_longo_prazo", impactos_salvar, st.session_state.projeto_atual):
-                    st.success("Impactos de longo prazo salvos com sucesso!", icon=":material/check:")
-                    time.sleep(3)
-                    st.rerun()
-                else:
-                    st.error("Erro ao salvar impactos.")
+#                 if salvar_impactos("impactos_longo_prazo", impactos_salvar, st.session_state.projeto_atual):
+#                     st.success("Impactos de longo prazo salvos com sucesso!", icon=":material/check:")
+#                     time.sleep(3)
+#                     st.rerun()
+#                 else:
+#                     st.error("Erro ao salvar impactos.")
 
 
-    # ============================================================
-    # IMPACTOS DE CURTO PRAZO
-    # ============================================================
+#     # ============================================================
+#     # IMPACTOS DE CURTO PRAZO
+#     # ============================================================
 
-    with col_cp:
-        st.subheader("Impactos de curto prazo")
-        st.write("*Durante o projeto ou até o final da subvenção*")
+#     with col_cp:
+#         st.subheader("Impactos de curto prazo")
+#         st.write("*Durante o projeto ou até o final da subvenção*")
 
-        impactos_cp = (
-            df_projeto["impactos_curto_prazo"].values[0]
-            if "impactos_curto_prazo" in df_projeto.columns
-            else []
-        )
+#         impactos_cp = (
+#             df_projeto["impactos_curto_prazo"].values[0]
+#             if "impactos_curto_prazo" in df_projeto.columns
+#             else []
+#         )
 
-        # ========================
-        # MODO VISUALIZAÇÃO
-        # ========================
-        if not modo_edicao:
+#         # ========================
+#         # MODO VISUALIZAÇÃO
+#         # ========================
+#         if not modo_edicao:
 
-            if not impactos_cp:
-                st.caption("Não há impactos de curto prazo cadastrados")
+#             if not impactos_cp:
+#                 st.caption("Não há impactos de curto prazo cadastrados")
 
-            else:
-                for i, impacto in enumerate(impactos_cp, 1):
-                    st.write(f"**{i}.** {impacto['texto']}")
+#             else:
+#                 for i, impacto in enumerate(impactos_cp, 1):
+#                     st.write(f"**{i}.** {impacto['texto']}")
 
-        # ========================
-        # MODO EDIÇÃO
-        # ========================
-        else:
+#         # ========================
+#         # MODO EDIÇÃO
+#         # ========================
+#         else:
 
-            df_cp = pd.DataFrame(
-                [{"texto": i["texto"]} for i in impactos_cp] or [{"texto": ""}]
-            )
+#             df_cp = pd.DataFrame(
+#                 [{"texto": i["texto"]} for i in impactos_cp] or [{"texto": ""}]
+#             )
 
-            # df_cp = pd.DataFrame(impactos_cp or [{"texto": ""}])
+#             # df_cp = pd.DataFrame(impactos_cp or [{"texto": ""}])
 
-            df_editado_cp = st.data_editor(
-                df_cp,
-                num_rows="dynamic",
-                hide_index=True,
-                key="editor_cp",
-                column_config={
-                    "texto": st.column_config.TextColumn(
-                        "Impacto de curto prazo",
-                        width=600
-                    )
-                }
-            )
+#             df_editado_cp = st.data_editor(
+#                 df_cp,
+#                 num_rows="dynamic",
+#                 hide_index=True,
+#                 key="editor_cp",
+#                 column_config={
+#                     "texto": st.column_config.TextColumn(
+#                         "Impacto de curto prazo",
+#                         width=600
+#                     )
+#                 }
+#             )
 
-            if st.button("Salvar", key="save_cp", icon=":material/save:"):
-                impactos_salvar = []
+#             if st.button("Salvar", key="save_cp", icon=":material/save:"):
+#                 impactos_salvar = []
 
-                for i, row in df_editado_cp.iterrows():
-                    texto = str(row["texto"]).strip()
-                    if texto:
-                        impacto_id = (
-                            impactos_cp[i]["id"]
-                            if i < len(impactos_cp)
-                            else str(bson.ObjectId())
-                        )
+#                 for i, row in df_editado_cp.iterrows():
+#                     texto = str(row["texto"]).strip()
+#                     if texto:
+#                         impacto_id = (
+#                             impactos_cp[i]["id"]
+#                             if i < len(impactos_cp)
+#                             else str(bson.ObjectId())
+#                         )
 
-                        impactos_salvar.append({
-                            "id": impacto_id,
-                            "texto": texto
-                        })
+#                         impactos_salvar.append({
+#                             "id": impacto_id,
+#                             "texto": texto
+#                         })
 
-                if salvar_impactos("impactos_curto_prazo", impactos_salvar, st.session_state.projeto_atual):
-                    st.success("Impactos de curto prazo salvos com sucesso!", icon=":material/check:")
-                    time.sleep(3)
-                    st.rerun()
-                else:
-                    st.error("Erro ao salvar impactos.")
+#                 if salvar_impactos("impactos_curto_prazo", impactos_salvar, st.session_state.projeto_atual):
+#                     st.success("Impactos de curto prazo salvos com sucesso!", icon=":material/check:")
+#                     time.sleep(3)
+#                     st.rerun()
+#                 else:
+#                     st.error("Erro ao salvar impactos.")
 
 
 
@@ -3264,10 +3070,11 @@ with indicadores:
                     if marcado:
 
                         valor = st.number_input(
-                            "",
+                            "Label",
                             step=1,
                             value=dados_atual["valor"],
-                            key=f"num_{id_indicador}"
+                            key=f"num_{id_indicador}",
+                            label_visibility="hidden"
                         )
 
 
@@ -3279,10 +3086,11 @@ with indicadores:
                     if marcado:
 
                         descricao = st.text_area(
-                            "",
+                            "Label",
                             value=dados_atual["descricao"],
                             key=f"desc_{id_indicador}",
-                            height=80
+                            height=80,
+                            label_visibility="hidden"
                         )
 
 
@@ -3294,7 +3102,7 @@ with indicadores:
                     if marcado:
 
                         resultado_intermediario = st.number_input(
-                            "",
+                            "Label",
                             step=1,
                             value=(
                                 dados_atual.get("resultado_intermediario")
@@ -3303,7 +3111,8 @@ with indicadores:
                                 )
                                 else 0
                             ),
-                            key=f"res_int_{id_indicador}"
+                            key=f"res_int_{id_indicador}",
+                            label_visibility="hidden"
                         )
 
 
@@ -3315,7 +3124,7 @@ with indicadores:
                     if marcado:
 
                         resultado_final = st.number_input(
-                            "",
+                            "Label",
                             step=1,
                             value=(
                                 dados_atual.get("resultado_final")
@@ -3324,7 +3133,8 @@ with indicadores:
                                 )
                                 else 0
                             ),
-                            key=f"res_fin_{id_indicador}"
+                            key=f"res_fin_{id_indicador}",
+                            label_visibility="hidden"
                         )
 
 
@@ -3470,275 +3280,7 @@ with monitoramento:
 
     if not componentes:
 
-        st.caption("Este projeto ainda não possui componentes cadastrados.")
-
-    else:
-
-
-
-
-
-        # ------------------------------------------------------------------
-        # Loop principal: percorre todos os componentes
-        # ------------------------------------------------------------------
-        for idx_comp, componente in enumerate(componentes, start=1):
-
-            # --------------------------------------------------------------
-            # Cabeçalho do componente
-            # --------------------------------------------------------------
-            st.markdown(f"##### {componente['componente']}")
-            
-            # st.markdown(f"##### Componente {idx_comp}: {componente['componente']}")
-
-            entregas = componente.get("entregas", [])
-
-            if not entregas:
-                st.info("Este componente não possui entregas cadastradas.")
-                continue
-
-            # --------------------------------------------------------------
-            # Loop secundário: percorre as entregas
-            # --------------------------------------------------------------
-            for idx_ent, entrega in enumerate(entregas, start=1):
-
-                # ----------------------------------------------------------
-                # Cada entrega tem seu próprio container visual
-                # ----------------------------------------------------------
-                with st.container(border=True):
-
-                    # ------------------------------------------------------
-                    # Título da entrega
-                    # ------------------------------------------------------
-                    st.markdown(f"###### {entrega['entrega']}")
-                    
-                    # st.markdown(f"###### Entrega {idx_ent}: {entrega['entrega']}")
-
-                    # ======================================================
-                    # 1) INDICADORES DO DOADOR EM DUAS COLUNAS
-                    # ======================================================
-
-                    col1, col2 = st.columns([1, 3])
-
-                    with col1:
-                        st.markdown("Indicadores do doador associados:")
-
-                    with col2:
-                        indicadores_doador = entrega.get("indicadores_doador", [])
-                        if indicadores_doador:
-                            for ind in indicadores_doador:
-                                st.markdown(f"- {ind}")
-                        else:
-                            st.caption("Nenhum indicador associado.")
-
-                    # ======================================================
-                    # 2) DATA EDITOR DE INDICADORES DO PROJETO
-                    # ======================================================
-
-                    # ------------------------------------------------------
-                    # Recupera indicadores do projeto já salvos (se existirem)
-                    # ------------------------------------------------------
-                    dados_existentes = entrega.get("indicadores_projeto", [])
-
-                    # ------------------------------------------------------
-                    # Converte para DataFrame
-                    # ------------------------------------------------------
-                    if dados_existentes:
-                        df_monitoramento = pd.DataFrame(dados_existentes)
-                    else:
-                        df_monitoramento = pd.DataFrame(
-                            columns=[
-                                "indicador_projeto",
-                                "linha_base",
-                                "meta",
-                                "resultado_atual",
-                                "observacoes_coleta",
-                                "unidade_medida",
-                                "periodicidade",
-                                "fonte_verificacao",
-                                "responsavel",
-                                "data_coleta"
-                            ]
-                        )
-
-                    # ------------------------------------------------------
-                    # Renomeia colunas para exibição
-                    # ------------------------------------------------------
-                    df_monitoramento = df_monitoramento.rename(columns={
-                        "indicador_projeto": "Indicador do projeto",
-                        "linha_base": "Linha de base",
-                        "meta": "Meta",
-                        "resultado_atual": "Resultado atual",
-                        "observacoes_coleta": "Observações da coleta",
-                        "unidade_medida": "Unidade de medida",
-                        "periodicidade": "Periodicidade",
-                        "fonte_verificacao": "Fonte de verificação",
-                        "responsavel": "Responsável",
-                        "data_coleta": "Data da coleta"
-                    })
-
-
-                    # ------------------------------------------------------
-                    # Reordena colunas para melhor UX
-                    # (colunas editáveis primeiro, bloqueadas no final)
-                    # ------------------------------------------------------
-                    ordem_colunas = [
-                        "Indicador do projeto",
-                        "Linha de base",
-                        "Meta",
-                        "Unidade de medida",
-                        "Periodicidade",
-                        "Fonte de verificação",
-                        "Responsável",
-                        "Resultado atual",
-                        "Observações da coleta",
-                        "Data da coleta"
-                    ]
-
-                    # Mantém apenas colunas que existem (segurança)
-                    ordem_colunas = [c for c in ordem_colunas if c in df_monitoramento.columns]
-
-                    df_monitoramento = df_monitoramento[ordem_colunas]
-
-
-
-                    # ------------------------------------------------------
-                    # Renderiza o data_editor
-                    # ------------------------------------------------------
-                    df_editado = st.data_editor(
-                        df_monitoramento,
-                        num_rows="dynamic",
-                        hide_index=True,
-                        key=f"editor_monitoramento_{componente['id']}_{entrega['id']}",
-                        column_config={
-                            "Indicador do projeto": st.column_config.TextColumn(),
-                            "Linha de base": st.column_config.NumberColumn(
-                                format="%.1f",
-                                step=0.1
-                            ),
-                            "Meta": st.column_config.NumberColumn(
-                                format="%.1f",
-                                step=0.1
-                            ),
-                            "Resultado atual": st.column_config.TextColumn(disabled=True),
-                            "Observações da coleta": st.column_config.TextColumn(disabled=True),
-                            "Unidade de medida": st.column_config.TextColumn(),
-                            "Periodicidade": st.column_config.TextColumn(),
-                            "Fonte de verificação": st.column_config.TextColumn(),
-                            "Responsável": st.column_config.TextColumn(),
-                            "Data da coleta": st.column_config.DateColumn(disabled=True, format="DD/MM/YYYY")
-                        }
-                    )
-
-                    # ======================================================
-                    # 3) BOTÃO DE SALVAR
-                    # ======================================================
-
-                    with st.container(horizontal=True, horizontal_alignment="right"):
-
-                        if st.button(
-                            "Salvar indicadores do projeto",
-                            icon=":material/save:",
-                            key=f"btn_salvar_{componente['id']}_{entrega['id']}",
-                            type="primary"
-                        ):
-
-                            # --------------------------------------------------
-                            # Limpa linhas vazias
-                            # --------------------------------------------------
-                            df_editado = df_editado.dropna(
-                                how="all"
-                            )
-
-
-                            # --------------------------------------------------
-                            # REMOVE ESPAÇOS EM BRANCO NO INÍCIO E FIM DOS TEXTOS
-                            # --------------------------------------------------
-                            colunas_texto = [
-                                "Indicador do projeto",
-                                "Observações da coleta",
-                                "Unidade de medida",
-                                "Periodicidade",
-                                "Fonte de verificação",
-                                "Responsável"
-                            ]
-
-                            for col in colunas_texto:
-                                if col in df_editado.columns:
-                                    df_editado[col] = (
-                                        df_editado[col]
-                                        .astype(str)
-                                        .str.strip()
-                                        .replace("nan", "")
-                                    )
-
-                            # --------------------------------------------------
-                            # Renomeia colunas para o padrão do banco
-                            # --------------------------------------------------
-                            df_para_salvar = df_editado.rename(columns={
-                                "Indicador do projeto": "indicador_projeto",
-                                "Linha de base": "linha_base",
-                                "Meta": "meta",
-                                "Resultado atual": "resultado_atual",
-                                "Observações da coleta": "observacoes_coleta",
-                                "Unidade de medida": "unidade_medida",
-                                "Periodicidade": "periodicidade",
-                                "Fonte de verificação": "fonte_verificacao",
-                                "Responsável": "responsavel",
-                                "Data da coleta": "data_coleta"
-                            })
-
-                            # --------------------------------------------------
-                            # Converte para lista de dicionários
-                            # --------------------------------------------------
-                            lista_indicadores_projeto = df_para_salvar.to_dict("records")
-
-                            # --------------------------------------------------
-                            # Atualiza apenas a entrega correta
-                            # --------------------------------------------------
-                            componentes_atualizados = []
-
-                            for comp in componentes:
-                                if comp["id"] == componente["id"]:
-                                    novas_entregas = []
-
-                                    for ent in comp.get("entregas", []):
-                                        if ent["id"] == entrega["id"]:
-                                            novas_entregas.append({
-                                                **ent,
-                                                "indicadores_projeto": lista_indicadores_projeto
-                                            })
-                                        else:
-                                            novas_entregas.append(ent)
-
-                                    componentes_atualizados.append({
-                                        **comp,
-                                        "entregas": novas_entregas
-                                    })
-                                else:
-                                    componentes_atualizados.append(comp)
-
-                            # --------------------------------------------------
-                            # Persistência no MongoDB
-                            # --------------------------------------------------
-                            resultado = col_projetos.update_one(
-                                {"codigo": codigo_projeto_atual},
-                                {"$set": {"plano_trabalho.componentes": componentes_atualizados}}
-                            )
-
-                            # --------------------------------------------------
-                            # Feedback ao usuário
-                            # --------------------------------------------------
-                            if resultado.matched_count == 1:
-                                st.success("Indicadores do projeto salvos com sucesso.", icon=":material/check:")
-                                time.sleep(3)
-                                st.rerun()
-                            else:
-                                st.error("Erro ao salvar indicadores do projeto.")
-
-
-
-
-
+        st.caption("Este projeto ainda não possui objetivos específicos cadastrados.")
 
 
 
@@ -3746,717 +3288,717 @@ with monitoramento:
 # SALVAGUARDAS
 # ###################################################################################################
 
-with salvaguardas:
+# with salvaguardas:
 
 
 
-    # ===============================================================================================
-    # PERMISSÃO - SALVAGUARDAS
-    # -----------------------------------------------------------------------------------------------
-    # Apenas admin/equipe podem editar. Usuários externos apenas visualizam.
-    # ===============================================================================================
+#     # ===============================================================================================
+#     # PERMISSÃO - SALVAGUARDAS
+#     # -----------------------------------------------------------------------------------------------
+#     # Apenas admin/equipe podem editar. Usuários externos apenas visualizam.
+#     # ===============================================================================================
 
-    usuario_interno = st.session_state.tipo_usuario in ["admin", "equipe"]
+#     usuario_interno = st.session_state.tipo_usuario in ["admin", "equipe"]
 
-    # Usuários internos podem editar, externos apenas visualizar
-    modo_edicao = usuario_interno
-
-
-    st.subheader("Avaliação de risco")
-    st.write('')
-
-    # Recupera o documento do projeto como dicionário
-    projeto = df_projeto.iloc[0].to_dict()
-
-    # Recupera o objeto salvaguardas do documento do projeto
-    # Caso não exista, utiliza um dicionário vazio
-    salvaguardas_doc = projeto.get("salvaguardas", {})
+#     # Usuários internos podem editar, externos apenas visualizar
+#     modo_edicao = usuario_interno
 
 
-    # Extrai os subdocumentos de cada política
-    pol2 = salvaguardas_doc.get("pol_2_trabalho", {})
-    pol3 = salvaguardas_doc.get("pol_3_poluicao", {})
-    pol4 = salvaguardas_doc.get("pol_4_comunidade", {})
-    pol5 = salvaguardas_doc.get("pol_5_reassentamento", {})
-    pol6 = salvaguardas_doc.get("pol_6_biodiversidade", {})
-    pol7 = salvaguardas_doc.get("pol_7_indigenas", {})
-    pol8 = salvaguardas_doc.get("pol_8_patrimonio", {})
-    pol9 = salvaguardas_doc.get("pol_9_genero", {})
+#     st.subheader("Avaliação de risco")
+#     st.write('')
+
+#     # Recupera o documento do projeto como dicionário
+#     projeto = df_projeto.iloc[0].to_dict()
+
+#     # Recupera o objeto salvaguardas do documento do projeto
+#     # Caso não exista, utiliza um dicionário vazio
+#     salvaguardas_doc = projeto.get("salvaguardas", {})
 
 
-    # Carrega valores existentes no session_state
-    # Isso faz com que os widgets apareçam já preenchidos ao abrir a página
+#     # Extrai os subdocumentos de cada política
+#     pol2 = salvaguardas_doc.get("pol_2_trabalho", {})
+#     pol3 = salvaguardas_doc.get("pol_3_poluicao", {})
+#     pol4 = salvaguardas_doc.get("pol_4_comunidade", {})
+#     pol5 = salvaguardas_doc.get("pol_5_reassentamento", {})
+#     pol6 = salvaguardas_doc.get("pol_6_biodiversidade", {})
+#     pol7 = salvaguardas_doc.get("pol_7_indigenas", {})
+#     pol8 = salvaguardas_doc.get("pol_8_patrimonio", {})
+#     pol9 = salvaguardas_doc.get("pol_9_genero", {})
 
 
-    if "salv_2_aplicavel" not in st.session_state:
-        st.session_state["salv_2_aplicavel"] = pol2.get("aplicavel")
-
-    if "salv_2_detalhes" not in st.session_state:
-        st.session_state["salv_2_detalhes"] = pol2.get("detalhes")
-
-    if "salv_2_categoria_risco" not in st.session_state:
-        st.session_state["salv_2_categoria_risco"] = pol2.get("categoria")
+#     # Carrega valores existentes no session_state
+#     # Isso faz com que os widgets apareçam já preenchidos ao abrir a página
 
 
-    if "salv_3_aplicavel" not in st.session_state:
-        st.session_state["salv_3_aplicavel"] = pol3.get("aplicavel")
+#     if "salv_2_aplicavel" not in st.session_state:
+#         st.session_state["salv_2_aplicavel"] = pol2.get("aplicavel")
 
-    if "salv_3_pesticidas_detalhes" not in st.session_state:
-        st.session_state["salv_3_pesticidas_detalhes"] = pol3.get("detalhes_pesticidas")
+#     if "salv_2_detalhes" not in st.session_state:
+#         st.session_state["salv_2_detalhes"] = pol2.get("detalhes")
 
-    if "salv_3_poluicao_detalhes" not in st.session_state:
-        st.session_state["salv_3_poluicao_detalhes"] = pol3.get("detalhes_poluicao")
-
-    if "salv_3_categoria_risco" not in st.session_state:
-        st.session_state["salv_3_categoria_risco"] = pol3.get("categoria")
+#     if "salv_2_categoria_risco" not in st.session_state:
+#         st.session_state["salv_2_categoria_risco"] = pol2.get("categoria")
 
 
-    if "salv_4_aplicavel" not in st.session_state:
-        st.session_state["salv_4_aplicavel"] = pol4.get("aplicavel")
+#     if "salv_3_aplicavel" not in st.session_state:
+#         st.session_state["salv_3_aplicavel"] = pol3.get("aplicavel")
 
-    if "salv_4_detalhes" not in st.session_state:
-        st.session_state["salv_4_detalhes"] = pol4.get("detalhes")
+#     if "salv_3_pesticidas_detalhes" not in st.session_state:
+#         st.session_state["salv_3_pesticidas_detalhes"] = pol3.get("detalhes_pesticidas")
 
-    if "salv_4_categoria_risco" not in st.session_state:
-        st.session_state["salv_4_categoria_risco"] = pol4.get("categoria")
+#     if "salv_3_poluicao_detalhes" not in st.session_state:
+#         st.session_state["salv_3_poluicao_detalhes"] = pol3.get("detalhes_poluicao")
 
-
-    if "salv_5_aplicavel" not in st.session_state:
-        st.session_state["salv_5_aplicavel"] = pol5.get("aplicavel")
-
-    if "salv_5_detalhes" not in st.session_state:
-        st.session_state["salv_5_detalhes"] = pol5.get("detalhes")
-
-    if "salv_5_categoria_risco" not in st.session_state:
-        st.session_state["salv_5_categoria_risco"] = pol5.get("categoria")
+#     if "salv_3_categoria_risco" not in st.session_state:
+#         st.session_state["salv_3_categoria_risco"] = pol3.get("categoria")
 
 
-    if "salv_6_aplicavel" not in st.session_state:
-        st.session_state["salv_6_aplicavel"] = pol6.get("aplicavel")
+#     if "salv_4_aplicavel" not in st.session_state:
+#         st.session_state["salv_4_aplicavel"] = pol4.get("aplicavel")
 
-    if "salv_6_detalhes" not in st.session_state:
-        st.session_state["salv_6_detalhes"] = pol6.get("detalhes")
+#     if "salv_4_detalhes" not in st.session_state:
+#         st.session_state["salv_4_detalhes"] = pol4.get("detalhes")
 
-    if "salv_6_categoria_risco" not in st.session_state:
-        st.session_state["salv_6_categoria_risco"] = pol6.get("categoria")
-
-
-    if "salv_7_aplicavel" not in st.session_state:
-        st.session_state["salv_7_aplicavel"] = pol7.get("aplicavel")
-
-    if "salv_7_detalhes" not in st.session_state:
-        st.session_state["salv_7_detalhes"] = pol7.get("detalhes")
-
-    if "salv_7_categoria_risco" not in st.session_state:
-        st.session_state["salv_7_categoria_risco"] = pol7.get("categoria")
+#     if "salv_4_categoria_risco" not in st.session_state:
+#         st.session_state["salv_4_categoria_risco"] = pol4.get("categoria")
 
 
-    if "salv_8_aplicavel" not in st.session_state:
-        st.session_state["salv_8_aplicavel"] = pol8.get("aplicavel")
+#     if "salv_5_aplicavel" not in st.session_state:
+#         st.session_state["salv_5_aplicavel"] = pol5.get("aplicavel")
 
-    if "salv_8_detalhes" not in st.session_state:
-        st.session_state["salv_8_detalhes"] = pol8.get("detalhes")
+#     if "salv_5_detalhes" not in st.session_state:
+#         st.session_state["salv_5_detalhes"] = pol5.get("detalhes")
 
-    if "salv_8_categoria_risco" not in st.session_state:
-        st.session_state["salv_8_categoria_risco"] = pol8.get("categoria")
+#     if "salv_5_categoria_risco" not in st.session_state:
+#         st.session_state["salv_5_categoria_risco"] = pol5.get("categoria")
 
 
-    if "salv_9_detalhes" not in st.session_state:
-        st.session_state["salv_9_detalhes"] = pol9.get("detalhes")
+#     if "salv_6_aplicavel" not in st.session_state:
+#         st.session_state["salv_6_aplicavel"] = pol6.get("aplicavel")
 
-    if "salv_9_categoria_risco" not in st.session_state:
-        st.session_state["salv_9_categoria_risco"] = pol9.get("categoria")
+#     if "salv_6_detalhes" not in st.session_state:
+#         st.session_state["salv_6_detalhes"] = pol6.get("detalhes")
+
+#     if "salv_6_categoria_risco" not in st.session_state:
+#         st.session_state["salv_6_categoria_risco"] = pol6.get("categoria")
+
+
+#     if "salv_7_aplicavel" not in st.session_state:
+#         st.session_state["salv_7_aplicavel"] = pol7.get("aplicavel")
+
+#     if "salv_7_detalhes" not in st.session_state:
+#         st.session_state["salv_7_detalhes"] = pol7.get("detalhes")
+
+#     if "salv_7_categoria_risco" not in st.session_state:
+#         st.session_state["salv_7_categoria_risco"] = pol7.get("categoria")
+
+
+#     if "salv_8_aplicavel" not in st.session_state:
+#         st.session_state["salv_8_aplicavel"] = pol8.get("aplicavel")
+
+#     if "salv_8_detalhes" not in st.session_state:
+#         st.session_state["salv_8_detalhes"] = pol8.get("detalhes")
+
+#     if "salv_8_categoria_risco" not in st.session_state:
+#         st.session_state["salv_8_categoria_risco"] = pol8.get("categoria")
+
+
+#     if "salv_9_detalhes" not in st.session_state:
+#         st.session_state["salv_9_detalhes"] = pol9.get("detalhes")
+
+#     if "salv_9_categoria_risco" not in st.session_state:
+#         st.session_state["salv_9_categoria_risco"] = pol9.get("categoria")
     
-    if "salv_fortalecimento_capacidades" not in st.session_state:
-        st.session_state["salv_fortalecimento_capacidades"] = salvaguardas_doc.get("fortalecimento_capacidades")
+#     if "salv_fortalecimento_capacidades" not in st.session_state:
+#         st.session_state["salv_fortalecimento_capacidades"] = salvaguardas_doc.get("fortalecimento_capacidades")
     
     
     
-    # COMEÇO DO FORMULÁRIO COM AS POLÍTICAS DE SALVAGUARDAS ###########################################################
+#     # COMEÇO DO FORMULÁRIO COM AS POLÍTICAS DE SALVAGUARDAS ###########################################################
     
 
-    # Duas colunas para o nome do avaliador e data da última atualização.
-    col1, col2 = st.columns(2)
+#     # Duas colunas para o nome do avaliador e data da última atualização.
+#     col1, col2 = st.columns(2)
 
     
-    # Recupera o nome do usuário logado no session_state
-    nome_avaliador = st.session_state.get("nome")
+#     # Recupera o nome do usuário logado no session_state
+#     nome_avaliador = st.session_state.get("nome")
 
-    # Mostra o nome na tela
+#     # Mostra o nome na tela
 
-    # Recupera o nome da pessoa que fez a última avaliação
-    nome_avaliador = salvaguardas_doc.get("nome_avaliador_risco")
+#     # Recupera o nome da pessoa que fez a última avaliação
+#     nome_avaliador = salvaguardas_doc.get("nome_avaliador_risco")
 
-    # Mostra apenas se existir informação no banco
-    if nome_avaliador:
-        col1.write(f"**Nome da pessoa que completa a avaliação de risco:** {nome_avaliador}")
+#     # Mostra apenas se existir informação no banco
+#     if nome_avaliador:
+#         col1.write(f"**Nome da pessoa que completa a avaliação de risco:** {nome_avaliador}")
 
 
 
 
-    # Recupera a data da última avaliação salva
-    data_aval_risco = salvaguardas_doc.get("data_aval_risco")
+#     # Recupera a data da última avaliação salva
+#     data_aval_risco = salvaguardas_doc.get("data_aval_risco")
 
-    # Mostra a data apenas se existir no banco
-    if data_aval_risco:
-        col2.write(f"**Data da última atualização:** {data_aval_risco}")
+#     # Mostra a data apenas se existir no banco
+#     if data_aval_risco:
+#         col2.write(f"**Data da última atualização:** {data_aval_risco}")
 
 
-    st.write("")
-    st.write("")
-    st.write("")
+#     st.write("")
+#     st.write("")
+#     st.write("")
 
 
-    # Define a largura padrão das colunas que será reutilizada na tabela de salvaguardas
-    largura_colunas = [2, 2, 3, 2, 3]
+#     # Define a largura padrão das colunas que será reutilizada na tabela de salvaguardas
+#     largura_colunas = [2, 2, 3, 2, 3]
 
-    # Cria a primeira linha de colunas (cabeçalho)
-    cab1, cab2, cab3, cab4, cab5 = st.columns(largura_colunas)
+#     # Cria a primeira linha de colunas (cabeçalho)
+#     cab1, cab2, cab3, cab4, cab5 = st.columns(largura_colunas)
 
-    # Cabeçalhos em negrito
-    cab1.markdown("**Política de Salvaguardas**")
-    cab2.markdown("**Aplicável?**")
-    cab3.markdown("**Avaliação de Risco**")
-    cab4.markdown("**Categoria de Risco**")
-    cab5.markdown("**Notas (os exemplos abaixo são indicativos e não prevêem todas as eventualidades)**")
+#     # Cabeçalhos em negrito
+#     cab1.markdown("**Política de Salvaguardas**")
+#     cab2.markdown("**Aplicável?**")
+#     cab3.markdown("**Avaliação de Risco**")
+#     cab4.markdown("**Categoria de Risco**")
+#     cab5.markdown("**Notas (os exemplos abaixo são indicativos e não prevêem todas as eventualidades)**")
 
-    st.divider()
+#     st.divider()
 
 
-    # colunas das linhas de pergutnas e respostas
-    col1, col2, col3, col4, col5 = st.columns(largura_colunas, gap="medium")
+#     # colunas das linhas de pergutnas e respostas
+#     col1, col2, col3, col4, col5 = st.columns(largura_colunas, gap="medium")
 
 
-    # 1. Avaliação Ambiental e Social ------------------------------------------------------------------------------------------------
+#     # 1. Avaliação Ambiental e Social ------------------------------------------------------------------------------------------------
 
-    # Coluna 1 — nome da política
-    col1.write("**1. Avaliação Ambiental e Social**")
+#     # Coluna 1 — nome da política
+#     col1.write("**1. Avaliação Ambiental e Social**")
 
-    # Coluna 2 — política sempre aplicável
-    with col2:
+#     # Coluna 2 — política sempre aplicável
+#     with col2:
 
-        # Mostra o valor fixo para o usuário
-        st.write("Sim")
+#         # Mostra o valor fixo para o usuário
+#         st.write("Sim")
 
-        # Observação da política
-        st.caption("Aplica-se a todos os projetos")
+#         # Observação da política
+#         st.caption("Aplica-se a todos os projetos")
 
-        # Define o valor no session_state para garantir que seja salvo
-        st.session_state["salv_1_aplicavel"] = "Sim"
+#         # Define o valor no session_state para garantir que seja salvo
+#         st.session_state["salv_1_aplicavel"] = "Sim"
 
-    # Coluna 3 — avaliação de risco
-    col3.write("N/A")
+#     # Coluna 3 — avaliação de risco
+#     col3.write("N/A")
 
-    # Coluna 4 — categoria de risco
-    col4.write("N/A")
+#     # Coluna 4 — categoria de risco
+#     col4.write("N/A")
 
-    # Coluna 5 — observação
-    col5.write("Não é necessário atribuir uma categoria de risco individual a esta política.")
+#     # Coluna 5 — observação
+#     col5.write("Não é necessário atribuir uma categoria de risco individual a esta política.")
 
 
-    st.divider()
+#     st.divider()
 
 
 
 
-    # 2. Condições de Trabalho e Trabalhistas -------------------------------------------------------------
+#     # 2. Condições de Trabalho e Trabalhistas -------------------------------------------------------------
 
-    # colunas da segunda linha de perguntas e respostas
-    col1, col2, col3, col4, col5 = st.columns(largura_colunas, gap="medium")
+#     # colunas da segunda linha de perguntas e respostas
+#     col1, col2, col3, col4, col5 = st.columns(largura_colunas, gap="medium")
 
 
-    # Coluna 1 — nome da política
-    col1.write("**2. Condições de Trabalho e Trabalhistas**")
+#     # Coluna 1 — nome da política
+#     col1.write("**2. Condições de Trabalho e Trabalhistas**")
 
-    # Coluna 2 — pergunta se a política é aplicável
-    with col2:
-        st.radio(
-            "Aplicável?",
-            ["Sim", "Não"],
-            key="salv_2_aplicavel",
-            horizontal=True,
-            disabled=not modo_edicao
-        )
+#     # Coluna 2 — pergunta se a política é aplicável
+#     with col2:
+#         st.radio(
+#             "Aplicável?",
+#             ["Sim", "Não"],
+#             key="salv_2_aplicavel",
+#             horizontal=True,
+#             disabled=not modo_edicao
+#         )
 
-    # Coluna 3 — pergunta de avaliação de risco e campo para detalhes
-    with col3:
-        st.write("O projeto proposto apresenta riscos significativos em relação às condições de trabalho e trabalhistas?")
-        st.text_area(
-            "Detalhes:",
-            key="salv_2_detalhes",
-            height=120,
-            disabled=not modo_edicao
-        )
+#     # Coluna 3 — pergunta de avaliação de risco e campo para detalhes
+#     with col3:
+#         st.write("O projeto proposto apresenta riscos significativos em relação às condições de trabalho e trabalhistas?")
+#         st.text_area(
+#             "Detalhes:",
+#             key="salv_2_detalhes",
+#             height=120,
+#             disabled=not modo_edicao
+#         )
 
-    # Coluna 4 — categoria de risco
-    with col4:
-        st.radio(
-            "Categoria de risco",
-            ["Categoria A", "Categoria B", "Categoria C"],
-            key="salv_2_categoria_risco",
-            disabled=not modo_edicao
-        )
+#     # Coluna 4 — categoria de risco
+#     with col4:
+#         st.radio(
+#             "Categoria de risco",
+#             ["Categoria A", "Categoria B", "Categoria C"],
+#             key="salv_2_categoria_risco",
+#             disabled=not modo_edicao
+#         )
 
-    # Coluna 5 — observação explicativa
-    col5.write(
-        "Projetos geralmente serão atribuídos à Categoria C para esta política, "
-        "a menos que existam riscos elevados relacionados à saúde e segurança "
-        "ocupacional, como mergulho ou trabalho como guardas ecológicos."
-    )
+#     # Coluna 5 — observação explicativa
+#     col5.write(
+#         "Projetos geralmente serão atribuídos à Categoria C para esta política, "
+#         "a menos que existam riscos elevados relacionados à saúde e segurança "
+#         "ocupacional, como mergulho ou trabalho como guardas ecológicos."
+#     )
 
-    st.divider()
+#     st.divider()
 
 
 
 
-    # 3. Eficiência de Recursos e Prevenção de Poluição --------------------------------------------------
+#     # 3. Eficiência de Recursos e Prevenção de Poluição --------------------------------------------------
 
 
-    # colunas da terceira linha de perguntas e respostas
-    col1, col2, col3, col4, col5 = st.columns(largura_colunas, gap="medium")
+#     # colunas da terceira linha de perguntas e respostas
+#     col1, col2, col3, col4, col5 = st.columns(largura_colunas, gap="medium")
 
 
-    # Coluna 1 — nome da política
-    col1.write("**3. Eficiência de Recursos e Prevenção de Poluição**")
+#     # Coluna 1 — nome da política
+#     col1.write("**3. Eficiência de Recursos e Prevenção de Poluição**")
 
-    # Coluna 2 — pergunta se a política é aplicável
-    with col2:
-        st.radio(
-            "Aplicável?",
-            ["Sim", "Não"],
-            key="salv_3_aplicavel",
-            horizontal=True,
-            disabled=not modo_edicao
-        )
-
-    # Coluna 3 — perguntas de avaliação de risco com campos de detalhe
-    with col3:
+#     # Coluna 2 — pergunta se a política é aplicável
+#     with col2:
+#         st.radio(
+#             "Aplicável?",
+#             ["Sim", "Não"],
+#             key="salv_3_aplicavel",
+#             horizontal=True,
+#             disabled=not modo_edicao
+#         )
+
+#     # Coluna 3 — perguntas de avaliação de risco com campos de detalhe
+#     with col3:
 
-        st.write("O projeto proposto apresenta riscos significativos relacionados a pesticidas?")
+#         st.write("O projeto proposto apresenta riscos significativos relacionados a pesticidas?")
 
-        st.text_area(
-            "Detalhes:",
-            key="salv_3_pesticidas_detalhes",
-            height=100,
-            disabled=not modo_edicao
-        )
+#         st.text_area(
+#             "Detalhes:",
+#             key="salv_3_pesticidas_detalhes",
+#             height=100,
+#             disabled=not modo_edicao
+#         )
 
-        st.write("O projeto proposto apresenta riscos significativos relacionados ao uso insustentável de recursos e/ou formas de poluição que não sejam pesticidas?")
+#         st.write("O projeto proposto apresenta riscos significativos relacionados ao uso insustentável de recursos e/ou formas de poluição que não sejam pesticidas?")
 
-        st.text_area(
-            "Detalhes:",
-            key="salv_3_poluicao_detalhes",
-            height=100,
-            disabled=not modo_edicao
-        )
+#         st.text_area(
+#             "Detalhes:",
+#             key="salv_3_poluicao_detalhes",
+#             height=100,
+#             disabled=not modo_edicao
+#         )
 
-    # Coluna 4 — categoria de risco
-    with col4:
-        st.radio(
-            "Categoria de risco",
-            ["Categoria A", "Categoria B", "Categoria C"],
-            key="salv_3_categoria_risco",
-            disabled=not modo_edicao
-        )
+#     # Coluna 4 — categoria de risco
+#     with col4:
+#         st.radio(
+#             "Categoria de risco",
+#             ["Categoria A", "Categoria B", "Categoria C"],
+#             key="salv_3_categoria_risco",
+#             disabled=not modo_edicao
+#         )
 
-    # Coluna 5 — observações explicativas
-    with col5:
-        st.write(
-            "Projetos que envolvem a aquisição ou uso de pesticidas químicos serão atribuídos à Categoria B."
-        )
+#     # Coluna 5 — observações explicativas
+#     with col5:
+#         st.write(
+#             "Projetos que envolvem a aquisição ou uso de pesticidas químicos serão atribuídos à Categoria B."
+#         )
 
-        st.write(
-            "Os projetos com potencial de exposição da comunidade a materiais e substâncias perigosos "
-            "liberados por suas atividades serão classificados na Categoria A ou B."
-        )
+#         st.write(
+#             "Os projetos com potencial de exposição da comunidade a materiais e substâncias perigosos "
+#             "liberados por suas atividades serão classificados na Categoria A ou B."
+#         )
 
-    st.divider()
+#     st.divider()
 
 
 
 
 
-    # 4. Saúde, Segurança e Proteção da Comunidade -------------------------------------------------------
+#     # 4. Saúde, Segurança e Proteção da Comunidade -------------------------------------------------------
 
-    # colunas da quarta linha de perguntas e respostas
-    col1, col2, col3, col4, col5 = st.columns(largura_colunas, gap="medium")
+#     # colunas da quarta linha de perguntas e respostas
+#     col1, col2, col3, col4, col5 = st.columns(largura_colunas, gap="medium")
 
 
 
-    # Coluna 1 — nome da política
-    col1.write("**4. Saúde, Segurança e Proteção da Comunidade**")
+#     # Coluna 1 — nome da política
+#     col1.write("**4. Saúde, Segurança e Proteção da Comunidade**")
 
-    # Coluna 2 — pergunta se a política é aplicável
-    with col2:
-        st.radio(
-            "Aplicável?",
-            ["Sim", "Não"],
-            key="salv_4_aplicavel",
-            horizontal=True,
-            disabled=not modo_edicao
-        )
+#     # Coluna 2 — pergunta se a política é aplicável
+#     with col2:
+#         st.radio(
+#             "Aplicável?",
+#             ["Sim", "Não"],
+#             key="salv_4_aplicavel",
+#             horizontal=True,
+#             disabled=not modo_edicao
+#         )
 
-    # Coluna 3 — pergunta de avaliação de risco com campo para detalhes
-    with col3:
+#     # Coluna 3 — pergunta de avaliação de risco com campo para detalhes
+#     with col3:
 
-        st.write(
-            "O projeto proposto apresenta riscos significativos relacionados "
-            "à saúde, segurança e proteção da comunidade?"
-        )
+#         st.write(
+#             "O projeto proposto apresenta riscos significativos relacionados "
+#             "à saúde, segurança e proteção da comunidade?"
+#         )
 
-        st.text_area(
-            "Detalhes:",
-            key="salv_4_detalhes",
-            height=120,
-            disabled=not modo_edicao
-        )
+#         st.text_area(
+#             "Detalhes:",
+#             key="salv_4_detalhes",
+#             height=120,
+#             disabled=not modo_edicao
+#         )
 
-    # Coluna 4 — categoria de risco
-    with col4:
-        st.radio(
-            "Categoria de risco",
-            ["Categoria A", "Categoria B", "Categoria C"],
-            key="salv_4_categoria_risco",
-            disabled=not modo_edicao
-        )
+#     # Coluna 4 — categoria de risco
+#     with col4:
+#         st.radio(
+#             "Categoria de risco",
+#             ["Categoria A", "Categoria B", "Categoria C"],
+#             key="salv_4_categoria_risco",
+#             disabled=not modo_edicao
+#         )
 
-    # Coluna 5 — observações explicativas
-    with col5:
+#     # Coluna 5 — observações explicativas
+#     with col5:
 
-        st.markdown(
-            "Projetos que financiam salários e/ou operações de guardas florestais, "
-            "guardas ecológicos ou pessoal de segurança similar (armado ou desarmado) "
-            "serão classificados como Categoria B<sup>1</sup>.",
-            unsafe_allow_html=True
-        )
+#         st.markdown(
+#             "Projetos que financiam salários e/ou operações de guardas florestais, "
+#             "guardas ecológicos ou pessoal de segurança similar (armado ou desarmado) "
+#             "serão classificados como Categoria B<sup>1</sup>.",
+#             unsafe_allow_html=True
+#         )
 
 
-        st.markdown(
-            "Projetos que envolvem atividades de pesquisa<sup>2</sup> com seres humanos<sup>2</sup> "
-            "serão classificados como Categoria B.",
-            unsafe_allow_html=True
-        )
+#         st.markdown(
+#             "Projetos que envolvem atividades de pesquisa<sup>2</sup> com seres humanos<sup>2</sup> "
+#             "serão classificados como Categoria B.",
+#             unsafe_allow_html=True
+#         )
 
-    st.write('')
+#     st.write('')
     
-    # Nota de rodapé 1
-    st.caption(
-        "<sup>1</sup> Esta disposição aplica-se independentemente de o pessoal de segurança ser empregado "
-        "ou contratado pela entidade beneficiária, por uma agência governamental ou por um terceiro.",
-        unsafe_allow_html=True
-    )
+#     # Nota de rodapé 1
+#     st.caption(
+#         "<sup>1</sup> Esta disposição aplica-se independentemente de o pessoal de segurança ser empregado "
+#         "ou contratado pela entidade beneficiária, por uma agência governamental ou por um terceiro.",
+#         unsafe_allow_html=True
+#     )
 
-    # Nota de rodapé 2
-    st.caption(
-        "<sup>2</sup> Pesquisa com Seres Humanos refere-se a qualquer forma de investigação disciplinada "
-        "que visa contribuir para um corpo de conhecimento ou teoria que envolva a obtenção de "
-        "(a) dados de indivíduos vivos por meio de intervenção ou interação com o indivíduo ou "
-        "(b) informações pessoais identificáveis. Projetos de demonstração de campo de conservação "
-        "e/ou desenvolvimento geralmente não são considerados pesquisa, nem métodos participativos "
-        "padrão usados para monitorar os impactos desses projetos no bem-estar humano "
-        "(por exemplo, discussões em grupos focais).",
-        unsafe_allow_html=True
-    )
+#     # Nota de rodapé 2
+#     st.caption(
+#         "<sup>2</sup> Pesquisa com Seres Humanos refere-se a qualquer forma de investigação disciplinada "
+#         "que visa contribuir para um corpo de conhecimento ou teoria que envolva a obtenção de "
+#         "(a) dados de indivíduos vivos por meio de intervenção ou interação com o indivíduo ou "
+#         "(b) informações pessoais identificáveis. Projetos de demonstração de campo de conservação "
+#         "e/ou desenvolvimento geralmente não são considerados pesquisa, nem métodos participativos "
+#         "padrão usados para monitorar os impactos desses projetos no bem-estar humano "
+#         "(por exemplo, discussões em grupos focais).",
+#         unsafe_allow_html=True
+#     )
 
-    st.divider()
-
-
+#     st.divider()
 
 
 
 
 
 
-    # 5. Restrições de Uso da Terra e Reassentamento Involuntário ----------------------------------------
-
-    col1, col2, col3, col4, col5 = st.columns(largura_colunas, gap="medium")
-
-    col1.write("**5. Restrições de Uso da Terra e Reassentamento Involuntário**")
-
-    with col2:
-        st.radio(
-            "Aplicável?",
-            ["Sim", "Não"],
-            key="salv_5_aplicavel",
-            horizontal=True,
-            disabled=not modo_edicao
-        )
-
-    with col3:
-        st.write(
-            "O projeto proposto apresenta riscos significativos relacionados a restrições "
-            "de acesso associadas a impactos negativos nos meios de subsistência?"
-        )
-
-        st.text_area(
-            "Detalhes:",
-            key="salv_5_detalhes",
-            height=120,
-            disabled=not modo_edicao
-        )
-
-    with col4:
-        st.radio(
-            "Categoria de risco",
-            ["Categoria A", "Categoria B", "Categoria C"],
-            key="salv_5_categoria_risco",
-            disabled=not modo_edicao
-        )
-
-    with col5:
-        st.write(
-            "Projetos que envolvem a criação ou expansão de áreas protegidas "
-            "serão classificados como Categoria B."
-        )
-
-    st.divider()
 
 
-    # 6. Conservação da Biodiversidade e Gestão Sustentável de Recursos Naturais Vivos -------------------
+#     # 5. Restrições de Uso da Terra e Reassentamento Involuntário ----------------------------------------
 
-    col1, col2, col3, col4, col5 = st.columns(largura_colunas, gap="medium")
+#     col1, col2, col3, col4, col5 = st.columns(largura_colunas, gap="medium")
 
-    col1.write("**6. Conservação da Biodiversidade e Gestão Sustentável de Recursos Naturais Vivos**")
+#     col1.write("**5. Restrições de Uso da Terra e Reassentamento Involuntário**")
 
-    with col2:
-        st.radio(
-            "Aplicável?",
-            ["Sim", "Não"],
-            key="salv_6_aplicavel",
-            horizontal=True,
-            disabled=not modo_edicao
-        )
+#     with col2:
+#         st.radio(
+#             "Aplicável?",
+#             ["Sim", "Não"],
+#             key="salv_5_aplicavel",
+#             horizontal=True,
+#             disabled=not modo_edicao
+#         )
 
-    with col3:
-        st.write(
-            "O projeto proposto apresenta riscos significativos relacionados à "
-            "degradação ou perda de habitat crítico ou outros habitats naturais?"
-        )
+#     with col3:
+#         st.write(
+#             "O projeto proposto apresenta riscos significativos relacionados a restrições "
+#             "de acesso associadas a impactos negativos nos meios de subsistência?"
+#         )
 
-        st.text_area(
-            "Detalhes:",
-            key="salv_6_detalhes",
-            height=120,
-            disabled=not modo_edicao
-        )
+#         st.text_area(
+#             "Detalhes:",
+#             key="salv_5_detalhes",
+#             height=120,
+#             disabled=not modo_edicao
+#         )
 
-    with col4:
-        st.radio(
-            "Categoria de risco",
-            ["Categoria A", "Categoria B", "Categoria C"],
-            key="salv_6_categoria_risco",
-            disabled=not modo_edicao
-        )
+#     with col4:
+#         st.radio(
+#             "Categoria de risco",
+#             ["Categoria A", "Categoria B", "Categoria C"],
+#             key="salv_5_categoria_risco",
+#             disabled=not modo_edicao
+#         )
 
-    with col5:
+#     with col5:
+#         st.write(
+#             "Projetos que envolvem a criação ou expansão de áreas protegidas "
+#             "serão classificados como Categoria B."
+#         )
+
+#     st.divider()
+
+
+#     # 6. Conservação da Biodiversidade e Gestão Sustentável de Recursos Naturais Vivos -------------------
+
+#     col1, col2, col3, col4, col5 = st.columns(largura_colunas, gap="medium")
+
+#     col1.write("**6. Conservação da Biodiversidade e Gestão Sustentável de Recursos Naturais Vivos**")
+
+#     with col2:
+#         st.radio(
+#             "Aplicável?",
+#             ["Sim", "Não"],
+#             key="salv_6_aplicavel",
+#             horizontal=True,
+#             disabled=not modo_edicao
+#         )
+
+#     with col3:
+#         st.write(
+#             "O projeto proposto apresenta riscos significativos relacionados à "
+#             "degradação ou perda de habitat crítico ou outros habitats naturais?"
+#         )
+
+#         st.text_area(
+#             "Detalhes:",
+#             key="salv_6_detalhes",
+#             height=120,
+#             disabled=not modo_edicao
+#         )
+
+#     with col4:
+#         st.radio(
+#             "Categoria de risco",
+#             ["Categoria A", "Categoria B", "Categoria C"],
+#             key="salv_6_categoria_risco",
+#             disabled=not modo_edicao
+#         )
+
+#     with col5:
         
-        st.markdown(
-            "Projetos que envolvem impactos adversos em habitats críticos<sup>3</sup> "
-            "serão classificados como Categoria A.",
-            unsafe_allow_html=True
-        )
+#         st.markdown(
+#             "Projetos que envolvem impactos adversos em habitats críticos<sup>3</sup> "
+#             "serão classificados como Categoria A.",
+#             unsafe_allow_html=True
+#         )
 
-        st.write(
-            "Projetos que envolvem a aquisição de commodities de recursos naturais "
-            "(por exemplo, madeira) que possam contribuir para a conversão ou "
-            "degradação significativa de habitats naturais serão classificados como Categoria B."
-        )
+#         st.write(
+#             "Projetos que envolvem a aquisição de commodities de recursos naturais "
+#             "(por exemplo, madeira) que possam contribuir para a conversão ou "
+#             "degradação significativa de habitats naturais serão classificados como Categoria B."
+#         )
 
-        st.write(
-            "Projetos que envolvem a produção ou colheita de recursos naturais vivos "
-            "de populações selvagens de espécies ameaçadas globalmente serão classificados como Categoria B."
-        )
+#         st.write(
+#             "Projetos que envolvem a produção ou colheita de recursos naturais vivos "
+#             "de populações selvagens de espécies ameaçadas globalmente serão classificados como Categoria B."
+#         )
 
-    # Nota de rodapé 3
-    st.caption(
-        "<sup>3</sup> Habitats críticos incluem, entre outros, áreas protegidas existentes "
-        "e propostas, áreas reconhecidas como protegidas por comunidades locais tradicionais, "
-        "bem como áreas identificadas como importantes para a conservação, como Áreas-Chave "
-        "de Biodiversidade (KBAs), Sítios da Aliança para Extinção Zero (AZE), Áreas "
-        "Importantes para Aves e Biodiversidade (IBAs), sítios Ramsar, etc.",
-        unsafe_allow_html=True
-    )
+#     # Nota de rodapé 3
+#     st.caption(
+#         "<sup>3</sup> Habitats críticos incluem, entre outros, áreas protegidas existentes "
+#         "e propostas, áreas reconhecidas como protegidas por comunidades locais tradicionais, "
+#         "bem como áreas identificadas como importantes para a conservação, como Áreas-Chave "
+#         "de Biodiversidade (KBAs), Sítios da Aliança para Extinção Zero (AZE), Áreas "
+#         "Importantes para Aves e Biodiversidade (IBAs), sítios Ramsar, etc.",
+#         unsafe_allow_html=True
+#     )
     
-    st.divider()
-
-
-    # 7. Povos Indígenas ----------------------------------------------------------------------------------
-
-    col1, col2, col3, col4, col5 = st.columns(largura_colunas, gap="medium")
-
-    col1.write("**7. Povos Indígenas**")
-
-    with col2:
-        st.radio(
-            "Aplicável?",
-            ["Sim", "Não"],
-            key="salv_7_aplicavel",
-            horizontal=True,
-            disabled=not modo_edicao
-        )
-
-    with col3:
-        st.write(
-            "O projeto proposto apresenta riscos significativos relacionados "
-            "aos impactos sobre Povos Indígenas?"
-        )
+#     st.divider()
+
+
+#     # 7. Povos Indígenas ----------------------------------------------------------------------------------
+
+#     col1, col2, col3, col4, col5 = st.columns(largura_colunas, gap="medium")
+
+#     col1.write("**7. Povos Indígenas**")
+
+#     with col2:
+#         st.radio(
+#             "Aplicável?",
+#             ["Sim", "Não"],
+#             key="salv_7_aplicavel",
+#             horizontal=True,
+#             disabled=not modo_edicao
+#         )
+
+#     with col3:
+#         st.write(
+#             "O projeto proposto apresenta riscos significativos relacionados "
+#             "aos impactos sobre Povos Indígenas?"
+#         )
 
-        st.text_area(
-            "Detalhes:",
-            key="salv_7_detalhes",
-            height=120,
-            disabled=not modo_edicao
-        )
+#         st.text_area(
+#             "Detalhes:",
+#             key="salv_7_detalhes",
+#             height=120,
+#             disabled=not modo_edicao
+#         )
 
-    with col4:
-        st.radio(
-            "Categoria de risco",
-            ["Categoria A", "Categoria B", "Categoria C"],
-            key="salv_7_categoria_risco",
-            disabled=not modo_edicao
-        )
+#     with col4:
+#         st.radio(
+#             "Categoria de risco",
+#             ["Categoria A", "Categoria B", "Categoria C"],
+#             key="salv_7_categoria_risco",
+#             disabled=not modo_edicao
+#         )
 
-    with col5:
-        st.write(
-            "Projetos que possam afetar Povos Indígenas em isolamento voluntário "
-            "ou grupos remotos com contato externo limitado serão classificados como Categoria A."
-        )
+#     with col5:
+#         st.write(
+#             "Projetos que possam afetar Povos Indígenas em isolamento voluntário "
+#             "ou grupos remotos com contato externo limitado serão classificados como Categoria A."
+#         )
 
-        st.write(
-            "Projetos que envolvam o uso de ou restrições de acesso a recursos naturais "
-            "que sejam centrais para a identidade, cultura e subsistência dos Povos Indígenas "
-            "serão classificados como Categoria B."
-        )
-
-        st.write(
-            "Projetos que envolvam o desenvolvimento comercial de terras e recursos naturais "
-            "centrais para a identidade e subsistência dos Povos Indígenas ou o uso comercial "
-            "de seu patrimônio cultural serão classificados como Categoria B."
-        )
-
-
-    st.divider()
+#         st.write(
+#             "Projetos que envolvam o uso de ou restrições de acesso a recursos naturais "
+#             "que sejam centrais para a identidade, cultura e subsistência dos Povos Indígenas "
+#             "serão classificados como Categoria B."
+#         )
+
+#         st.write(
+#             "Projetos que envolvam o desenvolvimento comercial de terras e recursos naturais "
+#             "centrais para a identidade e subsistência dos Povos Indígenas ou o uso comercial "
+#             "de seu patrimônio cultural serão classificados como Categoria B."
+#         )
+
+
+#     st.divider()
 
 
-    # 8. Patrimônio Cultural -------------------------------------------------------------------------------
+#     # 8. Patrimônio Cultural -------------------------------------------------------------------------------
 
-    col1, col2, col3, col4, col5 = st.columns(largura_colunas, gap="medium")
+#     col1, col2, col3, col4, col5 = st.columns(largura_colunas, gap="medium")
 
-    col1.write("**8. Patrimônio Cultural**")
+#     col1.write("**8. Patrimônio Cultural**")
 
-    with col2:
-        st.radio(
-            "Aplicável?",
-            ["Sim", "Não"],
-            key="salv_8_aplicavel",
-            horizontal=True,
-            disabled=not modo_edicao
-        )
+#     with col2:
+#         st.radio(
+#             "Aplicável?",
+#             ["Sim", "Não"],
+#             key="salv_8_aplicavel",
+#             horizontal=True,
+#             disabled=not modo_edicao
+#         )
 
-    with col3:
-        st.write(
-            "O projeto proposto apresenta riscos significativos relacionados "
-            "aos impactos sobre o patrimônio cultural tangível e/ou intangível?"
-        )
+#     with col3:
+#         st.write(
+#             "O projeto proposto apresenta riscos significativos relacionados "
+#             "aos impactos sobre o patrimônio cultural tangível e/ou intangível?"
+#         )
 
-        st.text_area(
-            "Detalhes:",
-            key="salv_8_detalhes",
-            height=120,
-            disabled=not modo_edicao
-        )
+#         st.text_area(
+#             "Detalhes:",
+#             key="salv_8_detalhes",
+#             height=120,
+#             disabled=not modo_edicao
+#         )
 
-    with col4:
-        st.radio(
-            "Categoria de risco",
-            ["Categoria A", "Categoria B", "Categoria C"],
-            key="salv_8_categoria_risco",
-            disabled=not modo_edicao
-        )
+#     with col4:
+#         st.radio(
+#             "Categoria de risco",
+#             ["Categoria A", "Categoria B", "Categoria C"],
+#             key="salv_8_categoria_risco",
+#             disabled=not modo_edicao
+#         )
 
-    with col5:
-        st.write(
-            "Projetos que introduzam restrições ao acesso das partes interessadas "
-            "ao patrimônio cultural serão classificados como Categoria B."
-        )
+#     with col5:
+#         st.write(
+#             "Projetos que introduzam restrições ao acesso das partes interessadas "
+#             "ao patrimônio cultural serão classificados como Categoria B."
+#         )
 
-        st.write(
-            "Projetos que envolvam o uso comercial de patrimônio cultural "
-            "serão classificados como Categoria B."
-        )
+#         st.write(
+#             "Projetos que envolvam o uso comercial de patrimônio cultural "
+#             "serão classificados como Categoria B."
+#         )
 
-    st.divider()
+#     st.divider()
 
 
-    # 9. Igualdade de Gênero -------------------------------------------------------------------------------
+#     # 9. Igualdade de Gênero -------------------------------------------------------------------------------
 
-    col1, col2, col3, col4, col5 = st.columns(largura_colunas, gap="medium")
+#     col1, col2, col3, col4, col5 = st.columns(largura_colunas, gap="medium")
 
-    col1.write("**9. Igualdade de Gênero**")
+#     col1.write("**9. Igualdade de Gênero**")
 
-    # Coluna 2 — política sempre aplicável
-    with col2:
+#     # Coluna 2 — política sempre aplicável
+#     with col2:
 
-        st.write("Sim")
-        st.caption("Aplica-se a todos os projetos")
+#         st.write("Sim")
+#         st.caption("Aplica-se a todos os projetos")
 
-        # Mantém o valor consistente para o salvamento
-        st.session_state["salv_9_aplicavel"] = "Sim"
+#         # Mantém o valor consistente para o salvamento
+#         st.session_state["salv_9_aplicavel"] = "Sim"
 
 
 
-    with col3:
-        st.write(
-            "O projeto proposto apresenta riscos significativos relacionados "
-            "a impactos na promoção, proteção e respeito à igualdade de gênero?"
-        )
+#     with col3:
+#         st.write(
+#             "O projeto proposto apresenta riscos significativos relacionados "
+#             "a impactos na promoção, proteção e respeito à igualdade de gênero?"
+#         )
 
-        st.text_area(
-            "Detalhes:",
-            key="salv_9_detalhes",
-            height=120,
-            disabled=not modo_edicao
-        )
+#         st.text_area(
+#             "Detalhes:",
+#             key="salv_9_detalhes",
+#             height=120,
+#             disabled=not modo_edicao
+#         )
 
-    with col4:
-        st.radio(
-            "Categoria de risco",
-            ["Categoria A", "Categoria B", "Categoria C"],
-            key="salv_9_categoria_risco",
-            disabled=not modo_edicao
-        )
+#     with col4:
+#         st.radio(
+#             "Categoria de risco",
+#             ["Categoria A", "Categoria B", "Categoria C"],
+#             key="salv_9_categoria_risco",
+#             disabled=not modo_edicao
+#         )
 
-    with col5:
-        st.write(
-            "Projetos serão tipicamente atribuídos à Categoria C para esta política, "
-            "a menos que existam riscos elevados de agravamento de desigualdades "
-            "existentes relacionadas ao gênero."
-        )
+#     with col5:
+#         st.write(
+#             "Projetos serão tipicamente atribuídos à Categoria C para esta política, "
+#             "a menos que existam riscos elevados de agravamento de desigualdades "
+#             "existentes relacionadas ao gênero."
+#         )
 
-    st.divider()
+#     st.divider()
 
 
-    # 10. Engajamento de Partes Interessadas ---------------------------------------------------------------
+#     # 10. Engajamento de Partes Interessadas ---------------------------------------------------------------
 
-    col1, col2, col3, col4, col5 = st.columns(largura_colunas, gap="medium")
+#     col1, col2, col3, col4, col5 = st.columns(largura_colunas, gap="medium")
 
-    col1.write("**10. Engajamento de Partes Interessadas**")
+#     col1.write("**10. Engajamento de Partes Interessadas**")
 
-    with col2:
-        st.write("Sim")
-        st.caption("Aplica-se a todos os projetos")
+#     with col2:
+#         st.write("Sim")
+#         st.caption("Aplica-se a todos os projetos")
 
-        # Mantém o valor consistente para o salvamento
-        st.session_state["salv_10_aplicavel"] = "Sim"
+#         # Mantém o valor consistente para o salvamento
+#         st.session_state["salv_10_aplicavel"] = "Sim"
 
-    col3.write("N/A")
-    col4.write("N/A")
+#     col3.write("N/A")
+#     col4.write("N/A")
 
-    col5.write(
-        "Não é necessário atribuir uma categoria de risco individual a esta política."
-    )
+#     col5.write(
+#         "Não é necessário atribuir uma categoria de risco individual a esta política."
+#     )
 
-    st.divider()
+#     st.divider()
 
 
 
@@ -4466,176 +4008,176 @@ with salvaguardas:
 
 
 
-    # CATEGORIA GERAL DE RISCO ---------------------------------------------------------------------------
+#     # CATEGORIA GERAL DE RISCO ---------------------------------------------------------------------------
 
-    col1, col2, col3, col4, col5 = st.columns(largura_colunas, gap="medium")
+#     col1, col2, col3, col4, col5 = st.columns(largura_colunas, gap="medium")
 
-    # Coluna 1
-    col1.write("**CATEGORIA GERAL DE RISCO**")
+#     # Coluna 1
+#     col1.write("**CATEGORIA GERAL DE RISCO**")
 
-    # Coluna 2
-    col2.write("N/A")
+#     # Coluna 2
+#     col2.write("N/A")
 
-    # Coluna 3
-    col3.write("N/A")
+#     # Coluna 3
+#     col3.write("N/A")
 
 
-    # Lê as categorias escolhidas nas perguntas 2 a 9
+#     # Lê as categorias escolhidas nas perguntas 2 a 9
 
-    categorias_filtradas = []
+#     categorias_filtradas = []
 
-    for i in range(2, 10):  # perguntas 2 a 9
+#     for i in range(2, 10):  # perguntas 2 a 9
 
-        aplicavel = st.session_state.get(f"salv_{i}_aplicavel")
-        categoria = st.session_state.get(f"salv_{i}_categoria_risco")
+#         aplicavel = st.session_state.get(f"salv_{i}_aplicavel")
+#         categoria = st.session_state.get(f"salv_{i}_categoria_risco")
 
-        if aplicavel == "Sim" and categoria:
-            categorias_filtradas.append(categoria)
+#         if aplicavel == "Sim" and categoria:
+#             categorias_filtradas.append(categoria)
 
-    # Determina automaticamente a categoria geral
-    # prioridade: A > B > C
+#     # Determina automaticamente a categoria geral
+#     # prioridade: A > B > C
     
-    if not categorias_filtradas:
-        categoria_geral = "Não avaliado"
-    elif "Categoria A" in categorias_filtradas:
-        categoria_geral = "Categoria A"
-    elif "Categoria B" in categorias_filtradas:
-        categoria_geral = "Categoria B"
-    else:
-        categoria_geral = "Categoria C"
+#     if not categorias_filtradas:
+#         categoria_geral = "Não avaliado"
+#     elif "Categoria A" in categorias_filtradas:
+#         categoria_geral = "Categoria A"
+#     elif "Categoria B" in categorias_filtradas:
+#         categoria_geral = "Categoria B"
+#     else:
+#         categoria_geral = "Categoria C"
 
-    # Coluna 4 — mostra o resultado calculado
-    col4.write('Resultado final:')
-    col4.write(f"**{categoria_geral}**")
-
-
-    # Coluna 5
-    col5.write(
-        "A categoria geral de risco para o projeto é equivalente à categoria mais alta "
-        "atribuída às políticas individuais de salvaguarda."
-    )
-
-    st.divider()
+#     # Coluna 4 — mostra o resultado calculado
+#     col4.write('Resultado final:')
+#     col4.write(f"**{categoria_geral}**")
 
 
+#     # Coluna 5
+#     col5.write(
+#         "A categoria geral de risco para o projeto é equivalente à categoria mais alta "
+#         "atribuída às políticas individuais de salvaguarda."
+#     )
 
-    # FORTALECIMENTO DE CAPACIDADE ---------------------------------------------------------------------------
-
-    largura_colunas = [2, 2, 3, 2, 3]
-
-    col1, col2 = st.columns([2, 11], gap="medium")
-
-
-    col1.write("**FORTALECIMENTO DE CAPACIDADE**")
-
-    col2.write("O solicitante necessita de fortalecimento de capacidade para gerenciar os riscos ambientais e sociais identificados aqui?")
-
-    col2.write("Se sim, descreva as atividades de fortalecimento de capacidade que precisam ser integradas ao desenho do projeto:")
-
-    col2.text_area(
-        "Detalhes:",
-        key="salv_fortalecimento_capacidades",
-        height=120,
-        disabled=not modo_edicao
-    )
-
-    st.divider()
+#     st.divider()
 
 
+
+#     # FORTALECIMENTO DE CAPACIDADE ---------------------------------------------------------------------------
+
+#     largura_colunas = [2, 2, 3, 2, 3]
+
+#     col1, col2 = st.columns([2, 11], gap="medium")
+
+
+#     col1.write("**FORTALECIMENTO DE CAPACIDADE**")
+
+#     col2.write("O solicitante necessita de fortalecimento de capacidade para gerenciar os riscos ambientais e sociais identificados aqui?")
+
+#     col2.write("Se sim, descreva as atividades de fortalecimento de capacidade que precisam ser integradas ao desenho do projeto:")
+
+#     col2.text_area(
+#         "Detalhes:",
+#         key="salv_fortalecimento_capacidades",
+#         height=120,
+#         disabled=not modo_edicao
+#     )
+
+#     st.divider()
 
 
 
 
 
 
-    st.write("")
 
 
-    # Botão somente para equipe e adimn
+#     st.write("")
 
-    if st.session_state.get("tipo_usuario") in ["equipe", "admin"]:
+
+#     # Botão somente para equipe e adimn
+
+#     if st.session_state.get("tipo_usuario") in ["equipe", "admin"]:
         
 
-        # Botão para salvar as respostas no banco
-        if st.button("Salvar", icon=":material/save:", width=200, type="primary"):
+#         # Botão para salvar as respostas no banco
+#         if st.button("Salvar", icon=":material/save:", width=200, type="primary"):
 
-            # Data da avaliação
-            data_avaliacao = datetime.datetime.today().strftime("%d/%m/%Y")
+#             # Data da avaliação
+#             data_avaliacao = datetime.datetime.today().strftime("%d/%m/%Y")
 
-            # Estrutura organizada das respostas de salvaguardas
-            dados_salvaguardas = {
+#             # Estrutura organizada das respostas de salvaguardas
+#             dados_salvaguardas = {
 
-                "nome_avaliador_risco": nome_avaliador,
-                "data_aval_risco": data_avaliacao,
-                "categoria_geral_risco": categoria_geral,
+#                 "nome_avaliador_risco": nome_avaliador,
+#                 "data_aval_risco": data_avaliacao,
+#                 "categoria_geral_risco": categoria_geral,
 
-                "pol_2_trabalho": {
-                    "aplicavel": st.session_state.get("salv_2_aplicavel"),
-                    "detalhes": st.session_state.get("salv_2_detalhes"),
-                    "categoria": st.session_state.get("salv_2_categoria_risco")
-                },
+#                 "pol_2_trabalho": {
+#                     "aplicavel": st.session_state.get("salv_2_aplicavel"),
+#                     "detalhes": st.session_state.get("salv_2_detalhes"),
+#                     "categoria": st.session_state.get("salv_2_categoria_risco")
+#                 },
 
-                "pol_3_poluicao": {
-                    "aplicavel": st.session_state.get("salv_3_aplicavel"),
-                    "detalhes_pesticidas": st.session_state.get("salv_3_pesticidas_detalhes"),
-                    "detalhes_poluicao": st.session_state.get("salv_3_poluicao_detalhes"),
-                    "categoria": st.session_state.get("salv_3_categoria_risco")
-                },
+#                 "pol_3_poluicao": {
+#                     "aplicavel": st.session_state.get("salv_3_aplicavel"),
+#                     "detalhes_pesticidas": st.session_state.get("salv_3_pesticidas_detalhes"),
+#                     "detalhes_poluicao": st.session_state.get("salv_3_poluicao_detalhes"),
+#                     "categoria": st.session_state.get("salv_3_categoria_risco")
+#                 },
 
-                "pol_4_comunidade": {
-                    "aplicavel": st.session_state.get("salv_4_aplicavel"),
-                    "detalhes": st.session_state.get("salv_4_detalhes"),
-                    "categoria": st.session_state.get("salv_4_categoria_risco")
-                },
+#                 "pol_4_comunidade": {
+#                     "aplicavel": st.session_state.get("salv_4_aplicavel"),
+#                     "detalhes": st.session_state.get("salv_4_detalhes"),
+#                     "categoria": st.session_state.get("salv_4_categoria_risco")
+#                 },
 
-                "pol_5_reassentamento": {
-                    "aplicavel": st.session_state.get("salv_5_aplicavel"),
-                    "detalhes": st.session_state.get("salv_5_detalhes"),
-                    "categoria": st.session_state.get("salv_5_categoria_risco")
-                },
+#                 "pol_5_reassentamento": {
+#                     "aplicavel": st.session_state.get("salv_5_aplicavel"),
+#                     "detalhes": st.session_state.get("salv_5_detalhes"),
+#                     "categoria": st.session_state.get("salv_5_categoria_risco")
+#                 },
 
-                "pol_6_biodiversidade": {
-                    "aplicavel": st.session_state.get("salv_6_aplicavel"),
-                    "detalhes": st.session_state.get("salv_6_detalhes"),
-                    "categoria": st.session_state.get("salv_6_categoria_risco")
-                },
+#                 "pol_6_biodiversidade": {
+#                     "aplicavel": st.session_state.get("salv_6_aplicavel"),
+#                     "detalhes": st.session_state.get("salv_6_detalhes"),
+#                     "categoria": st.session_state.get("salv_6_categoria_risco")
+#                 },
 
-                "pol_7_indigenas": {
-                    "aplicavel": st.session_state.get("salv_7_aplicavel"),
-                    "detalhes": st.session_state.get("salv_7_detalhes"),
-                    "categoria": st.session_state.get("salv_7_categoria_risco")
-                },
+#                 "pol_7_indigenas": {
+#                     "aplicavel": st.session_state.get("salv_7_aplicavel"),
+#                     "detalhes": st.session_state.get("salv_7_detalhes"),
+#                     "categoria": st.session_state.get("salv_7_categoria_risco")
+#                 },
 
-                "pol_8_patrimonio": {
-                    "aplicavel": st.session_state.get("salv_8_aplicavel"),
-                    "detalhes": st.session_state.get("salv_8_detalhes"),
-                    "categoria": st.session_state.get("salv_8_categoria_risco")
-                },
+#                 "pol_8_patrimonio": {
+#                     "aplicavel": st.session_state.get("salv_8_aplicavel"),
+#                     "detalhes": st.session_state.get("salv_8_detalhes"),
+#                     "categoria": st.session_state.get("salv_8_categoria_risco")
+#                 },
 
-                "pol_9_genero": {
-                    "aplicavel": st.session_state.get("salv_9_aplicavel"),
-                    "detalhes": st.session_state.get("salv_9_detalhes"),
-                    "categoria": st.session_state.get("salv_9_categoria_risco")
-                },
+#                 "pol_9_genero": {
+#                     "aplicavel": st.session_state.get("salv_9_aplicavel"),
+#                     "detalhes": st.session_state.get("salv_9_detalhes"),
+#                     "categoria": st.session_state.get("salv_9_categoria_risco")
+#                 },
 
-                "fortalecimento_capacidades": st.session_state.get("salv_fortalecimento_capacidades"),
-            }
+#                 "fortalecimento_capacidades": st.session_state.get("salv_fortalecimento_capacidades"),
+#             }
 
-            # Atualiza o documento do projeto no MongoDB
-            resultado = col_projetos.update_one(
-                {"codigo": codigo_projeto_atual},
-                {
-                    "$set": {
-                        "salvaguardas": dados_salvaguardas
-                    }
-                }
-            )
+#             # Atualiza o documento do projeto no MongoDB
+#             resultado = col_projetos.update_one(
+#                 {"codigo": codigo_projeto_atual},
+#                 {
+#                     "$set": {
+#                         "salvaguardas": dados_salvaguardas
+#                     }
+#                 }
+#             )
 
-            # Mostra mensagem de sucesso
-            if resultado.modified_count >= 0:
-                st.success("Respostas salvas com sucesso!", icon=":material/check:")
-                time.sleep(3)
-                st.rerun()
+#             # Mostra mensagem de sucesso
+#             if resultado.modified_count >= 0:
+#                 st.success("Respostas salvas com sucesso!", icon=":material/check:")
+#                 time.sleep(3)
+#                 st.rerun()
 
 
 
@@ -4675,40 +4217,26 @@ with remanejamentos:
 
 
     # Função para renderizar a interface no modo lista
-    def interface_lista_atividades(entregas):
+    def interface_lista_atividades(atividades):
 
-        st.markdown("<p style='color:#2F5AA1'>Selecione uma atividade para alterar:</p>", unsafe_allow_html=True)
+        for atividade in atividades:
 
-        for entrega in entregas:
+            nome_atividade = atividade.get("atividade")
+            id_atividade = atividade.get("id")
 
-            nome_entrega = entrega.get("entrega")
-            st.markdown(f"##### {nome_entrega}")
+            data_inicio = atividade.get("data_inicio") or "-"
+            data_fim = atividade.get("data_fim") or "-"
 
-            atividades = entrega.get("atividades", [])
+            label_botao = f"{nome_atividade} - {data_inicio} a {data_fim}"
 
-            for atividade in atividades:
-
-                nome_atividade = atividade.get("atividade")
-                id_atividade = atividade.get("id")
-
-                data_inicio = atividade.get("data_inicio") or "-"
-                data_fim = atividade.get("data_fim") or "-"
-
-                label_botao = f"{nome_atividade} - {data_inicio} a {data_fim}"
-
-                if st.button(
-                    label_botao,
-                    key=f"remanej_atv_{id_atividade}",
-                    type="tertiary",
-                ):
-
-                    # Guarda atividade selecionada
-                    st.session_state["atividade_remanejamento"] = atividade
-
-                    # Muda interface
-                    st.session_state["modo_remanejamento"] = "editar"
-
-                    st.rerun()    
+            if st.button(
+                label_botao,
+                key=f"remanej_atv_{id_atividade}",
+                type="tertiary",
+            ):
+                st.session_state["atividade_remanejamento"] = atividade
+                st.session_state["modo_remanejamento"] = "editar"
+                st.rerun() 
 
 
 
@@ -4985,7 +4513,7 @@ with remanejamentos:
                 opcoes_componentes = [""] + nomes_componentes
 
                 componente_selecionado = st.selectbox(
-                    "Selecione o componente",
+                    "Selecione o objetivo específico",
                     opcoes_componentes,
                     key="remanej_componente"
                 )
@@ -5018,17 +4546,12 @@ with remanejamentos:
 
                     if componente_obj:
 
-                        entregas = componente_obj.get("entregas", [])
+                        atividades = componente_obj.get("atividades", [])
 
                         if st.session_state["modo_remanejamento"] == "lista":
-
-                            interface_lista_atividades(entregas)
-
+                            interface_lista_atividades(atividades)
                         else:
-
                             interface_editar_atividade()
-
-
 
             # ------------------------------------------------------------------
             # ADICIONAR ATIVIDADE
@@ -5047,17 +4570,14 @@ with remanejamentos:
                 opcoes_componentes = [""] + nomes_componentes
 
                 componente_sel = st.selectbox(
-                    "Selecione o componente",
+                    "Selecione o objetivo específico",
                     opcoes_componentes,
                     key="add_componente"
                 )
 
                 # -----------------------------------------------------------------------------------
-                # Selecionar entrega
+                # Selecionar atividade
                 # -----------------------------------------------------------------------------------
-
-                entrega_sel = None
-                entregas = []
 
                 if componente_sel:
 
@@ -5067,152 +4587,20 @@ with remanejamentos:
                     )
 
                     if comp_obj:
-                        entregas = comp_obj.get("entregas", [])
 
-                        nomes_entregas = [""] + [e.get("entrega") for e in entregas]
+                        st.write("")
 
-                        entrega_sel = st.selectbox(
-                            "Selecione a entrega",
-                            nomes_entregas,
-                            key="add_entrega"
-                        )
+                        descricao = st.text_area("Descrição da atividade")
 
+                        col1, col2 = st.columns(2)
 
-                # -----------------------------------------------------------------------------------
-                # Formulário da nova atividade
-                # -----------------------------------------------------------------------------------
+                        with col1:
+                            data_inicio = st.date_input("Data de início", format="DD/MM/YYYY")
 
-                if entrega_sel:
+                        with col2:
+                            data_fim = st.date_input("Data de fim", format="DD/MM/YYYY")
 
-                    st.write("")
-
-                    descricao = st.text_area(
-                        "Descrição da atividade",
-                        key="add_desc_atividade"
-                    )
-
-                    col1, col2 = st.columns(2)
-
-                    with col1:
-                        data_inicio = st.date_input(
-                            "Data de início",
-                            format="DD/MM/YYYY",
-                            key="add_data_inicio"
-                        )
-
-                    with col2:
-                        data_fim = st.date_input(
-                            "Data de fim",
-                            format="DD/MM/YYYY",
-                            key="add_data_fim"
-                        )
-
-                    justificativa = st.text_area(
-                        "Justificativa",
-                        key="add_justificativa"
-                    )
-
-                    st.write("")
-
-
-                    # -----------------------------------------------------------------------------------
-                    # Botões de ação
-                    # -----------------------------------------------------------------------------------
-
-                    with st.container(horizontal=True):
-
-                        # --------------------------------------------------
-                        # Botão cancelar
-                        # --------------------------------------------------
-                        if st.button(
-                            "Cancelar",
-                            icon=":material/close:",
-                            type="secondary"
-                        ):
-                            st.session_state["mostrar_remanejamento"] = False
-                            st.rerun()
-
-
-                        # --------------------------------------------------
-                        # Botão enviar solicitação
-                        # --------------------------------------------------
-                        if st.button(
-                            "Enviar solicitação de nova atividade",
-                            icon=":material/outgoing_mail:",
-                            type="primary"
-                        ):
-
-                            with st.spinner("Enviando solicitação..."):
-
-                                # --------------------------------------------------
-                                # Validações
-                                # --------------------------------------------------
-
-                                if not descricao.strip():
-                                    st.warning("Informe a descrição da atividade.")
-                                    st.stop()
-
-                                if not justificativa.strip():
-                                    st.warning("Informe a justificativa.")
-                                    st.stop()
-
-                                if data_inicio > data_fim:
-                                    st.warning("Data de início não pode ser maior que a data de fim.")
-                                    st.stop()
-
-                                # --------------------------------------------------
-                                # Criar objeto de solicitação
-                                # --------------------------------------------------
-
-                                nova_solicitacao = {
-
-                                    "tipo_remanejamento": "adicionar_atividade",
-
-                                    "data_solicit_remanej": datetime.datetime.now().strftime("%d/%m/%Y"),
-
-                                    "status_remanejamento": "em_analise",
-
-                                    "add_atividade": descricao,
-
-                                    "data_inicio": data_inicio.strftime("%d/%m/%Y"),
-
-                                    "data_fim": data_fim.strftime("%d/%m/%Y"),
-
-                                    "justificativa": justificativa,
-
-                                    "autor": st.session_state.get("nome")
-                                }
-
-                                # --------------------------------------------------
-                                # Salvar no Mongo
-                                # --------------------------------------------------
-
-                                col_projetos.update_one(
-                                    {"codigo": codigo_projeto_atual},
-                                    {
-                                        "$push": {
-                                            "plano_trabalho.remanejamentos_atividades": nova_solicitacao
-                                        }
-                                    }
-                                )
-
-                                # --------------------------------------------------
-                                # Enviar email
-                                # --------------------------------------------------
-
-                                enviar_email_nova_atividade(
-                                    codigo_projeto_atual,
-                                    projeto_dict,
-                                )
-
-                                st.success("Solicitação enviada com sucesso!", icon=":material/check:")
-
-                                st.session_state["mostrar_remanejamento"] = False
-
-                                time.sleep(3)
-
-                                st.rerun()
-
+                        justificativa = st.text_area("Justificativa")
 
 
             # ------------------------------------------------------------------
@@ -5231,19 +4619,14 @@ with remanejamentos:
                 opcoes_componentes = [""] + nomes_componentes
 
                 componente_sel = st.selectbox(
-                    "Selecione o componente",
+                    "Selecione o objetivo específico",
                     opcoes_componentes,
                     key="del_componente"
                 )
 
-
-
                 # --------------------------------------------------
-                # Selecionar entrega
+                # Selecionar atividade
                 # --------------------------------------------------
-
-                entrega_sel = None
-                entregas = []
 
                 if componente_sel:
 
@@ -5254,47 +4637,13 @@ with remanejamentos:
 
                     if comp_obj:
 
-                        entregas = comp_obj.get("entregas", [])
+                        atividades = comp_obj.get("atividades", [])
 
-                        nomes_entregas = [""] + [
-                            e.get("entrega") for e in entregas
-                        ]
-
-                        entrega_sel = st.selectbox(
-                            "Selecione a entrega",
-                            nomes_entregas,
-                            key="del_entrega"
-                        )
-
-
-
-                # --------------------------------------------------
-                # Selecionar atividade
-                # --------------------------------------------------
-
-                atividade_sel = None
-                atividade_obj = None
-
-                if entrega_sel:
-
-                    ent_obj = next(
-                        (e for e in entregas if e.get("entrega") == entrega_sel),
-                        None
-                    )
-
-                    if ent_obj:
-
-                        atividades = ent_obj.get("atividades", [])
-
-                        nomes_atividades = [""] + [
-                            a.get("atividade")
-                            for a in atividades
-                        ]
+                        nomes_atividades = [""] + [a.get("atividade") for a in atividades]
 
                         atividade_sel = st.selectbox(
                             "Selecione a atividade",
-                            nomes_atividades,
-                            key="del_atividade"
+                            nomes_atividades
                         )
 
                         if atividade_sel:
@@ -5303,126 +4652,6 @@ with remanejamentos:
                                 (a for a in atividades if a.get("atividade") == atividade_sel),
                                 None
                             )
-
-
-
-                # --------------------------------------------------
-                # Formulário
-                # --------------------------------------------------
-
-                if atividade_obj:
-
-                    st.write("")
-
-                    justificativa = st.text_area(
-                        "Justificativa",
-                        key="del_justificativa"
-                    )
-
-                    st.write("")
-
-
-                    with st.container(horizontal=True):
-
-                        # --------------------------------------------------
-                        # Cancelar
-                        # --------------------------------------------------
-
-
-                        if st.button(
-                            "Cancelar",
-                            icon=":material/close:",
-                            type="secondary",
-                        ):
-
-                            st.session_state["mostrar_remanejamento"] = False
-                            st.rerun()
-
-
-
-                        # --------------------------------------------------
-                        # Enviar solicitação
-                        # --------------------------------------------------
-
-
-                        if st.button(
-                            "Enviar solicitação de remoção de atividade",
-                            icon=":material/outgoing_mail:",
-                            type="primary",
-                        ):
-
-                            with st.spinner("Enviando solicitação..."):
-
-                                if not justificativa.strip():
-
-                                    st.warning("Informe a justificativa.")
-                                    st.stop()
-
-
-
-                                nova_solicitacao = {
-
-                                    "tipo_remanejamento": "remover_atividade",
-
-                                    "data_solicit_remanej": datetime.datetime.now().strftime("%d/%m/%Y"),
-
-                                    "status_remanejamento": "em_analise",
-
-                                    "atividade_id": atividade_obj.get("id"),
-
-                                    "del_atividade": atividade_sel,
-
-                                    "justificativa": justificativa,
-
-                                    "autor": st.session_state.get("nome")
-                                }
-
-
-
-                                col_projetos.update_one(
-                                    {"codigo": codigo_projeto_atual},
-                                    {
-                                        "$push": {
-                                            "plano_trabalho.remanejamentos_atividades": nova_solicitacao
-                                        }
-                                    }
-                                )
-
-
-
-                                # --------------------------------------------------
-                                # Enviar email
-                                # --------------------------------------------------
-
-                                projeto_atualizado = col_projetos.find_one(
-                                    {"codigo": codigo_projeto_atual}
-                                )
-
-                                enviar_email_remocao_atividade_solicitada(
-                                    codigo_projeto_atual,
-                                    projeto_atualizado
-                                )
-
-
-
-                                st.success(
-                                    "Solicitação enviada com sucesso!",
-                                    icon=":material/check:"
-                                )
-
-                                st.session_state["mostrar_remanejamento"] = False
-
-                                time.sleep(3)
-
-                                st.rerun()
-
-
-
-
-
-
-
-
 
     # --------------------------------------------------
     # Inicializa controle de exibição do formulário
