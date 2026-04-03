@@ -2203,7 +2203,7 @@ with col_identificacao:
 
 
 #plano_trabalho, impactos, indicadores, monitoramento, salvaguardas, remanejamentos = st.tabs(["Plano de trabalho", "Impactos", "Indicadores do Portifólio", "Plano de Monitoramento", "Salvaguardas", "Remanejamentos"])
-plano_trabalho, indicadores, monitoramento, remanejamentos = st.tabs(["Plano de trabalho", "Indicadores do Portifólio", "Plano de Monitoramento", "Remanejamentos"])
+plano_trabalho, indicadores, remanejamentos = st.tabs(["Plano de trabalho", "Indicadores do Portifólio", "Remanejamentos"])
 
 
 
@@ -3237,51 +3237,6 @@ with indicadores:
 
                 # Separador visual entre indicadores
                 st.divider()
-
-
-
-
-
-
-# ###################################################################################################
-# MONITORAMENTO
-# ###################################################################################################
-
-
-
-with monitoramento:
-
-    # ------------------------------------------------------------------
-    # Título principal
-    # ------------------------------------------------------------------
-    st.subheader("Plano de Monitoramento")
-
-    # ------------------------------------------------------------------
-    # NORMALIZAÇÃO SEGURA DO PLANO DE TRABALHO
-    # ------------------------------------------------------------------
-    # Nunca acessar df["plano_trabalho"] direto (pode não existir)
-    # ------------------------------------------------------------------
-
-    projeto_dict = df_projeto.iloc[0].to_dict()
-
-    plano_trabalho_dict = projeto_dict.get("plano_trabalho") or {}
-
-    if not isinstance(plano_trabalho_dict, dict):
-        plano_trabalho_dict = {}
-
-    componentes = plano_trabalho_dict.get("componentes") or []
-
-    if not isinstance(componentes, list):
-        componentes = []
-
-    # ------------------------------------------------------------------
-    # RENDERIZAÇÃO CONDICIONAL (SEM stop)
-    # ------------------------------------------------------------------
-
-    if not componentes:
-
-        st.caption("Este projeto ainda não possui objetivos específicos cadastrados.")
-
 
 
 # ###################################################################################################
