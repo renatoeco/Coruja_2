@@ -757,22 +757,20 @@ if not editar_cadastro:
         componentes = plano.get("componentes", [])
 
         for comp in componentes:
-            entregas = comp.get("entregas", [])
+            # Agora atividades estão direto no componente
+            atividades = comp.get("atividades", [])
 
-            for ent in entregas:
-                atividades = ent.get("atividades", [])
+            for atv in atividades:
 
-                for atv in atividades:
+                # Calcula status normalmente
+                status = calcular_status_atividade(atv)
 
-                    # Calcula o status da atividade usando sua função
-                    status = calcular_status_atividade(atv)
-
-                    # Filtra apenas atividades atrasadas
-                    if status in ["atrasada"]:
-                        atividades_criticas.append({
-                            "nome": atv.get("atividade", "Sem nome"),
-                            "status": status
-                        })
+                # Filtra atividades atrasadas
+                if status in ["atrasada"]:
+                    atividades_criticas.append({
+                        "nome": atv.get("atividade", "Sem nome"),
+                        "status": status
+                    })
 
         # Exibe a seção apenas se houver atividades críticas
         if atividades_criticas:
