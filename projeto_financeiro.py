@@ -2807,6 +2807,10 @@ with orcamento:
             df_orcamento["id_despesa"] = None
 
 
+        # Organizar df_orcamento por ordem alfebética na coluna Categoria de despesa
+        df_orcamento = df_orcamento.sort_values("categoria", ignore_index=True)
+
+
 
         # -----------------------------------
         # Editor
