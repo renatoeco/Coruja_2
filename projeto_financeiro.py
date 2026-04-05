@@ -392,8 +392,15 @@ def enviar_email_remanejamento_recusado(
 
     codigo = projeto.get("codigo")
     nome_projeto = projeto.get("nome_do_projeto")
-    organizacao = projeto.get("organizacao")
-
+    
+        # -----------------------------------
+    # Recupera nome da organização via mapa global
+    # -----------------------------------
+    organizacao = mapa_org_id_nome.get(
+        projeto.get("id_organizacao"),
+        ""
+    )
+    
     reduzidas = item_remanejamento.get("reduzidas", [])
     aumentadas = item_remanejamento.get("aumentadas", [])
     justificativa = item_remanejamento.get("justificativa", "")
@@ -555,7 +562,8 @@ def enviar_email_remanejamento_aprovado(
 
     codigo = projeto.get("codigo")
     nome_projeto = projeto.get("nome_do_projeto")
-    organizacao = projeto.get("organizacao")
+
+    organizacao = mapa_org_id_nome.get(projeto.get("id_organizacao"), "")
 
     reduzidas = item_remanejamento.get("reduzidas", [])
     aumentadas = item_remanejamento.get("aumentadas", [])
@@ -3841,19 +3849,29 @@ with remanejamentos:
 
 
 
-                            # --------------------------------------------------
-                            # Enviar e-mails de notificação
-                            # --------------------------------------------------
+                            # -----------------------------------
+                            # Recupera nome da organização via mapa
+                            # -----------------------------------
+                            organizacao_nome = mapa_org_id_nome.get(
+                                projeto.get("id_organizacao"),
+                                ""
+                            )
+
+                            # -----------------------------------
+                            # Enviar e-mail
+                            # -----------------------------------
                             enviar_email_remanejamento(
                                 db,
                                 projeto["codigo"],
                                 projeto["sigla"],
                                 projeto["nome_do_projeto"],
-                                projeto["organizacao"],
+                                organizacao_nome,
                                 reduzidas,
                                 aumentadas,
                                 status_remanejamento
                             )
+
+
 
 
 
