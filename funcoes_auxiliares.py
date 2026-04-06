@@ -383,7 +383,7 @@ def enviar_email(corpo_html: str, destinatarios: list[str], assunto: str):
     # Criando mensagem
     msg = MIMEMultipart()
     # msg["From"] = endereco_email
-    msg["From"] = formataddr(("Sistema de Gestão de Projetos do IEB", endereco_email))
+    msg["From"] = formataddr(("Sistema de Gestão de Projetos do Fundo Ecos", endereco_email))
     msg["To"] = ", ".join(destinatarios)
     msg["Subject"] = assunto
 
