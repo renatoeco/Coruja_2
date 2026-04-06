@@ -136,7 +136,7 @@ def renderizar_acoes_remanejamento(item, idx):
 
     status = item.get("status_remanejamento")
 
-    if st.session_state.get("tipo_usuario") in ["admin", "equipe"] and status != "aceito":
+    if st.session_state.get("tipo_usuario") in ["admin", "equipe"] and status == "em_analise":
 
         # ==================================================
         # BOTÃO APROVAR
@@ -202,8 +202,6 @@ def renderizar_acoes_remanejamento(item, idx):
                     "atividade": descricao,
                     "data_inicio": data_inicio,
                     "data_fim": data_fim,
-                    # "status_atividade": "prevista",
-                    "porcentagem_atv": 0
                 }
 
                 col_projetos.update_one(
@@ -430,6 +428,8 @@ def renderizar_card_del(item, idx):
     data_solic = item.get("data_solicit_remanej")
     data_aprov = item.get("data_aprov_remanej")
     status = item.get("status_remanejamento")
+    
+    componente = item.get("componente")
 
     atividade = item.get("del_atividade")
     justificativa = item.get("justificativa")
@@ -448,17 +448,31 @@ def renderizar_card_del(item, idx):
 
         with col1:
             st.write(f"**Data da solicitação:** {data_solic}")
+            st.write("")
+            st.write("")
+            
+            
 
         with col2:
             if data_aprov:
                 st.write(f"**Data de aceite:** {data_aprov}")
+                st.write("")
+                st.write("")
+        
+            
+            
+                
+        with col1:
+            st.write(f"**Objetivo específico:** {componente}")
+
+        with col1:
+            st.write(f"**Atividade a ser removida:** {atividade}")
+            
+        
 
         st.write("")
-
-        st.write("**Atividade a ser removida:**")
-        st.write(atividade)
-
         st.write("")
+        
         st.write(f"**Justificativa:** {justificativa}")
 
 
@@ -548,11 +562,9 @@ def renderizar_card_add(item):
         st.write("")
 
         st.write(f"**Objetivo específico:** {componente}")
-
-        st.write("")
-
         st.write(f"**Nova atividade proposta:** {atividade}")
-    
+        
+        st.write("")
     
         col1, col2 = st.columns(2)
     
@@ -721,15 +733,6 @@ def renderizar_card_alteracao(
 
     st.write("")
     st.write(f"**Justificativa:** {item.get('justificativa','')}")
-
-
-
-
-
-
-
-
-
 
 
 # ==================================================
@@ -2099,8 +2102,8 @@ def dialog_relatos():
 # TRATAMENTO DE DADOS
 ###########################################################################################################
 
-# Logo hospedada no site do IEB para renderizar nos e-mails.
-logo_cepf = "https://cepfcerrado.iieb.org.br/wp-content/uploads/2025/02/LogoConjuntaCEPFIEBGREEN-768x140.png"
+# Logo hospedada no site do Fundo Ecos para renderizar nos e-mails.
+logo_cepf = "https://fundoecos.org.br/wp-content/uploads/2025/05/Logo-Fundo-Ecos-PNG-sem-fundo-sem-margem.png"
 
 
 codigo_projeto_atual = st.session_state.get("projeto_atual")
@@ -4514,14 +4517,9 @@ with remanejamentos:
 
             elif tipo_remanejamento == "Adicionar atividade":
 
-                # -----------------------------------------------------------------------------------
-                # Selecionar componente
-                # -----------------------------------------------------------------------------------
-
                 componentes = plano_trabalho.get("componentes", [])
 
                 nomes_componentes = [c.get("componente") for c in componentes]
-
                 opcoes_componentes = [""] + nomes_componentes
 
                 componente_sel = st.selectbox(
@@ -4529,10 +4527,6 @@ with remanejamentos:
                     opcoes_componentes,
                     key="add_componente"
                 )
-
-                # -----------------------------------------------------------------------------------
-                # Selecionar atividade
-                # -----------------------------------------------------------------------------------
 
                 if componente_sel:
 
@@ -4545,17 +4539,96 @@ with remanejamentos:
 
                         st.write("")
 
-                        descricao = st.text_area("Descrição da atividade")
+                        descricao = st.text_area("Descrição da atividade", key="add_desc")
 
                         col1, col2 = st.columns(2)
 
                         with col1:
-                            data_inicio = st.date_input("Data de início", format="DD/MM/YYYY")
+                            data_inicio = st.date_input(
+                                "Data de início",
+                                format="DD/MM/YYYY",
+                                key="add_data_inicio"
+                            )
 
                         with col2:
-                            data_fim = st.date_input("Data de fim", format="DD/MM/YYYY")
+                            data_fim = st.date_input(
+                                "Data de fim",
+                                format="DD/MM/YYYY",
+                                key="add_data_fim"
+                            )
 
-                        justificativa = st.text_area("Justificativa")
+                        justificativa = st.text_area("Justificativa", key="add_justificativa")
+
+                        st.write("")
+
+                        # BOTÕES
+                        with st.container(horizontal=True):
+
+                        
+                            if st.button("Cancelar", key="cancel_add", icon=":material/close:", width=200):
+                                st.session_state["mostrar_remanejamento"] = False
+                                st.rerun()
+
+                        
+                            if st.button(
+                                "Enviar solicitação de remanejamento",
+                                icon=":material/outgoing_mail:",
+                                type="primary",
+                                key="submit_add"
+                            ):
+
+                                if not descricao.strip():
+                                    st.warning("Informe a descrição da atividade.")
+                                    return
+
+                                if not justificativa.strip():
+                                    st.warning("Informe a justificativa.")
+                                    return
+
+                                novo_remanejamento = {
+
+                                    "tipo_remanejamento": "adicionar_atividade",
+
+                                    "data_solicit_remanej": datetime.datetime.today().strftime("%d/%m/%Y"),
+
+                                    "status_remanejamento": "em_analise",
+
+                                    "componente": componente_sel,
+                                    "add_atividade": descricao,
+                                    "data_inicio": data_inicio.strftime("%d/%m/%Y"),
+                                    "data_fim": data_fim.strftime("%d/%m/%Y"),
+
+                                    "justificativa": justificativa,
+                                    "autor": st.session_state.get("nome")
+                                }
+
+                                col_projetos.update_one(
+                                    {"codigo": codigo_projeto_atual},
+                                    {
+                                        "$push": {
+                                            "plano_trabalho.remanejamentos_atividades": novo_remanejamento
+                                        }
+                                    }
+                                )
+
+                                projeto_atualizado = col_projetos.find_one(
+                                    {"codigo": codigo_projeto_atual}
+                                )
+
+                                enviar_email_nova_atividade(
+                                    codigo_projeto_atual,
+                                    projeto_atualizado
+                                )
+                                
+                                st.session_state["modo_remanejamento"] = "lista"
+                                st.session_state.pop("atividade_remanejamento", None)
+
+                                # Esconde o container de nova solicitação
+                                st.session_state["mostrar_remanejamento"] = False
+
+                                st.success("Solicitação enviada com sucesso!")
+                                time.sleep(2)
+                                st.rerun()
 
 
             # ------------------------------------------------------------------
@@ -4566,10 +4639,6 @@ with remanejamentos:
 
                 componentes = plano_trabalho.get("componentes", [])
 
-                # --------------------------------------------------
-                # Selecionar componente
-                # --------------------------------------------------
-
                 nomes_componentes = [c.get("componente") for c in componentes]
                 opcoes_componentes = [""] + nomes_componentes
 
@@ -4578,10 +4647,6 @@ with remanejamentos:
                     opcoes_componentes,
                     key="del_componente"
                 )
-
-                # --------------------------------------------------
-                # Selecionar atividade
-                # --------------------------------------------------
 
                 if componente_sel:
 
@@ -4598,7 +4663,8 @@ with remanejamentos:
 
                         atividade_sel = st.selectbox(
                             "Selecione a atividade",
-                            nomes_atividades
+                            nomes_atividades,
+                            key="del_atividade_sel"
                         )
 
                         if atividade_sel:
@@ -4607,6 +4673,99 @@ with remanejamentos:
                                 (a for a in atividades if a.get("atividade") == atividade_sel),
                                 None
                             )
+
+                            justificativa = st.text_area(
+                                "Justificativa",
+                                key="del_justificativa"
+                            )
+
+                            st.write("")
+
+                            # BOTÕES
+                            with st.container(horizontal=True):
+
+                         
+                                if st.button("Cancelar", key="cancel_del", icon=":material/close:", width=200):
+                                    st.session_state["mostrar_remanejamento"] = False
+                                    st.rerun()
+
+                       
+                                if st.button(
+                                    "Enviar solicitação de remanejamento",
+                                    icon=":material/outgoing_mail:",
+                                    type="primary",
+                                    key="submit_del"
+                                ):
+
+                                    if not justificativa.strip():
+                                        st.warning("Informe a justificativa.")
+                                        return
+
+                                    # ==================================================
+                                    # VERIFICA SE JÁ EXISTE SOLICITAÇÃO DE REMOÇÃO
+                                    # ==================================================
+
+                                    lista_remanejamentos = plano_trabalho.get("remanejamentos_atividades", []) or []
+
+                                    ja_existe = any(
+                                        r.get("tipo_remanejamento") == "remover_atividade"
+                                        and r.get("atividade_id") == atividade_obj.get("id")
+                                        and r.get("status_remanejamento") == "em_analise"
+                                        for r in lista_remanejamentos
+                                    )
+
+                                    if ja_existe:
+                                        st.warning("Já existe uma solicitação de remoção em análise para esta atividade.")
+                                        return
+
+                                    # ==================================================
+                                    # CRIA REMANEJAMENTO
+                                    # ==================================================
+
+                                    novo_remanejamento = {
+
+                                        "tipo_remanejamento": "remover_atividade",
+
+                                        "data_solicit_remanej": datetime.datetime.today().strftime("%d/%m/%Y"),
+
+                                        "status_remanejamento": "em_analise",
+
+                                        "componente": componente_sel,
+                                        "atividade_id": atividade_obj.get("id"),
+                                        "del_atividade": atividade_sel,
+
+                                        "justificativa": justificativa,
+                                        "autor": st.session_state.get("nome")
+                                    }
+
+                                    col_projetos.update_one(
+                                        {"codigo": codigo_projeto_atual},
+                                        {
+                                            "$push": {
+                                                "plano_trabalho.remanejamentos_atividades": novo_remanejamento
+                                            }
+                                        }
+                                    )
+
+                                    projeto_atualizado = col_projetos.find_one(
+                                        {"codigo": codigo_projeto_atual}
+                                    )
+
+                                    enviar_email_remocao_atividade_solicitada(
+                                        codigo_projeto_atual,
+                                        projeto_atualizado
+                                    )
+                                    
+                                    st.session_state["modo_remanejamento"] = "lista"
+                                    st.session_state.pop("atividade_remanejamento", None)
+
+                                    # Esconde o container de nova solicitação
+                                    st.session_state["mostrar_remanejamento"] = False
+
+                                    st.success("Solicitação enviada com sucesso!")
+                                    time.sleep(2)
+                                    st.rerun()
+
 
     # --------------------------------------------------
     # Inicializa controle de exibição do formulário
