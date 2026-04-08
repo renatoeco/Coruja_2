@@ -88,14 +88,8 @@ col_projetos = db["projetos"]
 # Coleção de UFs e Municípios
 col_ufs_munic = db["ufs_municipios"]
 
-# Coleção de corredores
-col_corredores = db["corredores"]
-
-# Coleção de KBAs
-col_kbas = db["kbas"]
-
-
-
+# Coleção de organizações
+col_organizacoes = db["organizacoes"] 
 
 
 ###########################################################################################################
@@ -158,26 +152,6 @@ sigla_por_codigo_uf = {
 locais = projeto.get("locais", {})
 
 
-# Lista completa de corredores disponíveis
-lista_corredores = list(
-    col_corredores.find(
-        {},
-        {"_id": 0, "id_corredor": 1, "nome_corredor": 1}
-    ).sort("nome_corredor", 1)
-)
-
-
-# Lista completa de KBAs disponíveis
-lista_kbas = list(
-    col_kbas.find(
-        {},
-        {"_id": 0, "id_kba": 1, "nome_kba": 1}
-    ).sort("nome_kba", 1)
-)
-
-
-
-
 ###########################################################################################################
 # FUNÇÕES
 ###########################################################################################################
@@ -193,10 +167,6 @@ def extrair_lat_long_google_maps(link):
         return latitude, longitude
     except (IndexError, AttributeError):
         return None, None
-
-
-
-
 
 
 # -------------------------------------------------------------------------------
@@ -562,11 +532,6 @@ def dialog_editar_areas_protegidas():
             placeholder="Selecione os municípios"
         )
 
-        gerente_area_protegida = st.text_input(
-            "Autoridade, gerente ou proprietário",
-            placeholder="Ex: ICMBio / Secretaria Estadual / Associação Local"
-        )
-
         st.write("")
 
         if st.button(
@@ -586,14 +551,9 @@ def dialog_editar_areas_protegidas():
                 st.error("Selecione ao menos um município.")
                 return
 
-            if not gerente_area_protegida.strip():
-                st.error("Informe o responsável pela área protegida.")
-                return
-
             nova_area = {
                 "nome_area_protegida": nome_area_protegida.strip(),
                 "municipios": municipios_selecionados,
-                "gerente_area_protegida": gerente_area_protegida.strip()
             }
 
             areas_atual = locais.get("areas_protegidas", [])
@@ -665,137 +625,7 @@ def dialog_editar_areas_protegidas():
             st.success("Área protegida excluída com sucesso!", icon=":material/check:")
             time.sleep(3)
             st.rerun()
-
-
-
-@st.dialog("Editar Corredores Prioritários de Conservação", width="medium")
-def dialog_editar_corredores():
-
-    st.write("")
-
-    # --------------------------------------------------
-    # NOMES DISPONÍVEIS
-    # --------------------------------------------------
-    nomes_corredores = [
-        c["nome_corredor"]
-        for c in lista_corredores
-    ]
-
-    nomes_corredores = sorted(
-        nomes_corredores,
-        key=lambda x: x.lower()
-    )
-
-    corredores_default = [
-        c["nome_corredor"]
-        for c in locais.get("corredores", [])
-        if c.get("nome_corredor") in nomes_corredores
-    ]
-
-    corredores_selecionados = st.multiselect(
-        "Selecione os corredores prioritários de conservação",
-        options=nomes_corredores,
-        default=corredores_default,
-        placeholder="Selecione os corredores"
-    )
-
-    st.write("")
-
-    # --------------------------------------------------
-    # SALVAR
-    # --------------------------------------------------
-    if st.button(
-        "Salvar",
-        icon=":material/save:",
-        key="salvar_corredores_dialogo"
-    ):
-
-        corredores_para_salvar = [
-            {
-                "id_corredor": c["id_corredor"],
-                "nome_corredor": c["nome_corredor"]
-            }
-            for c in lista_corredores
-            if c["nome_corredor"] in corredores_selecionados
-        ]
-
-        col_projetos.update_one(
-            {"codigo": codigo_projeto_atual},
-            {
-                "$set": {
-                    "locais.corredores": corredores_para_salvar
-                }
-            }
-        )
-
-        st.success("Corredores atualizados com sucesso!", icon=":material/check:")
-        time.sleep(3)
-        st.rerun()
-
-
-
-@st.dialog("Editar KBAs", width="medium")
-def dialog_editar_kbas():
-
-    st.write("")
-
-    # --------------------------------------------------
-    # NOMES DE KBAs DISPONÍVEIS
-    # --------------------------------------------------
-    nomes_kbas = sorted(
-        [kba["nome_kba"] for kba in lista_kbas],
-        key=lambda x: x.lower()
-    )
-
-    kbas_default = [
-        kba["nome_kba"]
-        for kba in locais.get("kbas", [])
-        if kba.get("nome_kba") in nomes_kbas
-    ]
-
-    kbas_selecionadas = st.multiselect(
-        "Selecione as KBAs associadas ao projeto",
-        options=nomes_kbas,
-        default=kbas_default,
-        placeholder="Selecione as KBAs"
-    )
-
-    st.write("")
-
-    # --------------------------------------------------
-    # SALVAR
-    # --------------------------------------------------
-    if st.button(
-        "Salvar",
-        icon=":material/save:",
-        key="salvar_kbas_dialogo"
-    ):
-
-        kbas_para_salvar = [
-            {
-                "id_kba": kba["id_kba"],
-                "nome_kba": kba["nome_kba"]
-            }
-            for kba in lista_kbas
-            if kba["nome_kba"] in kbas_selecionadas
-        ]
-
-        col_projetos.update_one(
-            {"codigo": codigo_projeto_atual},
-            {
-                "$set": {
-                    "locais.kbas": kbas_para_salvar
-                }
-            }
-        )
-
-        st.success("KBAs atualizadas com sucesso!", icon=":material/check:")
-        time.sleep(3)
-        st.rerun()
-
-
-
-
+       
 
 @st.dialog("Mapas do Projeto", width="large")
 def dialog_mapas():
@@ -1103,79 +933,7 @@ with aba_cadastro:
                     key=lambda x: x.get("nome_area_protegida", "").lower()
                 ):
                     st.write(f"**{area.get('nome_area_protegida')}** - {', '.join(area.get('municipios', []))}")
-                    st.caption(
-                        f"Responsável: {area.get('gerente_area_protegida')}"
-                    )
-
-
-
-
-
-    # Colunas para Corredores e KBAs
-    col_corredores, col_kbas = st.columns(2)
-
-
-    # -------------------------------------------------------------------------------
-    # SEÇÃO — CORREDORES
-    # -------------------------------------------------------------------------------
-    with col_corredores.container(border=True):
-
-        col_botao, col_titulo = st.columns([1, 30])
-
-        with col_botao:
-            if st.button(
-                "",
-                icon=":material/edit:",
-                key="editar_corredores",
-                type="tertiary"
-            ):
-                dialog_editar_corredores()
-
-        with col_titulo:
-            st.markdown("#### Corredores Prioritários de Conservação")
-
-            corredores_cadastrados = locais.get("corredores", [])
-
-            if not corredores_cadastrados:
-                st.caption("Nenhum corredor cadastrado para este projeto.")
-            else:
-                for corredor in sorted(
-                    corredores_cadastrados,
-                    key=lambda x: x.get("nome_corredor", "").lower()
-                ):
-                    st.write(corredor.get("nome_corredor", ""))
-
-
-    # -------------------------------------------------------------------------------
-    # SEÇÃO — KBAs
-    # -------------------------------------------------------------------------------
-    with col_kbas.container(border=True):
-
-        col_botao, col_titulo = st.columns([1, 30])
-
-        with col_botao:
-            if st.button(
-                "",
-                icon=":material/edit:",
-                key="editar_kbas",
-                type="tertiary"
-            ):
-                dialog_editar_kbas()
-
-        with col_titulo:
-            st.markdown("#### KBAs (Áreas Chave de Biodiversidade)")
-
-            kbas_cadastradas = locais.get("kbas", [])
-
-            if not kbas_cadastradas:
-                st.caption("Nenhuma KBA cadastrada para este projeto.")
-            else:
-                for kba in sorted(
-                    kbas_cadastradas,
-                    key=lambda x: x.get("nome_kba", "").lower()
-                ):
-                    st.write(kba.get("nome_kba", ""))
-
+                    
 
     # -------------------------------------------------------------------------------
     # SEÇÃO — MAPAS
@@ -1215,6 +973,23 @@ with aba_mapas:
 
     else:
         projeto = df_projeto.iloc[0]
+        
+        # ------------------------------------------------------------------
+        # BUSCAR NOME DA ORGANIZAÇÃO
+        # ------------------------------------------------------------------
+
+        organizacao_id = projeto.get("id_organizacao")
+
+        nome_organizacao = None
+
+        if organizacao_id:
+            org_doc = col_organizacoes.find_one(
+                {"_id": organizacao_id},   # ou {"id": organizacao_id} dependendo da sua estrutura
+                {"sigla_organizacao": 1}
+            )
+            
+            if org_doc:
+                nome_organizacao = org_doc.get("sigla_organizacao")
 
         locais = projeto.get("locais", {})
         localidades = locais.get("localidades", [])
@@ -1232,7 +1007,7 @@ with aba_mapas:
                 "codigo": projeto.get("codigo"),
                 "sigla": projeto.get("sigla"),
                 "nome_projeto": projeto.get("nome_do_projeto"),
-                "organizacao": projeto.get("organizacao"),
+                "organizacao": nome_organizacao,
                 "municipio": local.get("municipio"),
                 "localidade": local.get("nome_localidade"),
                 "latitude": lat,
