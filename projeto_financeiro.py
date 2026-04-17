@@ -204,12 +204,12 @@ def notifica_parcelas_desencontradas():
         # -----------------------------------
         valor_total_base = financeiro.get("valor_total") or 0.0
         valor_aditivo = financeiro.get("valor_aditivo") or 0.0
-        valor_devolucao = financeiro.get("valor_devolucao") or 0.0
+        #valor_devolucao = financeiro.get("valor_devolucao") or 0.0
 
         # -----------------------------------
         # Calcular valor total ajustado
         # -----------------------------------
-        valor_total_ajustado = valor_total_base + valor_aditivo - valor_devolucao
+        valor_total_ajustado = valor_total_base + valor_aditivo
 
         # -----------------------------------
         # Parcelas cadastradas
@@ -1651,7 +1651,7 @@ with cron_desemb:
             # Recuperar valores atuais do banco
             # -----------------------------------
             valor_aditivo_atual = financeiro.get("valor_aditivo", 0.0)
-            valor_devolucao_atual = financeiro.get("valor_devolucao", 0.0)
+            #valor_devolucao_atual = financeiro.get("valor_devolucao", 0.0)
 
             # -----------------------------------
             # Coluna 1: Inputs
@@ -1682,25 +1682,24 @@ with cron_desemb:
                     # -----------------------------------
                     # Layout em duas colunas para aditivo e devolução
                     # -----------------------------------
-                    col_aditivo, col_devolucao = st.columns(2)
+                    #col_aditivo, col_devolucao = st.columns(2)
+                  
+                    valor_aditivo = st.number_input(
+                        "Aditivo (R$)",
+                        step=100.0,
+                        format="%.2f",
+                        value=float(valor_aditivo_atual) if valor_aditivo_atual is not None else 0.0,
+                        width=300
+                    )
 
-                    with col_aditivo:
-                        valor_aditivo = st.number_input(
-                            "Aditivo (R$)",
-                            step=100.0,
-                            format="%.2f",
-                            value=float(valor_aditivo_atual) if valor_aditivo_atual is not None else 0.0,
-                            width=300
-                        )
-
-                    with col_devolucao:
-                        valor_devolucao = st.number_input(
-                            "Devolução (R$)",
-                            step=100.0,
-                            format="%.2f",
-                            value=float(valor_devolucao_atual) if valor_devolucao_atual is not None else 0.0,
-                            width=300
-                        )
+                    # with col_devolucao:
+                    #     valor_devolucao = st.number_input(
+                    #         "Devolução (R$)",
+                    #         step=100.0,
+                    #         format="%.2f",
+                    #         value=float(valor_devolucao_atual) if valor_devolucao_atual is not None else 0.0,
+                    #         width=300
+                    #     )
 
                     st.write('')
 
@@ -1721,7 +1720,7 @@ with cron_desemb:
                                 "$set": {
                                     "financeiro.valor_total": float(valor_total),
                                     "financeiro.valor_aditivo": float(valor_aditivo),
-                                    "financeiro.valor_devolucao": float(valor_devolucao)
+                                    #"financeiro.valor_devolucao": float(valor_devolucao)
                                 }
                             }
                         )
@@ -1741,17 +1740,17 @@ with cron_desemb:
                 valor_total_base = float(valor_atual) if valor_atual is not None else 0.0
 
                 valor_aditivo = valor_aditivo_atual or 0.0
-                valor_devolucao = valor_devolucao_atual or 0.0
+                #valor_devolucao = valor_devolucao_atual or 0.0
 
                 # -----------------------------------
                 # Calcular valor final atualizado
                 # -----------------------------------
-                valor_atualizado = valor_total_base + valor_aditivo - valor_devolucao
+                valor_atualizado = valor_total_base + valor_aditivo
 
                 # -----------------------------------
                 # Exibir apenas se houver ajuste
                 # -----------------------------------
-                if valor_aditivo != 0 or valor_devolucao != 0:
+                if valor_aditivo != 0:
 
                     st.metric(
                         "Valor final com Aditivo / Devolução",
@@ -1780,9 +1779,9 @@ with cron_desemb:
             valor_total_base = valor_atual if valor_atual is not None else 0.0
 
             valor_aditivo = financeiro.get("valor_aditivo") or 0.0
-            valor_devolucao = financeiro.get("valor_devolucao") or 0.0
+            #valor_devolucao = financeiro.get("valor_devolucao") or 0.0
 
-            valor_total = valor_total_base + valor_aditivo - valor_devolucao
+            valor_total = valor_total_base + valor_aditivo
 
 
 
@@ -2245,9 +2244,9 @@ with orcamento:
         # -----------------------------------
         valor_total_base = financeiro.get("valor_total") or 0.0
         valor_aditivo = financeiro.get("valor_aditivo") or 0.0
-        valor_devolucao = financeiro.get("valor_devolucao") or 0.0
+        #valor_devolucao = financeiro.get("valor_devolucao") or 0.0
 
-        valor_total_projeto = valor_total_base + valor_aditivo - valor_devolucao
+        valor_total_projeto = valor_total_base + valor_aditivo
 
 
 
@@ -2312,9 +2311,9 @@ with orcamento:
         # -----------------------------------
         valor_total_base = financeiro.get("valor_total") or 0.0
         valor_aditivo = financeiro.get("valor_aditivo") or 0.0
-        valor_devolucao = financeiro.get("valor_devolucao") or 0.0
+        #valor_devolucao = financeiro.get("valor_devolucao") or 0.0
 
-        valor_total = valor_total_base + valor_aditivo - valor_devolucao
+        valor_total = valor_total_base + valor_aditivo
 
 
 
