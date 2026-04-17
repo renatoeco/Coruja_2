@@ -1315,9 +1315,6 @@ def atualizar_datas_relatorios(col_projetos, codigo_projeto):
                 # Mantém o número do relatório
                 "numero": numero,
 
-                # Mantém as entregas já existentes no banco
-                "entregas": r.get("entregas", []),
-
                 # Atualiza (ou mantém) a data prevista calculada
                 "data_prevista": data_relatorio,
 
@@ -1558,10 +1555,7 @@ with cron_desemb:
             linhas_cronograma.append(
                 {
                     "evento": f"Relatório {numero}",
-                    "Entregas": " / ".join(entregas) if entregas else "",
 
-                    # "Entregas": "\n".join(entregas) if entregas else "",
-                    # "Entregas": "<br>".join(entregas) if entregas else "",
                     "Valor R$": "",
                     # "Percentual": "",
                     "Data prevista": pd.to_datetime(
@@ -1578,6 +1572,8 @@ with cron_desemb:
         # DataFrame final
         # -----------------------------
         df_cronograma = pd.DataFrame(linhas_cronograma)
+        df_cronograma = df_cronograma.replace({pd.NA: None})
+        df_cronograma = df_cronograma.fillna("")
 
 
         if df_cronograma.empty:
@@ -2085,28 +2081,6 @@ with cron_desemb:
 
 
             # --------------------------------------------------
-            # Coletar TODAS as entregas do projeto
-            # --------------------------------------------------
-
-            entregas_projeto = []
-
-            plano = projeto.get("plano_trabalho", {})
-            for componente in plano.get("componentes", []):
-                for entrega in componente.get("entregas", []):
-                    if entrega.get("entrega"):
-                        entregas_projeto.append(entrega["entrega"])
-
-            entregas_projeto = sorted(set(entregas_projeto))
-
-            # Agora sim, valida se está vazio
-            if not entregas_projeto:
-                st.warning(
-                    "Nenhuma entrega cadastrada para este projeto. "
-                    "Cadastre as entregas no Plano de Trabalho antes de continuar.", icon=":material/warning:"
-                )
-
-
-            # --------------------------------------------------
             # Parcelas
             # --------------------------------------------------
             parcelas = financeiro.get("parcelas", [])
@@ -2143,7 +2117,6 @@ with cron_desemb:
                         {
                             "numero": numero,
                             "data_prevista": data_relatorio,
-                            "entregas": [],
                         }
                     )
 
@@ -2166,31 +2139,18 @@ with cron_desemb:
                                 df_relatorios_base["numero"] == numero
                             ][0]
 
-                            df_relatorios_base.at[idx, "entregas"] = row.get("entregas", [])
-
-
-                # Garantir que entregas seja sempre lista
-                df_relatorios_base["entregas"] = df_relatorios_base["entregas"].apply(
-                    lambda x: x if isinstance(x, list) else []
-                )
 
                 # --------------------------------------------------
                 # Editor (linhas fixas)
                 # --------------------------------------------------
                 df_editado = st.data_editor(
-                    df_relatorios_base[["numero", "entregas", "data_prevista"]],
+                    df_relatorios_base[["numero", "data_prevista"]],
                     num_rows="fixed",
                     column_config={
                         "numero": st.column_config.NumberColumn(
                             "Número (auto)",
                             disabled=True,
                             width=5
-                        ),
-                        "entregas": st.column_config.MultiselectColumn(
-                            "Entregas",
-                            options=[""] + entregas_projeto,
-                            help="Selecione as entregas relacionadas a este relatório",
-                            width=800
                         ),
                         "data_prevista": st.column_config.DateColumn(
                             "Data prevista (auto)",
@@ -2214,12 +2174,9 @@ with cron_desemb:
 
                     for _, row in df_editado.iterrows():
 
-                        entregas = [e for e in row["entregas"] if e]
-
                         relatorios_salvar.append(
                             {
                                 "numero": int(row["numero"]),
-                                "entregas": entregas,
                                 "data_prevista": (
                                     None
                                     if pd.isna(row["data_prevista"])
@@ -3548,7 +3505,7 @@ with remanejamentos:
                 # ==================================================
                 with st.container(horizontal=True, horizontal_alignment="center"):
                     if st.button(
-                        "+ Adicionar linha",
+                        "Adicionar linha",
                         key=f"{prefixo}_add",
                         icon=":material/add:",
                         type="tertiary"
