@@ -122,7 +122,7 @@ col_investidores = db["investidores"]
 ###########################################################################################################
 
 # Logo hospedada no site do IEB para renderizar nos e-mails.
-logo_cepf = "https://cepfcerrado.iieb.org.br/wp-content/uploads/2025/02/LogoConjuntaCEPFIEBGREEN-768x140.png"
+logo_cepf = "https://fundoecos.org.br/wp-content/uploads/2025/05/Logo-Fundo-Ecos-PNG-sem-fundo-sem-margem.png"
 
 
 
