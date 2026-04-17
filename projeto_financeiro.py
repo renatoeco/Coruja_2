@@ -2480,9 +2480,9 @@ with orcamento:
             "categoria",
             "nome_despesa",
             "descricao_despesa",
-            "unidade",
-            "quantidade",
-            "valor_unitario",
+            #"unidade",
+            #"quantidade",
+            #"valor_unitario",
             "valor_total",
         ]:
             if col not in df_orcamento.columns:
@@ -2496,7 +2496,7 @@ with orcamento:
                 return ""
             return f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-        df_orcamento["Valor unitário"] = df_orcamento["valor_unitario"].apply(fmt_moeda)
+        #df_orcamento["Valor unitário"] = df_orcamento["valor_unitario"].apply(fmt_moeda)
         df_orcamento["Valor total"] = df_orcamento["valor_total"].apply(fmt_moeda)
         df_orcamento["Gasto"] = df_orcamento["gasto"].apply(fmt_moeda)
         df_orcamento["Saldo"] = df_orcamento["saldo"].apply(fmt_moeda)
@@ -2537,9 +2537,9 @@ with orcamento:
                     "categoria": linha.get("categoria", ""),
                     "nome_despesa": linha.get("nome_despesa", ""),
                     "descricao_despesa": linha.get("descricao_despesa", ""),
-                    "unidade": linha.get("unidade", ""),
-                    "quantidade": linha.get("quantidade", 0),
-                    "valor_unitario": linha.get("valor_unitario", 0),
+                    #"unidade": linha.get("unidade", ""),
+                    #"quantidade": linha.get("quantidade", 0),
+                    #"valor_unitario": linha.get("valor_unitario", 0),
                     "valor_total": linha.get("valor_total", 0),
                     "indice": idx,
                 }
@@ -2688,9 +2688,9 @@ with orcamento:
                     "categoria",
                     "nome_despesa",
                     "descricao_despesa",
-                    "unidade",
-                    "quantidade",
-                    "valor_unitario",
+                    #"unidade",
+                    #"quantidade",
+                    #"valor_unitario",
                     "id_despesa"
                 ]
             )
@@ -2702,9 +2702,9 @@ with orcamento:
             "categoria",
             "nome_despesa",
             "descricao_despesa",
-            "unidade",
-            "quantidade",
-            "valor_unitario",
+            #"unidade",
+            #"quantidade",
+            #"valor_unitario",
             "id_despesa"
         ]:
             if col not in df_orcamento.columns:
@@ -2713,15 +2713,15 @@ with orcamento:
         # -----------------------------------
         # Preencher valores nulos
         # -----------------------------------
-        df_orcamento["quantidade"] = df_orcamento["quantidade"].fillna(0)
-        df_orcamento["valor_unitario"] = df_orcamento["valor_unitario"].fillna(0)
+        #df_orcamento["quantidade"] = df_orcamento["quantidade"].fillna(0)
+        #df_orcamento["valor_unitario"] = df_orcamento["valor_unitario"].fillna(0)
 
         # -----------------------------------
         # Calcular valor total
         # -----------------------------------
-        df_orcamento["valor_total"] = (
-            df_orcamento["quantidade"] * df_orcamento["valor_unitario"]
-        )
+        # df_orcamento["valor_total"] = (
+        #     df_orcamento["quantidade"] * df_orcamento["valor_unitario"]
+        # )
 
 
         # -----------------------------------
@@ -2748,9 +2748,9 @@ with orcamento:
         # -----------------------------------
         # Aplicar formatação
         # -----------------------------------
-        df_orcamento["quantidade_fmt"] = df_orcamento["quantidade"].apply(format_decimal)
+        #df_orcamento["quantidade_fmt"] = df_orcamento["quantidade"].apply(format_decimal)
 
-        df_orcamento["valor_unitario_fmt"] = df_orcamento["valor_unitario"].apply(format_brl)
+        #df_orcamento["valor_unitario_fmt"] = df_orcamento["valor_unitario"].apply(format_brl)
         df_orcamento["valor_total_fmt"] = df_orcamento["valor_total"].apply(format_brl)
 
 
@@ -2778,9 +2778,9 @@ with orcamento:
                     "categoria",
                     "nome_despesa",
                     "descricao_despesa",
-                    "unidade",
-                    "quantidade_fmt",
-                    "valor_unitario_fmt",
+                    #"unidade",
+                    #"quantidade_fmt",
+                    #"valor_unitario_fmt",
                     "valor_total_fmt",
                 ]
             ],
@@ -2800,18 +2800,18 @@ with orcamento:
                 "descricao_despesa": st.column_config.TextColumn(
                     "Descrição"
                 ),
-                "unidade": st.column_config.TextColumn(
-                    "Unidade"
-                ),
-                "quantidade_fmt": st.column_config.TextColumn(
-                    "Quantidade"
-                ),
-                "valor_unitario_fmt": st.column_config.TextColumn(
-                    "Valor unitário (R$)"
-                ),
+                # "unidade": st.column_config.TextColumn(
+                #     "Unidade"
+                # ),
+                # "quantidade_fmt": st.column_config.TextColumn(
+                #     "Quantidade"
+                # ),
+                # "valor_unitario_fmt": st.column_config.TextColumn(
+                #     "Valor unitário (R$)"
+                # ),
                 "valor_total_fmt": st.column_config.TextColumn(
                     "Valor total (auto)",
-                    disabled=True
+                    required=True
                 ),
             },
             key="editor_orcamento",
@@ -2867,19 +2867,19 @@ with orcamento:
             # -----------------------------------
             # Converter quantidade
             # -----------------------------------
-            df_salvar["quantidade"] = df_salvar["quantidade_fmt"].apply(parse_decimal)
+            #df_salvar["quantidade"] = df_salvar["quantidade_fmt"].apply(parse_decimal)
 
             # -----------------------------------
             # Converter valor unitário
             # -----------------------------------
-            df_salvar["valor_unitario"] = df_salvar["valor_unitario_fmt"].apply(parse_brl)
+            #df_salvar["valor_unitario"] = df_salvar["valor_unitario_fmt"].apply(parse_brl)
 
             # -----------------------------------
             # Recalcular total
             # -----------------------------------
-            df_salvar["valor_total"] = (
-                df_salvar["quantidade"] * df_salvar["valor_unitario"]
-            )
+            # df_salvar["valor_total"] = (
+            #     df_salvar["quantidade"] * df_salvar["valor_unitario"]
+            # )
 
             # -----------------------------------
             # ORÇAMENTO ATUAL DO BANCO
@@ -2896,6 +2896,11 @@ with orcamento:
             }
 
             novo_orcamento = []
+
+            # -----------------------------------
+            # Converter valor formatado para float
+            # -----------------------------------
+            df_salvar["valor_total"] = df_salvar["valor_total_fmt"].apply(parse_brl)
 
             # -----------------------------------
             # LOOP PRINCIPAL
@@ -2934,9 +2939,9 @@ with orcamento:
                     "categoria": row["categoria"],
                     "nome_despesa": row["nome_despesa"],
                     "descricao_despesa": row.get("descricao_despesa"),
-                    "unidade": row.get("unidade"),
-                    "quantidade": float(row["quantidade"]),
-                    "valor_unitario": float(row["valor_unitario"]),
+                    #"unidade": row.get("unidade"),
+                    #"quantidade": float(row["quantidade"]),
+                    #"valor_unitario": float(row["valor_unitario"]),
                     "valor_total": float(row["valor_total"]),
 
                     # Preservar lançamentos existentes
