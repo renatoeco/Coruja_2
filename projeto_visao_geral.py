@@ -382,7 +382,6 @@ df_publicos = pd.DataFrame(list(col_publicos.find()))
 df_organizacoes = pd.DataFrame(list(col_organizacoes.find()))
 
 
-
 ###########################################################################################################
 # MAPA ID -> NOME DA ORGANIZAÇÃO
 ###########################################################################################################
@@ -464,13 +463,6 @@ df_projeto = df_projeto.merge(
 )
 
 
-
-
-
-
-
-
-
 ###########################################################################################################
 # INTERFACE PRINCIPAL DA PÁGINA
 ###########################################################################################################
@@ -544,17 +536,15 @@ if not editar_cadastro:
             )
 
 
-
-
     # ---------- RESPONSÁVEL(IS) (DERIVADO DA COLEÇÃO DE PESSOAS | SOMENTE BENEFICIÁRIOS) ----------
 
     codigo_projeto = projeto["codigo"]
 
     df_responsaveis = df_pessoas[
-        (df_pessoas["tipo_usuario"] == "beneficiario") &   # 👈 filtra tipo
+        (df_pessoas["tipo_usuario"] == "beneficiario") &   # filtra tipo
         (
             df_pessoas["projetos"].apply(
-                lambda x: isinstance(x, list) and codigo_projeto in x
+                lambda x: codigo_projeto in (x if isinstance(x, list) else [x])
             )
         )
     ]
@@ -624,27 +614,11 @@ if not editar_cadastro:
     if publicos:
         st.write("**Beneficiários:**", " / ".join(publicos))
 
-
-
-
-
-
-
     st.divider()
-
-
-
-
-
-
-
-
-
 
     # #############################################################################################
     # STATUS DO PROJETO
     # #############################################################################################
-
 
 
     status_projeto = df_projeto["status"].values[0]
@@ -734,13 +708,8 @@ if not editar_cadastro:
                 elif dias_atraso < 0:
                     st.write(f"Faltam **{abs(dias_atraso)} dias**.")
 
-
-
-
     st.write('')
     st.write('')
-
-
 
 
     ###########################################################################################################
@@ -805,11 +774,6 @@ if not editar_cadastro:
                 )
 
         st.divider()
-
-
-
-
-
 
     st.markdown('#### Anotações')
 
@@ -983,7 +947,6 @@ if not editar_cadastro:
     # ============================================================
 
 
-
     anotacoes = (
         df_projeto["anotacoes"].values[0]
         if "anotacoes" in df_projeto.columns
@@ -1018,22 +981,9 @@ if not editar_cadastro:
             ui.table(data=df_anotacoes, key="tabela_anotacoes_fixa")
 
 
-
-
     st.write('')
     st.write('')
     st.write('')
-
-
-
-
-
-
-
-
-
-
-
 
     # Visitas 
     st.markdown('#### Visitas')
@@ -1168,7 +1118,6 @@ if not editar_cadastro:
                     st.error("Erro ao atualizar visita.")
 
 
-
     # Botão para abrir o dialogo de gerenciar visitas (só pra usuários internos)
 
     if usuario_interno:
@@ -1181,9 +1130,6 @@ if not editar_cadastro:
                 key="gerenciar_visitas"
             ):
                 gerenciar_visitas()
-
-
-
 
 
     # ============================================================
@@ -1205,13 +1151,9 @@ if not editar_cadastro:
             ui.table(data=df_visitas, key="tabela_visitas_fixa")
 
 
-
-
     st.write('')
     st.write('')
     st.write('')
-
-
 
 
     # ============================================================
@@ -1271,11 +1213,12 @@ if not editar_cadastro:
 
                 # Estrutura do contato
                 contato = {
+                    "id": str(bson.ObjectId()),
                     "nome": nome.strip(),
                     "funcao": funcao.strip(),
                     "telefone": telefone.strip(),
                     "email": email.strip(),
-                    "assina_docs": assina_docs,  # 👈 NOVO
+                    "assina_docs": assina_docs,
                     "autor": st.session_state.nome,
                 }
 
@@ -1292,12 +1235,6 @@ if not editar_cadastro:
                 else:
                     st.error("Erro ao salvar contato.")
 
-
-
-
-
-
-
         # ========================================================
         # EDITAR CONTATO
         # ========================================================
@@ -1310,20 +1247,45 @@ if not editar_cadastro:
                 else []
             )
 
-            # Mostra apenas contatos criados pelo usuário
+            # -------------------------------
+            # CONTATOS NORMAIS
+            # -------------------------------
             contatos_usuario = [
                 c for c in contatos_local
                 if c.get("autor") == st.session_state.nome
             ]
 
-            if not contatos_usuario:
-                st.write("Não há contatos cadastrados por você.")
+            for c in contatos_usuario:
+                c["origem"] = "contato"
+
+            # -------------------------------
+            # BENEFICIÁRIOS
+            # -------------------------------
+            codigo_projeto = projeto["codigo"]
+
+            beneficiarios = df_pessoas[
+                (df_pessoas["tipo_usuario"] == "beneficiario") &
+                (
+                    df_pessoas["projetos"].apply(
+                        lambda x: codigo_projeto in (x if isinstance(x, list) else [x])
+                    )
+                )
+            ].to_dict("records")
+
+            for b in beneficiarios:
+                b["origem"] = "beneficiario"
+
+            # Junta
+            contatos_editaveis = contatos_usuario + beneficiarios
+
+            if not contatos_editaveis:
+                st.write("Não há contatos ou beneficiários disponíveis.")
                 return
 
             # Mapa amigável para seleção
             mapa_contatos = {
-                f"{c['nome']} — {c['funcao']}": c
-                for c in contatos_usuario
+                f"{c.get('nome', c.get('nome_completo'))} — {c.get('funcao', 'Beneficiário')}": c
+                for c in contatos_editaveis
             }
 
             contato_label = st.selectbox(
@@ -1333,22 +1295,44 @@ if not editar_cadastro:
 
             contato_selecionado = mapa_contatos[contato_label]
 
-            # Campos editáveis
-            nome = st.text_input("Nome", value=contato_selecionado["nome"])
-            funcao = st.text_input("Função no projeto", value=contato_selecionado["funcao"])
-            telefone = st.text_input("Telefone", value=contato_selecionado.get("telefone", ""))
-            email = st.text_input("E-mail", value=contato_selecionado.get("email", ""))
+            # Cria um identificador único do contato
+            id_contato = str(contato_selecionado.get("_id", contato_selecionado.get("nome", "")))
 
-            # CHECKBOX PRÉ-CARREGADO DO BANCO
-            assina_docs = st.checkbox(
-                "Incluir na assinatura de contratos e recibos",
-                value=contato_selecionado.get("assina_docs", False),
-                key=f"editar_contato_assina_docs_{contato_selecionado['nome']}"
+            nome = st.text_input(
+                "Nome",
+                value=contato_selecionado.get("nome", contato_selecionado.get("nome_completo", "")),
+                key=f"edit_nome_{id_contato}"
             )
 
+            funcao = st.text_input(
+                "Função no projeto",
+                value=contato_selecionado.get("funcao", "Beneficiário"),
+                key=f"edit_funcao_{id_contato}"
+            )
+
+            telefone = st.text_input(
+                "Telefone",
+                value=contato_selecionado.get("telefone", ""),
+                key=f"edit_tel_{id_contato}"
+            )
+
+            email = st.text_input(
+                "E-mail",
+                value=contato_selecionado.get("email", contato_selecionado.get("e_mail", "")),
+                key=f"edit_email_{id_contato}"
+            )
+
+            # CHECKBOX PRÉ-CARREGADO DO BANCO
+            if contato_selecionado.get("origem") == "contato":
+                assina_docs = st.checkbox(
+                    "Incluir na assinatura de contratos e recibos",
+                    value=contato_selecionado.get("assina_docs", False),
+                    key=f"editar_contato_assina_docs_{nome}"
+                )
+            else:
+                assina_docs = False  # ignorado
 
             st.write('')
-            # Botão de salvar alterações
             if st.button(
                 "Salvar alterações",
                 type="primary",
@@ -1356,39 +1340,61 @@ if not editar_cadastro:
                 key="salvar_editar_contato"
             ):
 
+                # ------------------------------
+                # VALIDAÇÃO
+                # ------------------------------
                 if not nome.strip() or not funcao.strip():
                     st.warning("Nome e função são obrigatórios.")
                     return
 
-                # Atualiza o contato específico
-                resultado = col_projetos.update_one(
-                    {
-                        "codigo": st.session_state.projeto_atual,
-                        "contatos.nome": contato_selecionado["nome"],
-                        "contatos.funcao": contato_selecionado["funcao"],
-                        "contatos.autor": st.session_state.nome,
-                    },
-                    {
-                        "$set": {
-                            "contatos.$.nome": nome.strip(),
-                            "contatos.$.funcao": funcao.strip(),
-                            "contatos.$.telefone": telefone.strip(),
-                            "contatos.$.email": email.strip(),
-                            "contatos.$.assina_docs": assina_docs,  # 👈 NOVO
-                        }
-                    }
-                )
+                # ------------------------------
+                # ATUALIZA CONTATO (coleção projetos)
+                # ------------------------------
+                if contato_selecionado.get("origem") == "contato":
 
+                    resultado = col_projetos.update_one(
+                        {
+                            "codigo": st.session_state.projeto_atual,
+                            "contatos.id": contato_selecionado.get("id")  # USA ID (CORRETO)
+                        },
+                        {
+                            "$set": {
+                                "contatos.$.nome": nome.strip(),
+                                "contatos.$.funcao": funcao.strip(),
+                                "contatos.$.telefone": telefone.strip(),
+                                "contatos.$.email": email.strip(),
+                                "contatos.$.assina_docs": assina_docs,
+                            }
+                        }
+                    )
+
+                # ------------------------------
+                # ATUALIZA BENEFICIÁRIO (coleção pessoas)
+                # ------------------------------
+                else:
+
+                    resultado = col_pessoas.update_one(
+                        {"_id": ObjectId(contato_selecionado["_id"])},  # CORREÇÃO DO _id
+                        {
+                            "$set": {
+                                "nome_completo": nome.strip(),
+                                "telefone": telefone.strip(),
+                                "e_mail": email.strip(),
+                            }
+                        }
+                    )
+
+                # ------------------------------
+                # FEEDBACK (ESSENCIAL)
+                # ------------------------------
                 if resultado.modified_count == 1:
                     st.success("Contato atualizado com sucesso!", icon=":material/check:")
                     time.sleep(2)
                     st.rerun()
                 else:
-                    st.error("Erro ao atualizar contato.")
+                    st.warning("Nenhuma alteração foi detectada.")
 
-
-
-
+    
     with st.container(horizontal=True, horizontal_alignment="right"):
         if st.button(
             "Gerenciar contatos",
@@ -1400,22 +1406,54 @@ if not editar_cadastro:
             gerenciar_contatos()
 
 
-
-
-
-
-
-
+    # -------------------------------
+    # CONTATOS DO PROJETO
+    # -------------------------------
     contatos = (
         df_projeto["contatos"].values[0]
         if "contatos" in df_projeto.columns and df_projeto["contatos"].values[0]
         else []
     )
 
-    if not contatos:
+    # -------------------------------
+    # BENEFICIÁRIOS DO PROJETO
+    # -------------------------------
+    codigo_projeto = projeto["codigo"]
+
+    df_beneficiarios = df_pessoas[
+        (df_pessoas["tipo_usuario"] == "beneficiario") &
+        (
+            df_pessoas["projetos"].apply(
+                lambda x: codigo_projeto in (x if isinstance(x, list) else [x])
+            )
+        )
+    ].copy()
+
+    # Padroniza para "formato de contato"
+    beneficiarios_formatados = []
+
+    for _, row in df_beneficiarios.iterrows():
+        beneficiarios_formatados.append({
+            "nome": row.get("nome_completo"),
+            "funcao": "Beneficiário",
+            "telefone": row.get("telefone", ""),
+            "email": row.get("e_mail", ""),
+            "assina_docs": False,
+            "origem": "beneficiario",   # IMPORTANTE
+            "_id": row.get("_id")
+        })
+
+    # Marca contatos normais
+    for c in contatos:
+        c["origem"] = "contato"
+
+    # Junta tudo
+    todos_contatos = contatos + beneficiarios_formatados
+
+    if not todos_contatos:
         st.caption("Não há contatos cadastrados.")
     else:
-        df_contatos = pd.DataFrame(contatos)
+        df_contatos = pd.DataFrame(todos_contatos)
 
         # Coluna de exibição: assina documentos
         df_contatos["Assina documentos"] = df_contatos.apply(
@@ -1511,7 +1549,6 @@ else:
             )
 
 
-
             # # ---------- ORGANIZAÇÃO ----------
             # lista_organizacoes = df_organizacoes["nome_organizacao"].tolist()
 
@@ -1563,8 +1600,6 @@ else:
             )
 
 
-
-
             # ---------- RESPONSÁVEL(IS) (VINCULADO ÀS PESSOAS) ----------
 
             codigo_projeto = projeto["codigo"]
@@ -1579,7 +1614,7 @@ else:
             # Responsáveis atuais = pessoas que já têm o projeto no array
             responsaveis_atuais = df_pessoas_benef[
                 df_pessoas_benef["projetos"].apply(
-                    lambda x: isinstance(x, list) and codigo_projeto in x
+                    lambda x: codigo_projeto in (x if isinstance(x, list) else [x])
                 )
             ]["nome_completo"].tolist()
 
@@ -1588,8 +1623,6 @@ else:
                 options=lista_beneficiarios,
                 default=responsaveis_atuais
             )
-
-
 
             # ---------- PADRINHO / MADRINHA ----------
 
@@ -1601,7 +1634,7 @@ else:
 
             padrinhos_atuais = df_pessoas_internos[
                 df_pessoas_internos["projetos"].apply(
-                    lambda x: isinstance(x, list) and codigo_projeto in x
+                    lambda x: codigo_projeto in (x if isinstance(x, list) else [x])
                 )
             ]["nome_completo"].tolist()
 
@@ -1610,11 +1643,6 @@ else:
                 options=opcoes_padrinho_madrinha,
                 default=padrinhos_atuais
             )
-
-
-
-
-
 
 
             st.divider()
@@ -1638,7 +1666,6 @@ else:
                 novo_status = "Cancelado"
             else:
                 novo_status = None
-
 
 
             st.write("")
@@ -1795,18 +1822,10 @@ else:
                                     {"$addToSet": {"projetos": codigo}}
                                 )
 
-                  
-
-
+                
                         st.success("Projeto atualizado com sucesso!", icon=":material/check:")
                         time.sleep(3)
                         st.rerun()
-
-
-
-
-
-
 
 
     with aba_direcoes_publico:
