@@ -1386,6 +1386,9 @@ def dialog_relatos_fin():
             st.markdown(f"**{id_despesa}** (R{num_relatorio})")
             st.write(lanc.get("descricao_despesa", ""))
 
+            # Status do lançamento
+            st.write(f"**Status:** {lanc.get('status_despesa', '')}")
+
             col1, col2 = st.columns([1, 2])
 
             c1, c2 = col1.columns([1, 3])
