@@ -10,7 +10,7 @@ import textwrap
 
 
 # Configurar o streamlit para tela wide
-st.set_page_config(layout="wide", page_title="Veredas - IEB", page_icon=":material/login:")
+st.set_page_config(layout="wide", page_title="Coruja - Fundo Ecos", page_icon=":material/owl:")
 
 
 ##############################################################################################################
