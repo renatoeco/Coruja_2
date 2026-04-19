@@ -163,11 +163,10 @@ def primeiro_acesso_dialog():
 
 
 
-##############################################################################################################
-# CAIXA DE DIÁLOGO PARA RECUPERAÇÃO DE SENHA
-##############################################################################################################
+
 @st.dialog("Recuperação de Senha")
 def recuperar_senha_dialog():
+
     st.session_state.setdefault("codigo_enviado", False)
     st.session_state.setdefault("codigo_verificacao", "")
     st.session_state.setdefault("email_verificado", "")
@@ -175,25 +174,26 @@ def recuperar_senha_dialog():
 
     conteudo_dialogo = st.empty()
 
-    # Etapa 1: Entrada do e-mail
+    # Etapa 1: entrada do e-mail
     if not st.session_state.codigo_enviado:
         with conteudo_dialogo.form(key="recover_password_form", border=False):
-            # Preenche automaticamente com email da sessão (se houver)
             email_default = st.session_state.get("email_para_recuperar", "")
             email = st.text_input("Digite seu e-mail:", value=email_default)
 
             if st.form_submit_button("Enviar código de verificação", icon=":material/mail:"):
                 if email:
                     nome, verificar_colaboradores = encontrar_usuario_por_email(col_pessoas, email)
+
                     if verificar_colaboradores:
 
                         if verificar_colaboradores.get("status", "").lower() != "ativo":
                             st.error("Usuário inativo. Entre em contato com o administrador do sistema.")
                             return
                         
-                        codigo = str(random.randint(100, 999))  # Gera um código aleatório
+                        codigo = str(random.randint(100, 999))
+
                         with st.spinner(f"Enviando código para {email}..."):
-                            if enviar_email(email, codigo):  # Envia o código por e-mail
+                            if enviar_email(email, codigo):
                                 st.session_state.codigo_verificacao = codigo
                                 st.session_state.codigo_enviado = True
                                 st.session_state.email_verificado = email
@@ -205,14 +205,15 @@ def recuperar_senha_dialog():
                 else:
                     st.error("Por favor, insira um e-mail.")
 
-    # --- Etapa 2: Verificação do código recebido ---
+    # Etapa 2: verificação do código
     if st.session_state.codigo_enviado and not st.session_state.codigo_validado:
         with conteudo_dialogo.form(key="codigo_verificacao_form", border=False):
             st.subheader("Código de verificação")
-            email_mask = st.session_state.email_verificado.replace("@", "​@")  # Máscara leve no e-mail
+            email_mask = st.session_state.email_verificado.replace("@", "​@")
             st.write(f"Um código foi enviado para: **{email_mask}**")
 
             codigo_input = st.text_input("Informe o código recebido por e-mail", placeholder="000")
+
             if st.form_submit_button("Verificar"):
                 if codigo_input == st.session_state.codigo_verificacao:
                     sucesso = st.success("Código verificado com sucesso!")
@@ -222,8 +223,7 @@ def recuperar_senha_dialog():
                 else:
                     st.error("Código inválido. Tente novamente.")
 
-    # --- Etapa 3: Definição da nova senha ---
-
+    # Etapa 3: redefinição da senha
     if st.session_state.codigo_validado:
         with conteudo_dialogo.form("nova_senha_form", border=True):
             
@@ -232,19 +232,18 @@ def recuperar_senha_dialog():
             confirmar_senha = st.text_input("Confirme a senha", type="password")
             enviar_nova_senha = st.form_submit_button("Salvar")
 
-
             if enviar_nova_senha:
                 if nova_senha == confirmar_senha and nova_senha.strip():
-                    email = st.session_state.email_verificado
 
+                    email = st.session_state.email_verificado
                     usuario = col_pessoas.find_one({"e_mail": email})
 
                     if usuario:
                         try:
-                            # Gera hash seguro da senha
+                            # geração de hash seguro da senha
                             hash_senha = bcrypt.hashpw(nova_senha.encode("utf-8"), bcrypt.gensalt())
 
-                            # Atualiza no banco o hash, não a senha em texto puro
+                            # atualização no banco
                             result = col_pessoas.update_one(
                                 {"e_mail": email},
                                 {"$set": {"senha": hash_senha}}
@@ -253,32 +252,42 @@ def recuperar_senha_dialog():
                             if result.matched_count > 0:
                                 st.success("Senha redefinida com sucesso!")
 
-                                # Limpa variáveis de sessão
+
+
+                                # reconstrução completa da sessão exatamente como no login
+                                st.session_state["logged_in"] = True
+
+                                # garante consistência com o login principal
+                                st.session_state["tipo_usuario"] = usuario.get("tipo_usuario", "")
+
+                                st.session_state["nome"] = usuario.get("nome_completo")
+                                st.session_state["id_usuario"] = usuario.get("_id")
+
+                                # mantém compatibilidade com outras partes do sistema
+                                st.session_state["email"] = usuario.get("e_mail", "")
+                                st.session_state["projetos"] = usuario.get("projetos", [])
+
+                                # reseta navegação para forçar fluxo correto
+                                st.session_state["pagina_atual"] = None
+                                st.session_state["projeto_atual"] = None
+
+                                # limpeza das variáveis temporárias do fluxo
                                 for key in ["codigo_enviado", "codigo_verificacao", "email_verificado", "codigo_validado"]:
                                     st.session_state.pop(key, None)
 
-                                # Inicializa tipo de usuário
-                                tipo_usuario = usuario.get("tipo_usuario", "")
+                                # delay controlado para consistência visual
+                                time.sleep(3)
 
-                                # tipo_usuario = [x.strip() for x in usuario.get("tipo_usuario", "").split(",")]
-                                st.session_state["tipo_usuario"] = tipo_usuario
-
-
-
-                                # Marca usuário como logado e reinicia
-                                st.session_state.logged_in = True
-                                time.sleep(2)
                                 st.rerun()
                             else:
                                 st.error("Erro ao redefinir a senha. Tente novamente.")
+
                         except Exception as e:
                             st.error(f"Erro ao atualizar a senha: {e}")
                     else:
                         st.error("Nenhum usuário encontrado com esse e-mail.")
                 else:
                     st.error("As senhas não coincidem ou estão vazias.")
-
-
 
 
 

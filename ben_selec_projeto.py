@@ -47,8 +47,8 @@ registrar_estatistica_sessao(db)
 # INTERFACE PRINCIPAL DA PÁGINA
 ###########################################################################################################
 
-# Define o layout da página como largura total
-# st.set_page_config(layout="centered")
+
+
 
 # Exibe o logo
 container_logo = st.container(horizontal=True, horizontal_alignment="center")
