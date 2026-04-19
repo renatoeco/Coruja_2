@@ -68,68 +68,6 @@ col_organizacoes = db["organizacoes"]
 ###########################################################################################################
 
 
-
-# Função para calcuar o status da atividade
-
-# def calcular_status_atividade(atividade):
-
-#     hoje = pd.Timestamp.today().normalize()
-
-#     data_inicio = pd.to_datetime(
-#         atividade.get("data_inicio"),
-#         format="%d/%m/%Y",
-#         errors="coerce"
-#     )
-
-#     data_fim = pd.to_datetime(
-#         atividade.get("data_fim"),
-#         format="%d/%m/%Y",
-#         errors="coerce"
-#     )
-
-#     porcentagem = atividade.get("porcentagem_atv", 0)
-
-#     # Segurança
-#     if pd.isna(data_inicio) or pd.isna(data_fim):
-#         return "sem_data"
-
-#     # Regra 1 — concluída
-#     if porcentagem == 100:
-#         return "concluída"
-
-#     # Marcos de tempo
-#     inicio_mais_30 = data_inicio + pd.Timedelta(days=30)
-#     fim_menos_30 = data_fim - pd.Timedelta(days=30)
-
-#     # Regra 2 — porcentagem == 0
-#     if porcentagem == 0:
-
-#         if hoje < inicio_mais_30:
-#             return "prevista"
-
-#         elif inicio_mais_30 <= hoje < fim_menos_30:
-#             return "atrasada"
-
-#         elif fim_menos_30 <= hoje <= data_fim:
-#             return "próximo ao prazo"
-
-#         elif hoje > data_fim:
-#             return "atrasada"
-
-#     # Regra 3 — em andamento
-#     if 0 < porcentagem < 100:
-
-#         if hoje < fim_menos_30:
-#             return "em andamento"
-
-#         elif fim_menos_30 <= hoje <= data_fim:
-#             return "próximo ao prazo"
-
-#         elif hoje > data_fim:
-#             return "atrasada"
-
-#     return "indefinido"
-
 # ==================================================
 # Função para renderizar a interface de ações da equipe, no modo análise da solicitação de remanejamento
 # ==================================================
@@ -2084,8 +2022,9 @@ def dialog_relatos():
                 break
 
     if not relatos_encontrados:
-        st.info("Esta atividade ainda não possui relatos.")
+        st.caption("Esta atividade ainda não possui relatos.")
         return
+
 
     # ============================================================
     # RENDERIZAÇÃO DOS RELATOS
@@ -2107,6 +2046,9 @@ def dialog_relatos():
 
             # Texto do relato
             st.write(relato.get("relato", ""))
+
+            # Status do relato
+            st.write(f"**Status:** {relato.get('status_relato', '')}")
 
             col1, col2 = st.columns([2, 3])
             col1.write(f"**Quando:** {relato.get('quando', '-')}")
@@ -2321,6 +2263,41 @@ with plano_trabalho:
 
                 st.markdown(f"#### {componente.get('componente', 'Objetivo específico sem nome')}")
 
+
+
+
+                # -----------------------------------------------------------------------------------
+                # Callback de seleção de atividade
+                # -----------------------------------------------------------------------------------
+
+                def criar_callback_selecao_atividade(lista_atividades, chave_tabela):
+
+                    def handle_selecao():
+
+                        estado_tabela = st.session_state.get(chave_tabela, {})
+                        selecao = estado_tabela.get("selection", {})
+                        linhas = selecao.get("rows", [])
+
+                        if not linhas:
+                            return
+
+                        idx = linhas[0]
+                        atividade = lista_atividades[idx]
+
+                        # Compatibilidade com o diálogo
+                        atividade_escolhida = atividade.copy()
+                        atividade_escolhida["Atividade"] = atividade.get("atividade")
+                        atividade_escolhida["atividade"] = atividade.get("atividade")
+
+                        st.session_state["atividade_selecionada"] = atividade_escolhida
+                        st.session_state["atividade_selecionada_tabela_key"] = chave_tabela
+                        st.session_state["abrir_dialogo_atividade"] = True
+
+                    return handle_selecao
+
+
+
+
                 atividades = componente.get("atividades", [])
 
                 if not atividades:
@@ -2329,6 +2306,26 @@ with plano_trabalho:
 
                 # Calcular o status das atividades
                 atividades_processadas = []
+
+
+
+
+                # -----------------------------------------------------------------------------------
+                # Estados do diálogo de atividades
+                # -----------------------------------------------------------------------------------
+
+                if "atividade_selecionada" not in st.session_state:
+                    st.session_state["atividade_selecionada"] = None
+
+                if "atividade_selecionada_tabela_key" not in st.session_state:
+                    st.session_state["atividade_selecionada_tabela_key"] = None
+
+                if "abrir_dialogo_atividade" not in st.session_state:
+                    st.session_state["abrir_dialogo_atividade"] = False
+
+
+
+
 
                 for a in atividades:
 
@@ -2344,11 +2341,30 @@ with plano_trabalho:
 
                 df_atividades = pd.DataFrame(atividades_processadas)
 
+
+
+                # -----------------------------------------------------------------------------------
+                # DataFrame com seleção de linha (abre diálogo)
+                # -----------------------------------------------------------------------------------
+
+                key_df_atividades = f"df_atividades_{componente.get('componente', 'componente')}"
+
+                callback_selecao = criar_callback_selecao_atividade(
+                    atividades,
+                    key_df_atividades
+                )
+
+
+
+
                 st.dataframe(
                     df_atividades[
                         ["Atividade", "Data de início", "Data de fim", "Status", "Porcentagem"]
                     ],
                     hide_index=True,
+                    selection_mode="single-row",
+                    key=key_df_atividades,
+                    on_select=callback_selecao,
                     column_config={
 
                         "Atividade": st.column_config.TextColumn(
@@ -2381,6 +2397,16 @@ with plano_trabalho:
 
                     }
                 )
+
+
+
+            # -----------------------------------------------------------------------------------
+            # Abertura do diálogo de relatos de atividade
+            # -----------------------------------------------------------------------------------
+
+            if st.session_state.get("abrir_dialogo_atividade"):
+                dialog_relatos()
+                st.session_state["abrir_dialogo_atividade"] = False
 
 
 
