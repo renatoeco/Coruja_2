@@ -1383,8 +1383,75 @@ def dialog_relatos_fin():
             id_despesa = lanc.get("id_lanc_despesa", "").upper()
             num_relatorio = lanc.get("relatorio_numero")
 
-            st.markdown(f"**{id_despesa}** (R{num_relatorio})")
+
+
+            # ==================================================
+            # BADGE DE STATUS
+            # ==================================================
+
+            status_despesa_db = lanc.get("status_despesa", "em_analise")
+            tem_devolutiva = bool(lanc.get("devolutiva"))
+
+            if status_despesa_db == "aberto" and tem_devolutiva:
+                badge = {
+                    "label": "Pendente",
+                    "bg": "#F8D7DA",
+                    "color": "#721C24"
+                }
+            elif status_despesa_db == "aberto":
+                badge = {
+                    "label": "Aberto",
+                    "bg": "#FFF3CD",
+                    "color": "#856404"
+                }
+            elif status_despesa_db == "aceito":
+                badge = {
+                    "label": "Aceito",
+                    "bg": "#D4EDDA",
+                    "color": "#155724"
+                }
+            else:
+                badge = {
+                    "label": "Em análise",
+                    "bg": "#D1ECF1",
+                    "color": "#0C5460"
+                }
+
+
+            # ==================================================
+            # CABEÇALHO COM BADGE
+            # ==================================================
+
+            col_header1, col_header2 = st.columns([9, 1])
+
+            with col_header1:
+                st.markdown(f"**{id_despesa}** (R{num_relatorio})")
+
+            with col_header2:
+                st.markdown(
+                    f"""
+                    <div style="margin-top:6px;">
+                        <span style="
+                            background:{badge['bg']};
+                            color:{badge['color']};
+                            padding:4px 10px;
+                            border-radius:20px;
+                            font-size:12px;
+                            font-weight:600;
+                        ">
+                            {badge['label']}
+                        </span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+
+            # ==================================================
+            # DESCRIÇÃO
+            # ==================================================
             st.write(lanc.get("descricao_despesa", ""))
+
 
             # Status do lançamento
             st.write(f"**Status:** {lanc.get('status_despesa', '')}")

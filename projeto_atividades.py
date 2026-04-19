@@ -2037,15 +2037,80 @@ def dialog_relatos():
             id_relato = relato.get("id_relato", "relato").upper()
             numero_relatorio = relato.get("relatorio_numero")
 
+
+
+            # --------------------------------------------------
+            # Status visual (badge)
+            # --------------------------------------------------
+
+            status_relato_db = relato.get("status_relato", "em_analise")
+            tem_devolutiva = bool(relato.get("devolutiva"))
+
+            # Regras visuais padronizadas
+            if status_relato_db == "aberto" and tem_devolutiva:
+                badge = {
+                    "label": "Pendente",
+                    "bg": "#F8D7DA",
+                    "color": "#721C24"
+                }
+            elif status_relato_db == "aberto":
+                badge = {
+                    "label": "Aberto",
+                    "bg": "#FFF3CD",
+                    "color": "#856404"
+                }
+            elif status_relato_db == "aceito":
+                badge = {
+                    "label": "Aceito",
+                    "bg": "#D4EDDA",
+                    "color": "#155724"
+                }
+            else:
+                badge = {
+                    "label": "Em análise",
+                    "bg": "#D1ECF1",
+                    "color": "#0C5460"
+                }
+
+
+            # Layout do cabeçalho com badge à direita
+            col_header1, col_header2 = st.columns([9, 1])
+
+
             # Cabeçalho
-            st.markdown(
+            col_header1.markdown(
                 f"#### {id_relato} "
                 f"<span style='font-size: 0.9em; color: gray;'>(R{numero_relatorio})</span>",
                 unsafe_allow_html=True
             )
 
+            # Badge
+            with col_header2:
+                st.markdown(
+                    f"""
+                    <div style="margin-top:6px;">
+                        <span style="
+                            background:{badge['bg']};
+                            color:{badge['color']};
+                            padding:4px 10px;
+                            border-radius:20px;
+                            font-size:12px;
+                            font-weight:600;
+                        ">
+                            {badge['label']}
+                        </span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+
+
+
             # Texto do relato
             st.write(relato.get("relato", ""))
+
+
 
             # Status do relato
             st.write(f"**Status:** {relato.get('status_relato', '')}")
