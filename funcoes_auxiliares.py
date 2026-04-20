@@ -438,6 +438,55 @@ def obter_servico_drive():
     return build("drive", "v3", credentials=credenciais)
 
 
+
+
+
+
+
+# Função para conceder permissão de leitura na pasta do projeto para o contato que está sendo salvo.
+
+def add_permissao_drive(servico, pasta_id, contato):
+    """
+    Concede permissão de leitura na pasta do projeto
+    para um único contato.
+
+    A função tenta aplicar a permissão apenas se houver
+    e-mail válido. Falhas são ignoradas para não interromper
+    o fluxo da aplicação.
+    """
+
+    if not contato:
+        return
+
+    email = contato.get("email")
+
+    # Ignora se não houver e-mail
+    if not email:
+        return
+
+    try:
+        servico.permissions().create(
+            fileId=pasta_id,
+            body={
+                "type": "user",
+                "role": "reader",
+                "emailAddress": email
+            },
+            sendNotificationEmail=False,
+            supportsAllDrives=True
+        ).execute()
+
+    except Exception:
+        # Falha não interrompe o fluxo
+        pass
+
+
+
+
+
+
+
+
 ###########################################################################################################
 # FUNÇÕES DE PASTAS NO GOOGLE DRIVE
 ###########################################################################################################
