@@ -1,5 +1,5 @@
 import streamlit as st
-from funcoes_auxiliares import conectar_mongo_coruja, sidebar_projeto, calcular_status_projetos, calcular_status_atividade, registrar_estatistica_sessao, add_permissao_drive
+from funcoes_auxiliares import conectar_mongo_coruja, sidebar_projeto, calcular_status_projetos, calcular_status_atividade, registrar_estatistica_sessao, add_permissao_drive, obter_servico_drive
 
 import pandas as pd
 import streamlit_shadcn_ui as ui
@@ -150,33 +150,6 @@ if not st.session_state["ultimo_acesso_atualizado"]:
         # CONTROLE DE EXECUÇÃO
 
         st.session_state["ultimo_acesso_atualizado"] = True
-
-
-
-
-
-
-
-###########################################################################################################
-# CONEXÃO COM GOOGLE DRIVE
-###########################################################################################################
-
-
-# Escopo mínimo necessário para Drive
-ESCOPO_DRIVE = ["https://www.googleapis.com/auth/drive"]
-
-@st.cache_resource
-def obter_servico_drive():
-    """
-    Retorna o cliente autenticado do Google Drive,
-    usando as credenciais armazenadas em st.secrets.
-    """
-    credenciais = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"],
-        scopes=ESCOPO_DRIVE
-    )
-    return build("drive", "v3", credentials=credenciais)
-
 
 
 

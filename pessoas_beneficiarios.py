@@ -1,5 +1,6 @@
 import streamlit as st
-from funcoes_auxiliares import conectar_mongo_coruja  # Função personalizada para conectar ao MongoDB
+from funcoes_auxiliares import conectar_mongo_coruja, obter_servico_drive, obter_pasta_projeto, add_permissao_drive
+
 import pandas as pd
 from bson import ObjectId
 import time
@@ -133,9 +134,97 @@ def editar_pessoa(_id: str):
         # Atualiza o registro
         col_pessoas.update_one({"_id": ObjectId(_id)}, {"$set": update_data})
 
+
+
+        # ==========================================================
+        # Concede permissões de leitura no Google Drive para os projetos vinculados
+        # ==========================================================
+
+
+        # Só executa se houver e-mail válido
+        if email:
+
+            # Inicializa serviço do Drive sob demanda
+            servico_drive = obter_servico_drive()
+
+            # Percorre todos os projetos do banco
+            for projeto in col_projetos.find():
+
+                codigo_projeto = projeto.get("codigo")
+
+                # Só aplica para projetos selecionados
+                if codigo_projeto not in projetos:
+                    continue
+
+                try:
+                    # Recupera sigla diretamente do documento
+                    sigla = projeto.get("sigla", "")
+
+                    # Obtém (ou cria) a pasta do projeto
+                    pasta_id = obter_pasta_projeto(
+                        servico_drive,
+                        codigo_projeto,
+                        sigla
+                    )
+
+                    # Estrutura mínima esperada pela função
+                    contato_drive = {
+                        "email": email
+                    }
+
+                    # Aplica permissão de leitura
+                    add_permissao_drive(servico_drive, pasta_id, contato_drive)
+
+                except Exception:
+                    # Falhas individuais não interrompem o fluxo
+                    continue
+
+
+        # ==========================================================
+        # Atualiza contatos nos projetos selecionados
+        # ==========================================================
+
+        # percorre todos os projetos do banco
+        for projeto in col_projetos.find():
+
+            codigo_projeto = projeto.get("codigo")
+
+            # só continua se o projeto estiver selecionado no multiselect
+            if codigo_projeto not in projetos:
+                continue
+
+            contatos = projeto.get("contatos", [])
+
+            # verifica se já existe contato com o mesmo e-mail
+            ja_existe = any(
+                c.get("email", "").lower() == email.lower()
+                for c in contatos
+            )
+
+            if not ja_existe:
+
+                novo_contato = {
+                    "nome": nome,
+                    "funcao": "Usuário(a) do sistema",
+                    "telefone": telefone,
+                    "email": email,
+                    "assina_docs": False
+                }
+
+                # adiciona o contato ao projeto
+                col_projetos.update_one(
+                    {"_id": projeto["_id"]},
+                    {"$push": {"contatos": novo_contato}}
+                )
+
+
+
         st.success("Pessoa atualizada com sucesso!")
         time.sleep(2)
         st.rerun()
+
+
+
 
 
 ###########################################################################################################
