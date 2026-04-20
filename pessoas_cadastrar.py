@@ -352,13 +352,16 @@ if st.button(":material/save: Convidar pessoas", type="primary"):
                     codigo=pessoa["codigo_convite"]
                 )
 
+
                 # ==========================================================
                 # Concede permissões no Google Drive para os projetos da pessoa
                 # ==========================================================
 
                 email = pessoa.get("e_mail")
+                tipo_usuario = pessoa.get("tipo_usuario")
 
-                if email:
+                # Permissão apenas para beneficiário ou visitante
+                if email and tipo_usuario in ["beneficiario", "visitante"]:
 
                     for codigo_projeto in pessoa.get("projetos", []):
 
@@ -389,6 +392,7 @@ if st.button(":material/save: Convidar pessoas", type="primary"):
                         except Exception:
                             # Falhas individuais não interrompem o fluxo
                             continue
+
 
                 progress_bar.progress((i + 1) / total)
 
