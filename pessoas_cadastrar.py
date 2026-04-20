@@ -1,5 +1,6 @@
 import streamlit as st
-from funcoes_auxiliares import conectar_mongo_coruja # Funções personalizadas
+from funcoes_auxiliares import conectar_mongo_coruja, obter_servico_drive, obter_pasta_projeto, add_permissao_drive
+
 import pandas as pd
 import locale
 import re
@@ -197,159 +198,207 @@ st.write("")
 # ---------------------------------------------------------------------------------------------
 if st.button(":material/save: Convidar pessoas", type="primary"):
 
-    df = df_editado.copy()
+    with st.spinner("Enviando e-mails... Aguarde..."):
 
-    # -----------------------------------------------------------------------------------------
-    # LIMPEZA DE LINHAS VAZIAS
-    # -----------------------------------------------------------------------------------------
-    df = df.dropna(how="all")
 
-    df = df[
-        df.apply(
-            lambda row: any(
-                str(v).strip() not in ["", "[]", "nan", "None"]
-                for v in row
-            ),
-            axis=1
-        )
-    ]
+        df = df_editado.copy()
 
-    if df.empty:
-        st.error("Nenhum dado válido para cadastro.")
-        st.stop()
+        # -----------------------------------------------------------------------------------------
+        # LIMPEZA DE LINHAS VAZIAS
+        # -----------------------------------------------------------------------------------------
+        df = df.dropna(how="all")
 
-    # -----------------------------------------------------------------------------------------
-    # VALIDAÇÕES
-    # -----------------------------------------------------------------------------------------
-    registros_validos = []
-    erros = []
-
-    # Emails existentes
-    existentes = pd.DataFrame(list(col_pessoas.find({}, {"e_mail": 1})))
-    emails_existentes = existentes["e_mail"].tolist() if not existentes.empty else []
-
-    # Projetos válidos
-    codigos_validos = df_projetos["codigo"].astype(str).str.strip().unique() if not df_projetos.empty else []
-
-    for idx, row in df.iterrows():
-
-        linha_num = idx + 1
-
-        nome = str(row["nome_completo"]).strip()
-        tipo = str(row["tipo_usuario"]).strip()
-        email = str(row["e_mail"]).strip()
-        telefone = str(row["telefone"]).strip()
-        projetos_lista = row["projetos"]
-
-        # garantir que é lista
-        if not isinstance(projetos_lista, list):
-            projetos_lista = []
-
-        identificador = f"Linha {linha_num} ({nome if nome else email})"
-
-        # -----------------------------
-        # CAMPOS OBRIGATÓRIOS
-        # -----------------------------
-        if not nome or not tipo or not email:
-            erros.append(f"{identificador}: Campos obrigatórios não preenchidos.")
-            continue
-
-        # -----------------------------
-        # EMAIL
-        # -----------------------------
-        if not validar_email(email):
-            erros.append(f"{identificador}: E-mail inválido.")
-            continue
-
-        if email in emails_existentes:
-            erros.append(f"{identificador}: E-mail já cadastrado.")
-            continue
-
-        # -----------------------------
-        # PROJETOS
-        # -----------------------------
-        projetos_lista = row["projetos"]
-
-        # garantir que é lista
-        if not isinstance(projetos_lista, list):
-            projetos_lista = []
-
-        # validar projetos
-        invalidos = [p for p in projetos_lista if p not in codigos_validos]
-
-        if invalidos:
-            erros.append(f"{identificador}: Projetos inválidos {invalidos}.")
-            continue
-
-        # -----------------------------
-        # GERAR CÓDIGO
-        # -----------------------------
-        codigo = gerar_codigo_aleatorio()
-
-        # -----------------------------
-        # DOCUMENTO FINAL
-        # -----------------------------
-        doc = {
-            "nome_completo": nome,
-            "tipo_usuario": tipo,
-            "e_mail": email,
-            "status": "convidado",
-            "codigo_convite": codigo,
-            "data_convite": datetime.datetime.now().strftime("%d/%m/%Y"),
-            "senha": None
-        }
-
-        if telefone:
-            doc["telefone"] = telefone
-
-        if projetos_lista:
-            doc["projetos"] = projetos_lista
-
-        registros_validos.append(doc)
-
-    # -----------------------------------------------------------------------------------------
-    # EXIBIÇÃO DE ERROS
-    # -----------------------------------------------------------------------------------------
-    if erros:
-        st.error("Alguns dados precisam ser corrigidos:")
-        for e in erros:
-            st.write(f"- {e}")
-        st.stop()
-
-    # -----------------------------------------------------------------------------------------
-    # INSERÇÃO
-    # -----------------------------------------------------------------------------------------
-    if registros_validos:
-
-        resultado = col_pessoas.insert_many(registros_validos)
-
-        st.success(f"{len(resultado.inserted_ids)} pessoas cadastradas com sucesso!")
-
-        # -------------------------------------------------------------------------------------
-        # ENVIO DE E-MAILS
-        # -------------------------------------------------------------------------------------
-        progress_bar = st.progress(0)
-        status = st.empty()
-
-        total = len(registros_validos)
-
-        for i, pessoa in enumerate(registros_validos):
-
-            status.write(f"Enviando e-mail para {pessoa['e_mail']}...")
-
-            enviar_email_convite(
-                nome_completo=pessoa["nome_completo"],
-                email_destino=pessoa["e_mail"],
-                codigo=pessoa["codigo_convite"]
+        df = df[
+            df.apply(
+                lambda row: any(
+                    str(v).strip() not in ["", "[]", "nan", "None"]
+                    for v in row
+                ),
+                axis=1
             )
+        ]
 
-            progress_bar.progress((i + 1) / total)
+        if df.empty:
+            st.error("Nenhum dado válido para cadastro.")
+            st.stop()
 
-            time.sleep(1)
+        # -----------------------------------------------------------------------------------------
+        # VALIDAÇÕES
+        # -----------------------------------------------------------------------------------------
+        registros_validos = []
+        erros = []
 
-        status.empty()
+        # Emails existentes
+        existentes = pd.DataFrame(list(col_pessoas.find({}, {"e_mail": 1})))
+        emails_existentes = existentes["e_mail"].tolist() if not existentes.empty else []
 
-        st.success("Convites enviados com sucesso!")
+        # Projetos válidos
+        codigos_validos = df_projetos["codigo"].astype(str).str.strip().unique() if not df_projetos.empty else []
 
-        time.sleep(2)
-        st.rerun()
+        for idx, row in df.iterrows():
+
+            linha_num = idx + 1
+
+            nome = str(row["nome_completo"]).strip()
+            tipo = str(row["tipo_usuario"]).strip()
+            email = str(row["e_mail"]).strip()
+            telefone = str(row["telefone"]).strip()
+            projetos_lista = row["projetos"]
+
+            # garantir que é lista
+            if not isinstance(projetos_lista, list):
+                projetos_lista = []
+
+            identificador = f"Linha {linha_num} ({nome if nome else email})"
+
+            # -----------------------------
+            # CAMPOS OBRIGATÓRIOS
+            # -----------------------------
+            if not nome or not tipo or not email:
+                erros.append(f"{identificador}: Campos obrigatórios não preenchidos.")
+                continue
+
+            # -----------------------------
+            # EMAIL
+            # -----------------------------
+            if not validar_email(email):
+                erros.append(f"{identificador}: E-mail inválido.")
+                continue
+
+            if email in emails_existentes:
+                erros.append(f"{identificador}: E-mail já cadastrado.")
+                continue
+
+            # -----------------------------
+            # PROJETOS
+            # -----------------------------
+            projetos_lista = row["projetos"]
+
+            # garantir que é lista
+            if not isinstance(projetos_lista, list):
+                projetos_lista = []
+
+            # validar projetos
+            invalidos = [p for p in projetos_lista if p not in codigos_validos]
+
+            if invalidos:
+                erros.append(f"{identificador}: Projetos inválidos {invalidos}.")
+                continue
+
+            # -----------------------------
+            # GERAR CÓDIGO
+            # -----------------------------
+            codigo = gerar_codigo_aleatorio()
+
+            # -----------------------------
+            # DOCUMENTO FINAL
+            # -----------------------------
+            doc = {
+                "nome_completo": nome,
+                "tipo_usuario": tipo,
+                "e_mail": email,
+                "status": "convidado",
+                "codigo_convite": codigo,
+                "data_convite": datetime.datetime.now().strftime("%d/%m/%Y"),
+                "senha": None
+            }
+
+            if telefone:
+                doc["telefone"] = telefone
+
+            if projetos_lista:
+                doc["projetos"] = projetos_lista
+
+            registros_validos.append(doc)
+
+        # -----------------------------------------------------------------------------------------
+        # EXIBIÇÃO DE ERROS
+        # -----------------------------------------------------------------------------------------
+        if erros:
+            st.error("Alguns dados precisam ser corrigidos:")
+            for e in erros:
+                st.write(f"- {e}")
+            st.stop()
+
+        # -----------------------------------------------------------------------------------------
+        # INSERÇÃO
+        # -----------------------------------------------------------------------------------------
+        if registros_validos:
+
+            resultado = col_pessoas.insert_many(registros_validos)
+
+            st.success(f"{len(resultado.inserted_ids)} pessoas cadastradas com sucesso!")
+
+            # -------------------------------------------------------------------------------------
+            # ENVIO DE E-MAILS
+            # -------------------------------------------------------------------------------------
+            progress_bar = st.progress(0)
+            status = st.empty()
+
+            total = len(registros_validos)
+
+            # Inicializa serviço do Drive uma única vez
+            servico_drive = obter_servico_drive()
+
+
+            for i, pessoa in enumerate(registros_validos):
+
+                status.write(f"Enviando e-mail para {pessoa['e_mail']}...")
+
+                # Envio de e-mail
+                enviar_email_convite(
+                    nome_completo=pessoa["nome_completo"],
+                    email_destino=pessoa["e_mail"],
+                    codigo=pessoa["codigo_convite"]
+                )
+
+                # ==========================================================
+                # Concede permissões no Google Drive para os projetos da pessoa
+                # ==========================================================
+
+                email = pessoa.get("e_mail")
+
+                if email:
+
+                    for codigo_projeto in pessoa.get("projetos", []):
+
+                        try:
+                            # Busca o projeto para obter a sigla
+                            projeto = col_projetos.find_one({"codigo": codigo_projeto})
+
+                            if not projeto:
+                                continue
+
+                            sigla = projeto.get("sigla", "")
+
+                            # Obtém (ou cria) a pasta do projeto
+                            pasta_id = obter_pasta_projeto(
+                                servico_drive,
+                                codigo_projeto,
+                                sigla
+                            )
+
+                            # Estrutura mínima esperada pela função
+                            contato_drive = {
+                                "email": email
+                            }
+
+                            # Aplica permissão de leitura
+                            add_permissao_drive(servico_drive, pasta_id, contato_drive)
+
+                        except Exception:
+                            # Falhas individuais não interrompem o fluxo
+                            continue
+
+                progress_bar.progress((i + 1) / total)
+
+                time.sleep(3)
+
+
+            status.empty()
+
+            st.success("Convites enviados com sucesso!")
+
+            time.sleep(3)
+            st.rerun()
+
