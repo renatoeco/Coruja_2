@@ -2429,18 +2429,57 @@ with orcamento:
             label="Valor total do projeto",
             value=f"R$ {valor_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
         )
-
-        col2.metric(
-            label="Gasto",
-            value=f"R$ {gasto_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        
+        # -----------------------------------
+        # Soma das contrapartidas
+        # -----------------------------------
+        contr_fin = sum(
+            item.get("contrapartida_financeira", 0) or 0
+            for item in orcamento
         )
 
-        col3.metric(
-            label="Saldo",
-            value=f"R$ {saldo_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
-            delta=None if saldo_total >= 0 else "Negativo",
-            delta_color="inverse" if saldo_total < 0 else "normal"
+        contr_nao_fin = sum(
+            item.get("contrapartida_nao_financeira", 0) or 0
+            for item in orcamento
         )
+
+        if contr_fin > 0 or contr_nao_fin > 0:
+
+            col2.metric(
+                "Contrapartida financeira",
+                f"R$ {contr_fin:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            )
+
+            col3.metric(
+                "Contrapartida não-financeira",
+                f"R$ {contr_nao_fin:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            )
+            
+            col1.metric(
+                label="Gasto",
+                value=f"R$ {gasto_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            )
+
+            col3.metric(
+                label="Saldo",
+                value=f"R$ {saldo_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                delta=None if saldo_total >= 0 else "Negativo",
+                delta_color="inverse" if saldo_total < 0 else "normal"
+            )
+            
+        else:
+
+            col2.metric(
+                label="Gasto",
+                value=f"R$ {gasto_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            )
+
+            col3.metric(
+                label="Saldo",
+                value=f"R$ {saldo_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                delta=None if saldo_total >= 0 else "Negativo",
+                delta_color="inverse" if saldo_total < 0 else "normal"
+            )
 
 
 
@@ -2554,6 +2593,8 @@ with orcamento:
             #"quantidade",
             #"valor_unitario",
             "valor_total",
+            "contrapartida_financeira",
+            "contrapartida_nao_financeira"
         ]:
             if col not in df_orcamento.columns:
                 df_orcamento[col] = None
@@ -2568,6 +2609,8 @@ with orcamento:
 
         #df_orcamento["Valor unitário"] = df_orcamento["valor_unitario"].apply(fmt_moeda)
         df_orcamento["Valor total"] = df_orcamento["valor_total"].apply(fmt_moeda)
+        df_orcamento["Contrapartida financeira"] = df_orcamento["contrapartida_financeira"].apply(fmt_moeda)
+        df_orcamento["Contrapartida não-financeira"] = df_orcamento["contrapartida_nao_financeira"].apply(fmt_moeda)
         df_orcamento["Gasto"] = df_orcamento["gasto"].apply(fmt_moeda)
         df_orcamento["Saldo"] = df_orcamento["saldo"].apply(fmt_moeda)
 
@@ -2641,6 +2684,8 @@ with orcamento:
                 "descricao_despesa": "Descrição",
                 "unidade": "Unidade",
                 "quantidade": "Quantidade",
+                "Valor total": "Valor solicitado"
+                
             })
 
             colunas_vis = [
@@ -2649,7 +2694,9 @@ with orcamento:
                 # "Unidade",
                 # "Quantidade",
                 # "Valor unitário",
-                "Valor total",
+                "Valor solicitado",
+                "Contrapartida financeira",
+                "Contrapartida não-financeira",
                 "Gasto",
                 "Saldo",
             ]
@@ -2775,7 +2822,9 @@ with orcamento:
             #"unidade",
             #"quantidade",
             #"valor_unitario",
-            "id_despesa"
+            "id_despesa",
+            "contrapartida_financeira", 
+            "contrapartida_nao_financeira"
         ]:
             if col not in df_orcamento.columns:
                 df_orcamento[col] = None
@@ -2822,6 +2871,9 @@ with orcamento:
 
         #df_orcamento["valor_unitario_fmt"] = df_orcamento["valor_unitario"].apply(format_brl)
         df_orcamento["valor_total_fmt"] = df_orcamento["valor_total"].apply(format_brl)
+        df_orcamento["contrapartida_financeira_fmt"] = df_orcamento["contrapartida_financeira"].apply(format_brl)
+        df_orcamento["contrapartida_nao_financeira_fmt"] = df_orcamento["contrapartida_nao_financeira"].apply(format_brl)
+
 
 
 
@@ -2852,6 +2904,8 @@ with orcamento:
                     #"quantidade_fmt",
                     #"valor_unitario_fmt",
                     "valor_total_fmt",
+                    "contrapartida_financeira_fmt",
+                    "contrapartida_nao_financeira_fmt",
                 ]
             ],
             num_rows="dynamic",
@@ -2880,8 +2934,14 @@ with orcamento:
                 #     "Valor unitário (R$)"
                 # ),
                 "valor_total_fmt": st.column_config.TextColumn(
-                    "Valor total (auto)",
-                    required=True
+                    "Valor solicitado",
+                ),
+                "contrapartida_financeira_fmt": st.column_config.TextColumn(
+                    "Contrapartida financeira"
+                ),
+
+                "contrapartida_nao_financeira_fmt": st.column_config.TextColumn(
+                    "Contrapartida não-financeira"
                 ),
             },
             key="editor_orcamento",
@@ -2971,7 +3031,11 @@ with orcamento:
             # Converter valor formatado para float
             # -----------------------------------
             df_salvar["valor_total"] = df_salvar["valor_total_fmt"].apply(parse_brl)
-
+            
+            df_salvar["contrapartida_financeira"] = df_salvar["contrapartida_financeira_fmt"].apply(parse_brl)
+            df_salvar["contrapartida_nao_financeira"] = df_salvar["contrapartida_nao_financeira_fmt"].apply(parse_brl)
+            
+            
             # -----------------------------------
             # LOOP PRINCIPAL
             # -----------------------------------
@@ -3013,6 +3077,8 @@ with orcamento:
                     #"quantidade": float(row["quantidade"]),
                     #"valor_unitario": float(row["valor_unitario"]),
                     "valor_total": float(row["valor_total"]),
+                    "contrapartida_financeira": float(row.get("contrapartida_financeira", 0)),
+                    "contrapartida_nao_financeira": float(row.get("contrapartida_nao_financeira", 0)),
 
                     # Preservar lançamentos existentes
                     "lancamentos": item_existente.get("lancamentos", [])
