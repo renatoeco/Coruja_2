@@ -625,6 +625,135 @@ def dialog_editar_areas_protegidas():
             st.success("Área protegida excluída com sucesso!", icon=":material/check:")
             time.sleep(3)
             st.rerun()
+           
+            
+@st.dialog("Bacias Hidrográficas", width="medium")
+def dialog_editar_bacias_hidrograficas():
+
+    st.write("")
+
+    abas = st.tabs(["Cadastrar", "Excluir"])
+
+    # =============================================================================
+    # ABA — CADASTRAR
+    # =============================================================================
+    with abas[0]:
+
+        # --------------------------------------------------
+        # MUNICÍPIOS DISPONÍVEIS (Nome - UF)
+        # --------------------------------------------------
+        municipios_opcoes = sorted(
+            [
+                f"{m['nome_municipio']} - {sigla_por_codigo_uf.get(str(m['codigo_municipio'])[:2], '')}"
+                for m in lista_municipios
+            ],
+            key=lambda x: x.lower()
+        )
+
+        nome_bacia_hidrografica = st.text_input(
+            "Nome da bacia hidrográfica",
+            placeholder="Ex: Bacia do Rio Amazonas"
+        )
+
+        municipios_selecionados = st.multiselect(
+            "Municípios",
+            options=municipios_opcoes,
+            placeholder="Selecione os municípios"
+        )
+
+        st.write("")
+
+        if st.button(
+            "Salvar",
+            icon=":material/save:",
+            key="salvar_area_protegida"
+        ):
+
+            # -----------------------------
+            # VALIDAÇÕES
+            # -----------------------------
+            if not nome_bacia_hidrografica.strip():
+                st.error("Informe o nome da área protegida.")
+                return
+
+            if not municipios_selecionados:
+                st.error("Selecione ao menos um município.")
+                return
+
+            nova_area = {
+                "nome_bacia_hidrografica": nome_bacia_hidrografica.strip(),
+                "municipios": municipios_selecionados,
+            }
+
+            bacias_atual = locais.get("bacias_hidrograficas", [])
+            bacias_atual.append(nova_area)
+
+            col_projetos.update_one(
+                {"codigo": codigo_projeto_atual},
+                {
+                    "$set": {
+                        "locais.bacias_hidrograficas": bacias_atual
+                    }
+                }
+            )
+
+            st.success("Bacia hidrográfica cadastrada com sucesso!", icon=":material/check:")
+            time.sleep(2)
+            st.rerun()
+
+    # =============================================================================
+    # ABA — EXCLUIR
+    # =============================================================================
+    with abas[1]:
+
+        bacias_cadastradas = locais.get("bacias_hidrograficas", [])
+
+        if not bacias_cadastradas:
+            st.info("Não há bacias hidrográficas cadastradas.")
+            return
+
+        bacias_areas = sorted(
+            [a["nome_bacia_hidrografica"] for a in bacias_cadastradas],
+            key=lambda x: x.lower()
+        )
+
+        bacia_para_excluir = st.selectbox(
+            "Selecione a bacia protegida",
+            options=bacias_areas,
+            index=None,
+            placeholder="Escolha uma bacia"
+        )
+
+        st.write("")
+
+        if st.button(
+            "Excluir",
+            icon=":material/delete:",
+            type="secondary",
+            key="excluir_bacia_hidrografica"
+        ):
+
+            if not bacia_para_excluir:
+                st.error("Selecione uma bacia hidrográfica para excluir.")
+                return
+
+            novas_bacias = [
+                b for b in bacias_cadastradas
+                if b.get("nome_bacia_hidrografica") != bacia_para_excluir
+            ]
+
+            col_projetos.update_one(
+                {"codigo": codigo_projeto_atual},
+                {
+                    "$set": {
+                        "locais.bacias_hidrograficas": novas_bacias
+                    }
+                }
+            )
+
+            st.success("Bacia hidrográfica excluída com sucesso!", icon=":material/check:")
+            time.sleep(3)
+            st.rerun()
        
 
 @st.dialog("Mapas do Projeto", width="large")
@@ -935,11 +1064,45 @@ with aba_cadastro:
                     st.write(f"**{area.get('nome_area_protegida')}** - {', '.join(area.get('municipios', []))}")
                     
 
+    col_bacias, col_mapas = st.columns(2)
+    
+    # -------------------------------------------------------------------------------
+    # SEÇÃO - BACIAS HIDROGRÁFICAS
+    # -------------------------------------------------------------------------------
+
+    with col_bacias.container(border=True):
+
+        col_botao, col_titulo = st.columns([1, 30])
+
+        with col_botao:
+            if st.button(
+                "",
+                icon=":material/edit:",
+                key="editar_bacia_hidrografica",
+                type="tertiary"
+            ):
+                dialog_editar_bacias_hidrograficas()
+
+        with col_titulo:
+            st.markdown("#### Bacias hidrográficas")
+
+            bacias_cadastradas = locais.get("bacias_hidrograficas", [])
+
+            if not bacias_cadastradas:
+                st.caption("Nenhuma bacia hidrográfica cadastrada para este projeto.")
+            else:
+                for bacia in sorted(
+                    bacias_cadastradas,
+                    key=lambda x: x.get("nome_bacia_hidrografica", "").lower()
+                ):
+                    st.write(f"**{bacia.get('nome_bacia_hidrografica')}** - {', '.join(bacia.get('municipios', []))}")
+                    
+    
     # -------------------------------------------------------------------------------
     # SEÇÃO — MAPAS
     # -------------------------------------------------------------------------------
-    with st.container(border=True):
-
+    with col_mapas.container(border=True):
+        
         col_btn, col_title = st.columns([1, 30])
 
         with col_btn:
@@ -956,6 +1119,9 @@ with aba_cadastro:
             else:
                 for arq in arquivos:
                     st.markdown(f"[{arq['nome']}]({arq['url']})")
+           
+                    
+    
 
 
 
