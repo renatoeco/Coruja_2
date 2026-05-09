@@ -1,6 +1,17 @@
 import streamlit as st
-from funcoes_auxiliares import conectar_mongo_coruja, sidebar_projeto, calcular_status_projetos, calcular_status_atividade, registrar_estatistica_sessao, add_permissao_drive, obter_servico_drive
-
+from funcoes_auxiliares import (
+    conectar_mongo_coruja, 
+    sidebar_projeto, 
+    calcular_status_projetos, 
+    calcular_status_atividade, 
+    registrar_estatistica_sessao, 
+    add_permissao_drive, 
+    obter_servico_drive,
+    obter_ou_criar_pasta,
+    obter_pasta_projeto,
+    enviar_arquivo_drive,
+    gerar_link_drive
+)
 import pandas as pd
 import streamlit_shadcn_ui as ui
 import datetime
@@ -164,141 +175,6 @@ if not st.session_state["ultimo_acesso_atualizado"]:
 def email_valido(email):
     padrao = r"^[\w\.-]+@[\w\.-]+\.\w+$"
     return re.match(padrao, email) is not None
-
-
-
-def obter_ou_criar_pasta(servico, nome_pasta, id_pasta_pai):
-    """
-    Busca uma pasta com o nome especificado dentro da pasta pai no Google Drive.
-    Se a pasta não existir, ela é criada.
-    
-    Retorna o ID da pasta encontrada ou criada.
-    """
-
-    # Monta a query de busca:
-    # - nome exato da pasta
-    # - dentro da pasta pai
-    # - apenas pastas
-    # - não deletadas
-    consulta = (
-        f"name='{nome_pasta}' and "
-        f"'{id_pasta_pai}' in parents and "
-        f"mimeType='application/vnd.google-apps.folder' and trashed=false"
-    )
-
-    # Executa a busca
-    resultado = servico.files().list(
-        q=consulta,
-        fields="files(id)",
-        includeItemsFromAllDrives=True,
-        supportsAllDrives=True
-    ).execute()
-
-    arquivos = resultado.get("files", [])
-
-    # Se encontrou, reutiliza a pasta existente
-    if arquivos:
-        return arquivos[0]["id"]
-
-    # Caso não exista, cria a pasta
-    pasta = servico.files().create(
-        body={
-            "name": nome_pasta,
-            "parents": [id_pasta_pai],
-            "mimeType": "application/vnd.google-apps.folder"
-        },
-        fields="id",
-        supportsAllDrives=True
-    ).execute()
-
-    return pasta["id"]
-
-
-
-def obter_pasta_projeto(servico, codigo, sigla):
-    """
-    Retorna o ID da pasta do projeto no Google Drive.
-    Cria se não existir.
-    Usa cache baseado em código + sigla.
-    """
-
-    nome_pasta = f"{codigo} - {sigla}"
-    chave_cache = f"pasta_projeto_{nome_pasta}"
-
-    # Se já foi criada nesta sessão, reutiliza
-    if chave_cache in st.session_state:
-        return st.session_state[chave_cache]
-
-    # Cria ou localiza a pasta
-    pasta_id = obter_ou_criar_pasta(
-        servico,
-        nome_pasta,
-        st.secrets["drive"]["pasta_drive_projetos"]
-    )
-
-    # Salva no cache
-    st.session_state[chave_cache] = pasta_id
-
-    return pasta_id
-
-
-
-
-
-
-def obter_pasta_locais(servico, pasta_projeto_id):
-    """
-    Retorna o ID da subpasta 'Locais' dentro da pasta do projeto.
-
-    Também usa cache no session_state para evitar múltiplas criações.
-    """
-
-    if "pasta_locais_id" in st.session_state:
-        return st.session_state["pasta_locais_id"]
-
-    pasta_id = obter_ou_criar_pasta(
-        servico,
-        "Locais",
-        pasta_projeto_id
-    )
-
-    st.session_state["pasta_locais_id"] = pasta_id
-    return pasta_id
-
-
-def enviar_arquivo_drive(servico, id_pasta, arquivo):
-    """
-    Faz upload de um arquivo para o Google Drive dentro da pasta informada.
-
-    Retorna o ID do arquivo criado.
-    """
-
-    # Converte o arquivo do Streamlit para bytes
-    media = MediaIoBaseUpload(
-        io.BytesIO(arquivo.read()),
-        mimetype=arquivo.type,
-        resumable=False
-    )
-
-    # Cria o arquivo no Drive
-    arq = servico.files().create(
-        body={
-            "name": arquivo.name,
-            "parents": [id_pasta]
-        },
-        media_body=media,
-        fields="id",
-        supportsAllDrives=True
-    ).execute()
-
-    return arq["id"]
-
-
-def gerar_link_drive(id_arquivo):
-    """
-    Gera o link público padrão de visualização do arquivo no Google Drive.
-    """
-    return f"https://drive.google.com/file/d/{id_arquivo}/view"
 
 
 
