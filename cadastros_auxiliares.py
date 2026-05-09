@@ -1747,30 +1747,69 @@ with aba_categorias_despesa:
                          hide_index=True,
                          width=500)
 
+
+
+
+
+
+
     # -------------------------
     # MODO EDIÇÃO
     # -------------------------
     else:
 
         st.write("Edite, adicione e exclua linhas.")
+        st.caption('Evite excluir, pois quebrará os orçamentos já cadastrados. Prefira editar sem mudar o significado da categoria.')
 
+
+        # -----------------------------------
+        # Dataframe do editor
+        # -----------------------------------
         if df_categorias.empty:
-           
-            df_editor = pd.DataFrame(
-                {"categoria": pd.Series(dtype="str")}
-            )
-        else:
-            df_editor = df_categorias[["categoria"]].copy()
-            df_editor["categoria"] = df_editor["categoria"].astype(str)
 
+            df_editor = pd.DataFrame(
+                columns=["_id", "categoria"]
+            )
+
+        else:
+
+            df_editor = df_categorias[
+                ["_id", "categoria"]
+            ].copy()
+
+            df_editor["_id"] = (
+                df_editor["_id"]
+                .astype(str)
+            )
+
+            df_editor["categoria"] = (
+                df_editor["categoria"]
+                .astype(str)
+            )
+
+        # -----------------------------------
+        # Data editor
+        # -----------------------------------
         df_editado = st.data_editor(
             df_editor,
             num_rows="dynamic",
             hide_index=True,
             key="editor_categorias_despesa",
-            width=500
+            width=500,
+            column_config={
+
+                # ID oculto
+                "_id": None,
+
+                "categoria": st.column_config.TextColumn(
+                    "Categoria"
+                )
+            }
         )
 
+        # -----------------------------------
+        # Botão salvar
+        # -----------------------------------
         if st.button(
             "Salvar alterações",
             icon=":material/save:",
@@ -1778,70 +1817,283 @@ with aba_categorias_despesa:
             key="salvar_categorias_despesa"
         ):
 
+            # -----------------------------------
+            # Validar estrutura
+            # -----------------------------------
             if "categoria" not in df_editado.columns:
+
                 st.error("Nenhum dado válido para salvar.")
                 st.stop()
 
-            # Normaliza e remove vazios
+            # -----------------------------------
+            # Normalização
+            # -----------------------------------
             df_editado["categoria"] = (
                 df_editado["categoria"]
                 .astype(str)
                 .str.strip()
             )
-            df_editado = df_editado[df_editado["categoria"] != ""]
 
+            df_editado = df_editado[
+                df_editado["categoria"] != ""
+            ]
+
+            # -----------------------------------
+            # Validar vazio
+            # -----------------------------------
             if df_editado.empty:
-                st.warning("Nenhuma categoria informada.")
+
+                st.warning(
+                    "Nenhuma categoria informada."
+                )
+
                 st.stop()
 
-            df_editado = df_editado.sort_values("categoria")
+            # -----------------------------------
+            # Ordenar
+            # -----------------------------------
+            df_editado = df_editado.sort_values(
+                "categoria"
+            )
 
-            # ===========================
-            # VERIFICAÇÃO DE DUPLICADOS
-            # ===========================
-            lista_editada = df_editado["categoria"].tolist()
-            duplicados_local = {
-                x for x in lista_editada if lista_editada.count(x) > 1
+            # -----------------------------------
+            # Verificar duplicados
+            # -----------------------------------
+            lista_editada = (
+                df_editado["categoria"]
+                .tolist()
+            )
+
+            duplicados = {
+                x for x in lista_editada
+                if lista_editada.count(x) > 1
             }
 
-            if duplicados_local:
+            if duplicados:
+
                 st.error(
                     "Existem categorias duplicadas: "
-                    f"{', '.join(duplicados_local)}"
+                    f"{', '.join(duplicados)}"
                 )
+
                 st.stop()
 
-            valores_orig = (
-                set(df_categorias["categoria"])
-                if "categoria" in df_categorias.columns
-                else set()
+            # -----------------------------------
+            # IDs existentes no banco
+            # -----------------------------------
+            ids_banco = set(
+                df_categorias["_id"].astype(str)
             )
-            valores_editados = set(lista_editada)
 
-            # 1) Removidos
-            for categoria in valores_orig - valores_editados:
+            # -----------------------------------
+            # IDs enviados pelo editor
+            # -----------------------------------
+            ids_editor = set(
+                df_editado["_id"]
+                .dropna()
+                .astype(str)
+            )
+
+            # -----------------------------------
+            # Remover categorias excluídas
+            # -----------------------------------
+            ids_remover = ids_banco - ids_editor
+
+            for id_remover in ids_remover:
+
                 col_categorias_despesa.delete_one(
-                    {"categoria": categoria}
+                    {"_id": ObjectId(id_remover)}
                 )
 
-            # 2) Novos
-            for categoria in valores_editados - valores_orig:
-                if col_categorias_despesa.find_one(
-                    {"categoria": categoria}
-                ):
-                    st.error(
-                        f"A categoria '{categoria}' já existe "
-                        "e não será inserida."
+            # -----------------------------------
+            # Atualizar ou criar categorias
+            # -----------------------------------
+            for _, row in df_editado.iterrows():
+
+                categoria = row["categoria"]
+                id_categoria = row.get("_id")
+
+                # -----------------------------------
+                # Atualização
+                # -----------------------------------
+                if id_categoria and str(id_categoria).strip():
+
+                    col_categorias_despesa.update_one(
+                        {
+                            "_id": ObjectId(id_categoria)
+                        },
+                        {
+                            "$set": {
+                                "categoria": categoria
+                            }
+                        }
                     )
-                    st.stop()
 
-                col_categorias_despesa.insert_one(
-                    {"categoria": categoria}
-                )
+                # -----------------------------------
+                # Nova categoria
+                # -----------------------------------
+                else:
 
-            st.success("Categorias de despesa atualizadas com sucesso!")
+                    col_categorias_despesa.insert_one(
+                        {
+                            "categoria": categoria
+                        }
+                    )
+
+            st.success(
+                "Categorias de despesa atualizadas com sucesso!"
+            )
+
             time.sleep(3)
+
             st.rerun()
+
+
+
+
+
+
+
+
+# # ==========================================================
+# # ABA CATEGORIAS DE DESPESA
+# # ==========================================================
+
+# with aba_categorias_despesa:
+
+#     st.subheader("Categorias de despesa")
+#     st.write("")
+
+#     # 1) Carrega documentos da coleção (ordenados)
+#     dados_categorias = list(
+#         col_categorias_despesa.find({}, {"categoria": 1}).sort("categoria", 1)
+#     )
+
+#     df_categorias = pd.DataFrame(dados_categorias)
+
+#     # Converte ObjectId para string
+#     if "_id" in df_categorias.columns:
+#         df_categorias["_id"] = df_categorias["_id"].astype(str)
+#     else:
+#         df_categorias["_id"] = ""
+
+#     editar_categorias = st.toggle("Editar", key="editar_categorias_despesa")
+#     st.write("")
+
+#     # -------------------------
+#     # MODO VISUALIZAÇÃO
+#     # -------------------------
+#     if not editar_categorias:
+
+#         if df_categorias.empty:
+#             st.caption("Nenhuma categoria de despesa cadastrada.")
+#         else:
+#             df_tabela = (
+#                 df_categorias[["categoria"]]
+#                 .sort_values("categoria")
+#                 .reset_index(drop=True)
+#                 .rename(columns={"categoria": "Categoria de despesa"})
+#             )
+
+#             st.dataframe(df_tabela,
+#                          hide_index=True,
+#                          width=500)
+
+#     # -------------------------
+#     # MODO EDIÇÃO
+#     # -------------------------
+#     else:
+
+#         st.write("Edite, adicione e exclua linhas.")
+
+#         if df_categorias.empty:
+           
+#             df_editor = pd.DataFrame(
+#                 {"categoria": pd.Series(dtype="str")}
+#             )
+#         else:
+#             df_editor = df_categorias[["categoria"]].copy()
+#             df_editor["categoria"] = df_editor["categoria"].astype(str)
+
+#         df_editado = st.data_editor(
+#             df_editor,
+#             num_rows="dynamic",
+#             hide_index=True,
+#             key="editor_categorias_despesa",
+#             width=500
+#         )
+
+#         if st.button(
+#             "Salvar alterações",
+#             icon=":material/save:",
+#             type="primary",
+#             key="salvar_categorias_despesa"
+#         ):
+
+#             if "categoria" not in df_editado.columns:
+#                 st.error("Nenhum dado válido para salvar.")
+#                 st.stop()
+
+#             # Normaliza e remove vazios
+#             df_editado["categoria"] = (
+#                 df_editado["categoria"]
+#                 .astype(str)
+#                 .str.strip()
+#             )
+#             df_editado = df_editado[df_editado["categoria"] != ""]
+
+#             if df_editado.empty:
+#                 st.warning("Nenhuma categoria informada.")
+#                 st.stop()
+
+#             df_editado = df_editado.sort_values("categoria")
+
+#             # ===========================
+#             # VERIFICAÇÃO DE DUPLICADOS
+#             # ===========================
+#             lista_editada = df_editado["categoria"].tolist()
+#             duplicados_local = {
+#                 x for x in lista_editada if lista_editada.count(x) > 1
+#             }
+
+#             if duplicados_local:
+#                 st.error(
+#                     "Existem categorias duplicadas: "
+#                     f"{', '.join(duplicados_local)}"
+#                 )
+#                 st.stop()
+
+#             valores_orig = (
+#                 set(df_categorias["categoria"])
+#                 if "categoria" in df_categorias.columns
+#                 else set()
+#             )
+#             valores_editados = set(lista_editada)
+
+#             # 1) Removidos
+#             for categoria in valores_orig - valores_editados:
+#                 col_categorias_despesa.delete_one(
+#                     {"categoria": categoria}
+#                 )
+
+#             # 2) Novos
+#             for categoria in valores_editados - valores_orig:
+#                 if col_categorias_despesa.find_one(
+#                     {"categoria": categoria}
+#                 ):
+#                     st.error(
+#                         f"A categoria '{categoria}' já existe "
+#                         "e não será inserida."
+#                     )
+#                     st.stop()
+
+#                 col_categorias_despesa.insert_one(
+#                     {"categoria": categoria}
+#                 )
+
+#             st.success("Categorias de despesa atualizadas com sucesso!")
+#             time.sleep(3)
+#             st.rerun()
 
 
 
