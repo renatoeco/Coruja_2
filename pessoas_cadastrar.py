@@ -58,16 +58,16 @@ def enviar_email_convite(nome_completo, email_destino, codigo):
         msg = MIMEMultipart()
         msg['From'] = endereco_email
         msg['To'] = email_destino
-        msg['Subject'] = "Convite para a Plataforma CEPF"
+        msg['Subject'] = "Convite para o sitema Coruja"
 
         corpo_html = f"""
         <p>Olá {nome_completo},</p>
-        <p>Você foi convidado para utilizar a <strong>Plataforma de Gestão de Projetos do CEPF</strong>.</p>
+        <p>Você foi convidado para utilizar o <strong>Sistema Coruja</strong>, a Plataforma de Gestão de Projetos do Fundo Ecos.</p>
         <p>Para realizar seu cadastro, acesse o link abaixo e clique no botão <strong>"Primeiro acesso"</strong>:</p>
         <p><a href="https://coruja-2-dev.streamlit.app/">Acesse aqui a Plataforma</a></p>
         <p>Insira o seu <strong>e-mail</strong> e o <strong>código</strong> que te enviamos abaixo:</p>
         <h2>{codigo}</h2>
-        <p>Se tiver alguma dúvida, entre em contato com a equipe do CEPF.</p>
+        <p>Se tiver alguma dúvida, entre em contato com a equipe do Fundo Ecos.</p>
         """
         msg.attach(MIMEText(corpo_html, 'html'))
 

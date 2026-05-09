@@ -62,27 +62,6 @@ else:
     st.warning("Coluna 'status' não encontrada.")
 
 
-# # 1) Busca todos os documentos, incluindo a senha
-# df_pendentes = pd.DataFrame(list(col_pessoas.find({})))
-
-# # 2) Filtra apenas os registros pendentes (senha vazia ou None)
-# df_pendentes = df_pendentes[df_pendentes["senha"].isna() | (df_pendentes["senha"] == "")]
-
-# # 3) Remove a coluna 'senha' do dataframe final
-# df_pendentes = df_pendentes.drop(columns=["senha"])
-
-# ??????????????????/
-# # Cria uma cópia para exibição
-# df_pendentes_display = df_pendentes.copy()
-# # Transforma a coluna 'projetos' em string (listas viram texto)
-# if "projetos" in df_pendentes_display.columns:
-#     df_pendentes_display["projetos"] = df_pendentes_display["projetos"].apply(
-#         lambda x: ", ".join(x) if isinstance(x, list) else ""
-#     )
-# # Agora pode exibir sem erro
-# st.dataframe(df_pendentes_display)
-# # Converte ObjectId para string
-# df_pendentes["_id"] = df_pendentes["_id"].astype(str)
 
 
 
@@ -147,13 +126,6 @@ def editar_pessoa(_id: str):
             if pessoa.get("tipo_beneficiario") in ["técnico", "financeiro"]
             else 0
         )
-
-    # # Status
-    # status = st.selectbox(
-    #     "Status",
-    #     options=["ativo", "inativo"],
-    #     index=0 if pessoa.get("status", "ativo") == "ativo" else 1
-    # )
     
     if "codigo" in df_projetos.columns:
         opcoes_projetos = df_projetos["codigo"].dropna().astype(str).tolist()

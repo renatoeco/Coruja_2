@@ -369,6 +369,102 @@ def gerar_email_relatorio_aprovado(
 
 
 
+def gerar_email_relatorio_reprovado(
+    nome_do_contato: str,
+    relatorio_numero: int,
+    projeto: dict,
+    organizacao: str,
+    logo_url: str
+):
+    """
+    Gera o HTML do e-mail de reprovação de relatório.
+    Segue o mesmo padrão visual do e-mail de aprovação.
+    """
+
+    return f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {{
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }}
+        .container {{
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-top: 6px solid #C82333;
+            padding: 30px;
+        }}
+        .logo {{
+            text-align: center;
+            margin-bottom: 30px;
+        }}
+        .content {{
+            color: #333;
+            font-size: 15px;
+            line-height: 1.6;
+        }}
+        .footer {{
+            margin-top: 40px;
+            font-size: 12px;
+            color: #777;
+            text-align: center;
+        }}
+        .highlight {{
+            color: #C82333;
+            font-weight: bold;
+        }}
+    </style>
+</head>
+<body>
+
+    <div class="container">
+
+        <div class="logo">
+            <img src="{logo_url}" height="70" alt="IEB">
+        </div>
+
+        <div class="content">
+
+            <p><strong>{nome_do_contato}</strong>,</p>
+
+            <p>
+                Informamos que o <span class="highlight">Relatório {relatorio_numero}</span>
+                do projeto {projeto['nome_do_projeto']}
+                da organização <strong>{organizacao}</strong> <span class="highlight">não foi aprovado</span>.
+            </p>
+
+            <p>
+                Acesse o sistema Veredas para ver em detalhes os ajustes necessários no Relatório.
+            </p>
+
+            <p>
+                <strong>Após realizar todos os ajustes, envie o relatório novamente.</strong>
+            </p>
+
+            <p>
+                Atenciosamente,<br>
+                <strong>Sistema Veredas</strong>
+            </p>
+        </div>
+
+        <div class="footer">
+            Este é um e-mail automático. Não responda.
+        </div>
+
+    </div>
+
+</body>
+</html>
+"""
+
+
+
 
 
 
@@ -5623,7 +5719,6 @@ if step_selecionado == "Enviar":
 
 
 
-
 # ---------- AVALIAÇÃO ----------
 if step_selecionado == "Avaliação":
 
@@ -5638,123 +5733,13 @@ if step_selecionado == "Avaliação":
         if r["numero"] == relatorio_numero
     )
 
-    col1, col2, col3 = st.columns(3, gap="large")
-
-    # Checklist
-    with col1:
-        st.write("**Checklist**")
-
-        st.checkbox(
-            "Relatos de atividades (auto)",
-            value=relatos_ok,
-            disabled=True,
-            key=f"chk_relatos_{relatorio_numero}"
-        )
-
-        st.checkbox(
-            "Registros de despesas (auto)",
-            value=despesas_ok,
-            disabled=True,
-            key=f"chk_despesas_{relatorio_numero}"
-        )
-
-
-
-
-        # -----------------------------
-        # RESULTADOS
-        # -----------------------------
-        res_key = f"chk_res_{relatorio_numero}"
-
-        st.checkbox(
-            "Resultados",
-            value="res_verif_por" in relatorio_db,
-            key=res_key,
-            on_change=atualizar_verificacao_relatorio,
-            args=(
-                projeto_codigo,
-                relatorio_numero,
-                "res_verif_por",
-                res_key
-            )
-        )
-
-        if relatorio_db.get("res_verif_por"):
-            st.caption(relatorio_db["res_verif_por"])
-
-
-
-
-
-
-
-
-        # -----------------------------
-        # BENEFICIÁRIOS
-        # -----------------------------
-        benef_key = f"chk_benef_{relatorio_numero}"
-        st.checkbox(
-            "Beneficiários e Benefícios",
-            value="benef_verif_por" in relatorio_db,
-            key=benef_key,
-            on_change=atualizar_verificacao_relatorio,
-            args=(
-                projeto_codigo,
-                relatorio_numero,
-                "benef_verif_por",
-                benef_key
-            )
-        )
-
-        if relatorio_db.get("benef_verif_por"):
-            st.caption(relatorio_db["benef_verif_por"])
-
-        # -----------------------------
-        # PESQUISAS
-        # -----------------------------
-        pesq_key = f"chk_pesq_{relatorio_numero}"
-        st.checkbox(
-            "Pesquisas",
-            value="pesq_verif_por" in relatorio_db,
-            key=pesq_key,
-            on_change=atualizar_verificacao_relatorio,
-            args=(
-                projeto_codigo,
-                relatorio_numero,
-                "pesq_verif_por",
-                pesq_key
-            )
-        )
-
-        if relatorio_db.get("pesq_verif_por"):
-            st.caption(relatorio_db["pesq_verif_por"])
-
-        # -----------------------------
-        # FORMULÁRIO
-        # -----------------------------
-        form_key = f"chk_form_{relatorio_numero}"
-        st.checkbox(
-            "Formulário",
-            value="form_verif_por" in relatorio_db,
-            key=form_key,
-            on_change=atualizar_verificacao_relatorio,
-            args=(
-                projeto_codigo,
-                relatorio_numero,
-                "form_verif_por",
-                form_key
-            )
-        )
-
-        if relatorio_db.get("form_verif_por"):
-            st.caption(relatorio_db["form_verif_por"])
-
-
+    # Layout em quatro colunas para avaliação, devolutiva e aprovação
+    col1, col2 = st.columns([1, 2], gap="medium")
 
     # Anotações
-    with col2:
+    with col1:
 
-        st.write("**Anotações**")
+        st.write("**Anotações internas**")
 
         # --------------------------------------------------
         # DIALOG DE NOVA ANOTAÇÃO
@@ -5956,17 +5941,40 @@ if step_selecionado == "Avaliação":
 
 
 
+    # ###############################################################
+    # COLUNA 3 — ENCAMINHAMENTO
+    # ###############################################################
+    with col2:
 
-    # ==================================================
-    # COLUNA 3 — APROVAÇÃO DO RELATÓRIO
-    # ==================================================
-    with col3:
-
-        st.write("**Aprovação**")
-        st.write("")
+        st.write("**Encaminhamento**")
 
         # --------------------------------------------------
-        # REGRA: só pode aprovar se TODO checklist estiver OK
+        # CONTROLE DE PERMISSÃO
+        # --------------------------------------------------
+        pode_encaminhar = status_atual_db == "em_analise"
+
+        if "confirmar_reprovacao" not in st.session_state:
+            st.session_state["confirmar_reprovacao"] = False
+
+        if "confirmar_aprovacao" not in st.session_state:
+            st.session_state["confirmar_aprovacao"] = False
+
+        # Segurança adicional
+        if not pode_encaminhar:
+            st.session_state["confirmar_reprovacao"] = False
+            st.session_state["confirmar_aprovacao"] = False
+
+        # --------------------------------------------------
+        # INPUT
+        # --------------------------------------------------
+        texto_devolutiva = st.text_area(
+            "Devolutiva",
+            placeholder="Escreva uma mensagem de devolutiva...",
+            disabled=not pode_encaminhar
+        )
+
+        # --------------------------------------------------
+        # REGRA: CHECKLIST PARA APROVAÇÃO
         # --------------------------------------------------
         pode_aprovar = all([
             relatos_ok,
@@ -5977,100 +5985,797 @@ if step_selecionado == "Avaliação":
             "form_verif_por" in relatorio_db
         ])
 
-
-
         # --------------------------------------------------
-        # BOTÃO DE APROVAÇÃO
+        # BOTÕES
         # --------------------------------------------------
-        if st.button(
-            "Aprovar e enviar e-mail",
-            type="primary",
-            icon=":material/check_circle:",
-            disabled=not pode_aprovar
-        ):
+        with st.container(horizontal=True):
 
-            with st.spinner("Aprovando relatório..."):
+            botao_reprovar = st.button(
+                "Reprovar e devolver",
+                type="secondary",
+                icon=":material/replay:",
+                disabled=not pode_encaminhar,
+                width=225
+            )
 
-                # Data atual (dd/mm/yyyy)
+            botao_aprovar = st.button(
+                "Aprovar",
+                type="primary",
+                icon=":material/check_circle:",
+                disabled=(not pode_encaminhar or not pode_aprovar),
+                width=225
+            )
+
+        # ==================================================
+        # AÇÃO — REPROVAR
+        # ==================================================
+        if botao_reprovar:
+
+            if not texto_devolutiva or not texto_devolutiva.strip():
+                st.warning("A devolutiva deve ser preenchida para a reprovação.")
+            else:
+                st.session_state["confirmar_reprovacao"] = True
+
+        if st.session_state["confirmar_reprovacao"]:
+
+            st.warning(
+                "Você tem certeza que deseja reprovar o relatório?\n\n"
+                "Os responsáveis pelo projeto serão notificados por e-mail."
+            )
+
+            if st.button(
+                "Sim, reprovar relatório",
+                type="primary",
+                icon=":material/check:",
+                width=225
+            ):
+
+                nova_devolucao = {
+                    "data_devolucao": datetime.datetime.now().strftime("%d/%m/%Y"),
+                    "autor": st.session_state.get("nome", "Usuário não identificado"),
+                    "texto_devolutiva": texto_devolutiva.strip(),
+                    "status_devolucao": "Devolvido"
+
+                }
+
+                col_projetos.update_one(
+                    {
+                        "codigo": projeto_codigo,
+                        "relatorios.numero": relatorio_numero
+                    },
+                    {
+                        "$push": {"relatorios.$.devolucao": nova_devolucao},
+                        "$set": {"relatorios.$.status_relatorio": "modo_edicao"}
+                    }
+                )
+
+                # envio de email
+                organizacao = db["organizacoes"].find_one(
+                    {"_id": projeto.get("id_organizacao")}
+                )
+
+                nome_org = organizacao.get("nome_organizacao") if organizacao else "Organização"
+
+                emails_destino = [
+                    c.get("email")
+                    for c in projeto.get("contatos", [])
+                    if c.get("email")
+                ]
+
+                if emails_destino:
+                    email_html = gerar_email_relatorio_reprovado(
+                        nome_do_contato="Prezados(as)",
+                        relatorio_numero=relatorio_numero,
+                        projeto=projeto,
+                        organizacao=nome_org,
+                        logo_url=logo_cepf
+                    )
+
+                    enviar_email(
+                        email_html,
+                        emails_destino,
+                        f"Relatório {relatorio_numero} não aprovado"
+                    )
+
+                st.success("Relatório reprovado e devolutiva enviada.", icon=":material/check:")
+                time.sleep(3)
+
+                st.session_state["confirmar_reprovacao"] = False
+                st.rerun()
+
+
+
+
+
+
+        # ==================================================
+        # AÇÃO — APROVAR (COM CONFIRMAÇÃO + VALIDAÇÃO)
+        # ==================================================
+        if botao_aprovar:
+
+            if not texto_devolutiva or not texto_devolutiva.strip():
+                st.warning("A devolutiva deve ser preenchida para aprovação.")
+            else:
+                st.session_state["confirmar_aprovacao"] = True
+
+        if st.session_state["confirmar_aprovacao"]:
+
+            st.warning(
+                "Você tem certeza que deseja aprovar o relatório? \n\n"
+                "Os responsáveis serão notificados por e-mail."
+            )
+
+            if st.button(
+                "Sim, aprovar relatório",
+                type="primary",
+                icon=":material/check:",
+                width=225
+            ):
+
+                # --------------------------------------------------
+                # REGISTRA DEVOLUTIVA 
+                # --------------------------------------------------
+                nova_devolucao = {
+                    "data_devolucao": datetime.datetime.now().strftime("%d/%m/%Y"),
+                    "autor": st.session_state.get("nome", "Usuário"),
+                    "texto_devolutiva": texto_devolutiva.strip(),
+                    "status_devolucao": "Aprovado"
+                }
+
+                projeto["relatorios"][idx].setdefault("devolucao", []).append(nova_devolucao)
+
+                # --------------------------------------------------
+                # APROVAÇÃO
+                # --------------------------------------------------
                 data_hoje = datetime.datetime.now().strftime("%d/%m/%Y")
-
-                # Nome do aprovador
                 nome_aprovador = st.session_state.get("nome", "Usuário")
 
-                # --------------------------------------------------
-                # ATUALIZA RELATÓRIO EM MEMÓRIA
-                # --------------------------------------------------
                 projeto["relatorios"][idx]["status_relatorio"] = "aprovado"
                 projeto["relatorios"][idx]["data_aprovacao"] = data_hoje
                 projeto["relatorios"][idx]["aprovado_por"] = nome_aprovador
 
-                # --------------------------------------------------
-                # PERSISTE NO BANCO DE DADOS
-                # --------------------------------------------------
                 col_projetos.update_one(
                     {"codigo": projeto_codigo},
                     {"$set": {"relatorios": projeto["relatorios"]}}
                 )
 
                 # --------------------------------------------------
-                # ENVIO DE E-MAIL PARA TODOS OS CONTATOS
+                # EMAIL
                 # --------------------------------------------------
-                contatos_notificados = []
 
-                for contato in projeto.get("contatos", []):
+                # COLETA TODOS OS EMAILS DOS CONTATOS
+                emails_destino = [
+                    c.get("email")
+                    for c in projeto.get("contatos", [])
+                    if c.get("email")
+                ]
 
-                    email = contato.get("email")
-                    nome_contato = contato.get("nome", "Olá")
+                # --------------------------------------------------
+                # ENVIO ÚNICO DE EMAIL
+                # --------------------------------------------------
 
-                    if not email:
-                        continue
+                organizacao = db["organizacoes"].find_one(
+                    {"_id": projeto.get("id_organizacao")}
+                )
 
-                    corpo_html = gerar_email_relatorio_aprovado(
-                        nome_do_contato=nome_contato,
+                nome_org = organizacao.get("nome_organizacao") if organizacao else "Organização"
+
+                emails_destino = [
+                    c.get("email")
+                    for c in projeto.get("contatos", [])
+                    if c.get("email")
+                ]
+
+                if emails_destino:
+
+                    email_html = gerar_email_relatorio_aprovado(
+                        nome_do_contato="Prezados(as)",
                         relatorio_numero=relatorio_numero,
                         projeto=projeto,
-                        organizacao=projeto.get("organizacao", ""),
+                        organizacao=nome_org,
                         logo_url=logo_cepf
                     )
 
                     enviar_email(
-                        corpo_html=corpo_html,
-                        destinatarios=[email],
-                        assunto=f"Relatório {relatorio_numero} aprovado!"
+                        email_html,
+                        emails_destino,
+                        f"Relatório {relatorio_numero} aprovado"
                     )
 
-                    # Guarda nome para feedback final
-                    contatos_notificados.append(nome_contato)
 
-            # --------------------------------------------------
-            # FEEDBACK VISUAL E RECARREGAMENTO
-            # --------------------------------------------------
-            if contatos_notificados:
-                nomes = ", ".join(contatos_notificados)
-                st.success(
-                    f"Relatório aprovado e e-mails enviados com sucesso para {nomes}.",
-                    icon=":material/check:"
-                )
-            else:
-                st.success(
-                    "Relatório aprovado, mas não havia contatos com e-mail para notificação.",
-                    icon=":material/check:"
-                )
 
-            time.sleep(5)
-            st.rerun()
+                st.success("Relatório aprovado com sucesso.", icon=":material/check:")
+                time.sleep(3)
+
+                st.session_state["confirmar_aprovacao"] = False
+                st.rerun()
+
+
+
+
+
+
 
         # --------------------------------------------------
-        # INFORMAÇÃO DE APROVAÇÃO (APÓS APROVAR)
+        # LISTAGEM DE DEVOLUÇÕES
         # --------------------------------------------------
-        if relatorio_db.get("status_relatorio") == "aprovado":
 
-            data_aprov = relatorio_db.get("data_aprovacao")
-            nome_aprov = relatorio_db.get("aprovado_por", "")
+        devolucoes = relatorio_db.get("devolucao", [])
 
-            if data_aprov:
-                st.caption(f"Aprovado em {data_aprov} por {nome_aprov}")
-                st.caption("Os contatos do projeto foram notificados por e-mail.")
+
+        if devolucoes:
+
+            # --------------------------------------------------
+            # CONTROLE DE ESTADO DE EXCLUSÃO
+            # --------------------------------------------------
+            if "dev_avaliacao_apagando" not in st.session_state:
+                st.session_state["dev_avaliacao_apagando"] = None
+
+            elif st.session_state["dev_avaliacao_apagando"] is not None:
+                if st.session_state["dev_avaliacao_apagando"] >= len(devolucoes):
+                    st.session_state["dev_avaliacao_apagando"] = None
+
+
+            st.write("")
+            st.write("**Histórico de devolutivas**")
+
+            for i, d in enumerate(reversed(devolucoes)):
+
+                idx_real = len(devolucoes) - 1 - i
+
+
+                with st.container(border=True):
+
+                    status = d.get("status_devolucao", "—")
+
+                    # --------------------------------------------------
+                    # DEFINIÇÃO DE COR POR STATUS
+                    # --------------------------------------------------
+                    if status == "Devolvido":
+                        cor = "rgba(226, 101, 12)"
+                    elif status == "Aprovado":
+                        cor = "rgba(110, 140, 60)"
+                    else:
+                        cor = "#999999"  # fallback neutro
+
+                    # --------------------------------------------------
+                    # RENDERIZAÇÃO
+                    # --------------------------------------------------
+                    st.markdown(
+                        f"<span style='color: {cor}; font-weight: 600;'>{status}</span>",
+                        unsafe_allow_html=True
+                    )
+
+                    st.markdown(
+                        f"**{d.get('autor')}** · {d.get('data_devolucao')}"
+                    )
+
+                    st.markdown(
+                        d.get("texto_devolutiva", "").replace("\n", "<br>"),
+                        unsafe_allow_html=True
+                    )
+
+                    # --------------------------------------------------
+                    # BOTÃO EXCLUIR
+                    # --------------------------------------------------
+                    with st.container(horizontal=True, horizontal_alignment="right"):
+
+                        if st.button(
+                            "Excluir",
+                            key=f"del_dev_avaliacao_{relatorio_numero}_{idx_real}",
+                            type="tertiary",
+                            icon=":material/delete:"
+                        ):
+                            st.session_state["dev_avaliacao_apagando"] = idx_real
+                            st.rerun()
+
+                    if st.session_state["dev_avaliacao_apagando"] == idx_real:
+
+                        st.warning(
+                            "Tem certeza que deseja apagar esta devolução? Esta ação não pode ser desfeita.",
+                            icon=":material/warning:"
+                        )
+
+                        with st.container(horizontal=True):
+
+                            if st.button(
+                                "Sim, apagar",
+                                key=f"confirm_del_dev_avaliacao_{relatorio_numero}_{idx_real}",
+                                type="primary",
+                                icon=":material/delete:"
+                            ):
+
+                                # --------------------------------------------------
+                                # REMOVE DA LISTA
+                                # --------------------------------------------------
+                                relatorio["devolucao"].pop(idx_real)
+
+                                # --------------------------------------------------
+                                # ATUALIZA NO MONGO
+                                # --------------------------------------------------
+                                col_projetos.update_one(
+                                    {"codigo": projeto_codigo},
+                                    {
+                                        "$set": {
+                                            "relatorios": projeto["relatorios"]
+                                        }
+                                    }
+                                )
+
+                                st.success("Devolutiva excluída.", icon=":material/check:")
+                                time.sleep(3)
+
+                                st.session_state["dev_avaliacao_apagando"] = None
+                                st.rerun()
+
+                            if st.button(
+                                "Cancelar",
+                                key=f"cancel_del_dev_avaliacao_{relatorio_numero}_{idx_real}"
+                            ):
+                                st.session_state["dev_avaliacao_apagando"] = None
+                                st.rerun()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# # ---------- AVALIAÇÃO ----------
+# if step_selecionado == "Avaliação":
+
+#     st.write("")
+#     st.write("")
+
+#     relatos_ok = todos_relatos_aceitos(projeto, relatorio_numero)
+#     despesas_ok = todas_despesas_aceitas(projeto, relatorio_numero)
+
+#     relatorio_db = next(
+#         r for r in projeto["relatorios"]
+#         if r["numero"] == relatorio_numero
+#     )
+
+#     col1, col2, col3 = st.columns(3, gap="large")
+
+#     # Checklist
+#     with col1:
+#         st.write("**Checklist**")
+
+#         st.checkbox(
+#             "Relatos de atividades (auto)",
+#             value=relatos_ok,
+#             disabled=True,
+#             key=f"chk_relatos_{relatorio_numero}"
+#         )
+
+#         st.checkbox(
+#             "Registros de despesas (auto)",
+#             value=despesas_ok,
+#             disabled=True,
+#             key=f"chk_despesas_{relatorio_numero}"
+#         )
+
+
+
+
+#         # -----------------------------
+#         # RESULTADOS
+#         # -----------------------------
+#         res_key = f"chk_res_{relatorio_numero}"
+
+#         st.checkbox(
+#             "Resultados",
+#             value="res_verif_por" in relatorio_db,
+#             key=res_key,
+#             on_change=atualizar_verificacao_relatorio,
+#             args=(
+#                 projeto_codigo,
+#                 relatorio_numero,
+#                 "res_verif_por",
+#                 res_key
+#             )
+#         )
+
+#         if relatorio_db.get("res_verif_por"):
+#             st.caption(relatorio_db["res_verif_por"])
+
+
+
+
+
+
+
+
+#         # -----------------------------
+#         # BENEFICIÁRIOS
+#         # -----------------------------
+#         benef_key = f"chk_benef_{relatorio_numero}"
+#         st.checkbox(
+#             "Beneficiários e Benefícios",
+#             value="benef_verif_por" in relatorio_db,
+#             key=benef_key,
+#             on_change=atualizar_verificacao_relatorio,
+#             args=(
+#                 projeto_codigo,
+#                 relatorio_numero,
+#                 "benef_verif_por",
+#                 benef_key
+#             )
+#         )
+
+#         if relatorio_db.get("benef_verif_por"):
+#             st.caption(relatorio_db["benef_verif_por"])
+
+#         # -----------------------------
+#         # PESQUISAS
+#         # -----------------------------
+#         pesq_key = f"chk_pesq_{relatorio_numero}"
+#         st.checkbox(
+#             "Pesquisas",
+#             value="pesq_verif_por" in relatorio_db,
+#             key=pesq_key,
+#             on_change=atualizar_verificacao_relatorio,
+#             args=(
+#                 projeto_codigo,
+#                 relatorio_numero,
+#                 "pesq_verif_por",
+#                 pesq_key
+#             )
+#         )
+
+#         if relatorio_db.get("pesq_verif_por"):
+#             st.caption(relatorio_db["pesq_verif_por"])
+
+#         # -----------------------------
+#         # FORMULÁRIO
+#         # -----------------------------
+#         form_key = f"chk_form_{relatorio_numero}"
+#         st.checkbox(
+#             "Formulário",
+#             value="form_verif_por" in relatorio_db,
+#             key=form_key,
+#             on_change=atualizar_verificacao_relatorio,
+#             args=(
+#                 projeto_codigo,
+#                 relatorio_numero,
+#                 "form_verif_por",
+#                 form_key
+#             )
+#         )
+
+#         if relatorio_db.get("form_verif_por"):
+#             st.caption(relatorio_db["form_verif_por"])
+
+
+
+#     # Anotações
+#     with col2:
+
+#         st.write("**Anotações**")
+
+#         # --------------------------------------------------
+#         # DIALOG DE NOVA ANOTAÇÃO
+#         # --------------------------------------------------
+#         @st.dialog("Nova anotação")
+#         def dialog_nova_anotacao():
+#             texto = st.text_area(
+#                 "Anotação",
+#                 placeholder="Digite sua anotação sobre este relatório..."
+#             )
+
+#             if st.button("Salvar anotação", type="primary", icon=":material/save:"):
+#                 if not texto.strip():
+#                     st.warning("A anotação não pode estar vazia.")
+#                     return
+
+#                 nova = {
+#                     "texto_anotacao": texto.strip(),
+#                     "data_anotacao": datetime.datetime.now().strftime("%d/%m/%Y"),
+#                     "autor_anotacao": st.session_state.get("nome", "Usuário")
+#                 }
+
+#                 col_projetos.update_one(
+#                     {
+#                         "codigo": projeto_codigo,
+#                         "relatorios.numero": relatorio_numero
+#                     },
+#                     {
+#                         "$push": {
+#                             "relatorios.$.anotacoes_avaliacao": nova
+#                         }
+#                     }
+#                 )
+
+#                 st.success("Anotação salva com sucesso.", icon=":material/check:")
+#                 time.sleep(3)
+#                 st.rerun()
+
+#         # --------------------------------------------------
+#         # BOTÃO NOVA ANOTAÇÃO
+#         # --------------------------------------------------
+#         if st.button(
+#             "+ Nova anotação",
+#             type="secondary",
+#             icon=":material/add:"
+#         ):
+#             dialog_nova_anotacao()
+
+
+
+
+
+
+
+#         # --------------------------------------------------
+#         # RENDERIZAÇÃO DAS ANOTAÇÕES (POPOVER COM AÇÕES)
+#         # --------------------------------------------------
+
+#         if "anotacao_editando" not in st.session_state:
+#             st.session_state["anotacao_editando"] = None
+
+#         if "anotacao_apagando" not in st.session_state:
+#             st.session_state["anotacao_apagando"] = None
+
+#         anotacoes = relatorio_db.get("anotacoes_avaliacao", [])
+
+#         if not anotacoes:
+#             st.caption("Nenhuma anotação registrada.")
+#         else:
+#             for i, a in enumerate(reversed(anotacoes)):
+
+#                 idx_real = len(anotacoes) - 1 - i
+#                 autor = a.get("autor_anotacao")
+#                 data = a.get("data_anotacao")
+#                 texto = a.get("texto_anotacao")
+
+#                 with st.container(border=True):
+
+#                     # Cabeçalho
+#                     col_h1, col_h2 = st.columns([9, 1])
+#                     col_h1.markdown(f"**{autor}** · {data}")
+
+#                     # --------------------------------------------------
+#                     # POPOVER DE AÇÕES (somente autor)
+#                     # --------------------------------------------------
+#                     if st.session_state.get("nome") == autor:
+
+#                         with col_h2.popover("⋮", type="tertiary"):
+
+#                             if st.button(
+#                                 "Editar anotação",
+#                                 key=f"btn_edit_anot_{relatorio_numero}_{idx_real}",
+#                                 icon=":material/edit:",
+#                                 type="tertiary"
+#                             ):
+#                                 st.session_state["anotacao_editando"] = idx_real
+#                                 st.session_state["anotacao_apagando"] = None
+#                                 st.rerun()
+
+#                             if st.button(
+#                                 "Apagar anotação",
+#                                 key=f"btn_del_anot_{relatorio_numero}_{idx_real}",
+#                                 icon=":material/delete:",
+#                                 type="tertiary"
+#                             ):
+#                                 st.session_state["anotacao_apagando"] = idx_real
+#                                 st.session_state["anotacao_editando"] = None
+#                                 st.rerun()
+
+#                     # --------------------------------------------------
+#                     # CONFIRMAÇÃO DE EXCLUSÃO
+#                     # --------------------------------------------------
+#                     if st.session_state["anotacao_apagando"] == idx_real:
+
+#                         st.warning("Tem certeza que deseja apagar esta anotação? Esta ação não pode ser desfeita.", icon=":material/warning:")
+
+#                         with st.container(horizontal=True):
+
+#                             if st.button(
+#                                 "Sim, apagar anotação",
+#                                 key=f"btn_confirm_del_{relatorio_numero}_{idx_real}",
+#                                 type="primary",
+#                                 icon=":material/delete:"
+#                             ):
+#                                 del projeto["relatorios"][idx]["anotacoes_avaliacao"][idx_real]
+
+#                                 col_projetos.update_one(
+#                                     {"codigo": projeto_codigo},
+#                                     {"$set": {"relatorios": projeto["relatorios"]}}
+#                                 )
+
+#                                 st.success("Anotação apagada.", icon=":material/check:")
+#                                 time.sleep(3)
+
+#                                 st.session_state["anotacao_apagando"] = None
+#                                 st.rerun()
+
+#                             if st.button(
+#                                 "Cancelar",
+#                                 key=f"btn_cancel_del_{relatorio_numero}_{idx_real}"
+#                             ):
+#                                 st.session_state["anotacao_apagando"] = None
+#                                 st.rerun()
+
+#                     # --------------------------------------------------
+#                     # MODO EDIÇÃO
+#                     # --------------------------------------------------
+#                     elif st.session_state["anotacao_editando"] == idx_real:
+
+#                         text_key = f"text_anot_{relatorio_numero}_{idx_real}"
+
+#                         if text_key not in st.session_state:
+#                             st.session_state[text_key] = texto
+
+#                         novo_texto = st.text_area(
+#                             "Editar anotação",
+#                             key=text_key
+#                         )
+
+#                         with st.container(horizontal=True):
+
+#                             if st.button(
+#                                 "Atualizar",
+#                                 key=f"btn_upd_{relatorio_numero}_{idx_real}",
+#                                 type="primary",
+#                                 icon=":material/save:"
+#                             ):
+#                                 projeto["relatorios"][idx]["anotacoes_avaliacao"][idx_real]["texto_anotacao"] = novo_texto
+
+#                                 col_projetos.update_one(
+#                                     {"codigo": projeto_codigo},
+#                                     {"$set": {"relatorios": projeto["relatorios"]}}
+#                                 )
+
+#                                 st.success("Anotação atualizada.")
+#                                 time.sleep(3)
+
+#                                 st.session_state["anotacao_editando"] = None
+#                                 st.session_state.pop(text_key, None)
+#                                 st.rerun()
+
+#                             if st.button(
+#                                 "Cancelar",
+#                                 key=f"btn_cancel_edit_{relatorio_numero}_{idx_real}"
+#                             ):
+#                                 st.session_state["anotacao_editando"] = None
+#                                 st.session_state.pop(text_key, None)
+#                                 st.rerun()
+
+#                     # --------------------------------------------------
+#                     # MODO VISUALIZAÇÃO
+#                     # --------------------------------------------------
+#                     else:
+#                         st.markdown(
+#                             texto.replace("\n", "<br>"),
+#                             unsafe_allow_html=True
+#                         )
+                        
+
+
+
+
+#     # ==================================================
+#     # COLUNA 3 — APROVAÇÃO DO RELATÓRIO
+#     # ==================================================
+#     with col3:
+
+#         st.write("**Aprovação**")
+#         st.write("")
+
+#         # --------------------------------------------------
+#         # REGRA: só pode aprovar se TODO checklist estiver OK
+#         # --------------------------------------------------
+#         pode_aprovar = all([
+#             relatos_ok,
+#             despesas_ok,
+#             "res_verif_por" in relatorio_db,
+#             "benef_verif_por" in relatorio_db,
+#             "pesq_verif_por" in relatorio_db,
+#             "form_verif_por" in relatorio_db
+#         ])
+
+
+
+#         # --------------------------------------------------
+#         # BOTÃO DE APROVAÇÃO
+#         # --------------------------------------------------
+#         if st.button(
+#             "Aprovar e enviar e-mail",
+#             type="primary",
+#             icon=":material/check_circle:",
+#             disabled=not pode_aprovar
+#         ):
+
+#             with st.spinner("Aprovando relatório..."):
+
+#                 # Data atual (dd/mm/yyyy)
+#                 data_hoje = datetime.datetime.now().strftime("%d/%m/%Y")
+
+#                 # Nome do aprovador
+#                 nome_aprovador = st.session_state.get("nome", "Usuário")
+
+#                 # --------------------------------------------------
+#                 # ATUALIZA RELATÓRIO EM MEMÓRIA
+#                 # --------------------------------------------------
+#                 projeto["relatorios"][idx]["status_relatorio"] = "aprovado"
+#                 projeto["relatorios"][idx]["data_aprovacao"] = data_hoje
+#                 projeto["relatorios"][idx]["aprovado_por"] = nome_aprovador
+
+#                 # --------------------------------------------------
+#                 # PERSISTE NO BANCO DE DADOS
+#                 # --------------------------------------------------
+#                 col_projetos.update_one(
+#                     {"codigo": projeto_codigo},
+#                     {"$set": {"relatorios": projeto["relatorios"]}}
+#                 )
+
+#                 # --------------------------------------------------
+#                 # ENVIO DE E-MAIL PARA TODOS OS CONTATOS
+#                 # --------------------------------------------------
+#                 contatos_notificados = []
+
+#                 for contato in projeto.get("contatos", []):
+
+#                     email = contato.get("email")
+#                     nome_contato = contato.get("nome", "Olá")
+
+#                     if not email:
+#                         continue
+
+#                     corpo_html = gerar_email_relatorio_aprovado(
+#                         nome_do_contato=nome_contato,
+#                         relatorio_numero=relatorio_numero,
+#                         projeto=projeto,
+#                         organizacao=projeto.get("organizacao", ""),
+#                         logo_url=logo_cepf
+#                     )
+
+#                     enviar_email(
+#                         corpo_html=corpo_html,
+#                         destinatarios=[email],
+#                         assunto=f"Relatório {relatorio_numero} aprovado!"
+#                     )
+
+#                     # Guarda nome para feedback final
+#                     contatos_notificados.append(nome_contato)
+
+#             # --------------------------------------------------
+#             # FEEDBACK VISUAL E RECARREGAMENTO
+#             # --------------------------------------------------
+#             if contatos_notificados:
+#                 nomes = ", ".join(contatos_notificados)
+#                 st.success(
+#                     f"Relatório aprovado e e-mails enviados com sucesso para {nomes}.",
+#                     icon=":material/check:"
+#                 )
+#             else:
+#                 st.success(
+#                     "Relatório aprovado, mas não havia contatos com e-mail para notificação.",
+#                     icon=":material/check:"
+#                 )
+
+#             time.sleep(5)
+#             st.rerun()
+
+#         # --------------------------------------------------
+#         # INFORMAÇÃO DE APROVAÇÃO (APÓS APROVAR)
+#         # --------------------------------------------------
+#         if relatorio_db.get("status_relatorio") == "aprovado":
+
+#             data_aprov = relatorio_db.get("data_aprovacao")
+#             nome_aprov = relatorio_db.get("aprovado_por", "")
+
+#             if data_aprov:
+#                 st.caption(f"Aprovado em {data_aprov} por {nome_aprov}")
+#                 st.caption("Os contatos do projeto foram notificados por e-mail.")
 
 
 
