@@ -2293,6 +2293,38 @@ with orcamento:
 
 
 
+
+    # -----------------------------------
+    # Limpar estado temporário ao sair do modo edição
+    # -----------------------------------
+
+    # Detecta mudança do toggle
+    modo_edicao_anterior = st.session_state.get("modo_edicao_orcamento_anterior", False)
+
+    # Se estava em edição e agora não está mais
+    if modo_edicao_anterior and not modo_edicao:
+
+        # Remove dataframe temporário
+        if "df_orcamento_editor" in st.session_state:
+            del st.session_state["df_orcamento_editor"]
+
+        # Remove estado interno do data_editor
+        if "editor_orcamento" in st.session_state:
+            del st.session_state["editor_orcamento"]
+
+    # Atualiza estado anterior
+    st.session_state["modo_edicao_orcamento_anterior"] = modo_edicao
+
+
+
+
+
+
+
+
+
+
+
     st.markdown("### Orçamento")
     st.write("")
 
