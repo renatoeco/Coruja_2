@@ -269,11 +269,19 @@ def aprovar_remanejamento(
     lista[idx]["status_remanejamento"] = "aceito"
     lista[idx]["data_aprov_remanej"] = datetime.datetime.now(datetime.UTC)
 
+    valor_aprovado = sum(
+        r.get("valor_reduzido", 0)
+        for r in lista[idx].get("reduzidas", [])
+    )
+
     col_projetos.update_one(
         {"codigo": codigo_projeto},
         {
             "$set": {
                 "financeiro.remanejamentos_financeiros": lista
+            },
+            "$inc": {
+                "financeiro.valor_remanejado": valor_aprovado
             }
         }
     )
@@ -717,7 +725,6 @@ def enviar_email_remanejamento(
     organizacao,
     reduzidas,
     aumentadas,
-    status_remanejamento
 ):
     """
     Envia e-mail para:
@@ -766,15 +773,10 @@ def enviar_email_remanejamento(
     # --------------------------------------------------
     # Mensagem condicional
     # --------------------------------------------------
-    if status_remanejamento == "aceito":
-        mensagem_status = (
-            "O remanejamento <strong>foi aceito automaticamente</strong> e o orçamento já está atualizado."
-        )
-    else:
-        mensagem_status = (
-            "<b>AÇÃO NECESSÁRIA: Esse remanejamento depende de análise e aprovação</b><br><br>"
-            "Visite a página de remanejamentos no Sistema de Gestão de Projetos para dar continuidade."
-        )
+    mensagem_status = (
+        "<b>AÇÃO NECESSÁRIA: Esse remanejamento depende de análise e aprovação</b><br><br>"
+        "Visite a página de remanejamentos no Sistema de Gestão de Projetos para dar continuidade."
+    )
 
     # --------------------------------------------------
     # Assunto
@@ -4168,34 +4170,12 @@ with remanejamentos:
                             ]
 
 
-
-                            # ------------------------------------------------------
-                            # REGRA AUTOMÁTICA DE STATUS
-                            # ------------------------------------------------------
-                            # • soma o total já remanejado no projeto
-                            # • adiciona o valor desta solicitação
-                            # • compara com 15% do valor total do projeto
-                            # ------------------------------------------------------
-
-                            valor_remanejado_atual = financeiro.get("valor_remanejado", 0) or 0
-                            valor_total_projeto = financeiro.get("valor_total", 0) or 0
-
-                            novo_total_remanejado = valor_remanejado_atual + float(total_reduzido)
-
-                            limite_remanejamento = valor_total_projeto * 0.15
-
-                            if novo_total_remanejado <= limite_remanejamento:
-                                status_remanejamento = "aceito"
-                            else:
-                                status_remanejamento = "em_analise"
-
-
                             # ------------------------------------------------------
                             # Estrutura do registro no MongoDB
                             # ------------------------------------------------------
                             registro = {
                                 "data_solicit_remanej": datetime.datetime.now(datetime.UTC),
-                                "status_remanejamento": status_remanejamento,
+                                "status_remanejamento": "em_analise",
                                 "justificativa": justificativa.strip(),
                                 "reduzidas": reduzidas,
                                 "aumentadas": aumentadas
@@ -4213,25 +4193,8 @@ with remanejamentos:
                                     "$push": {
                                         "financeiro.remanejamentos_financeiros": registro
                                     },
-                                    "$inc": {
-                                        "financeiro.valor_remanejado": float(total_reduzido)
-                                    }
                                 }
                             )
-
-
-                            # --------------------------------------------------
-                            # Se aprovado automaticamente, efetiva no orçamento
-                            # --------------------------------------------------
-                            if status_remanejamento == "aceito":
-                                efetivar_remanejamento(
-                                    col_projetos,
-                                    codigo_projeto_atual,
-                                    financeiro,
-                                    reduzidas,
-                                    aumentadas
-                                )
-
 
 
                             # -----------------------------------
@@ -4253,7 +4216,6 @@ with remanejamentos:
                                 organizacao_nome,
                                 reduzidas,
                                 aumentadas,
-                                status_remanejamento
                             )
 
 
@@ -4347,23 +4309,6 @@ with remanejamentos:
     st.write("")
     st.write("")
     st.write("##### Histórico de remanejamentos")
-
-
-    # --------------------------------------------------
-    # Aviso quando remanejamentos excedem 15% do orçamento
-    # --------------------------------------------------
-    valor_remanejado = financeiro.get("valor_remanejado", 0) or 0
-    valor_total = financeiro.get("valor_total", 0) or 0
-
-    if valor_total and valor_remanejado > valor_total * 0.15:
-
-        st.markdown(
-            "<span style='color: #cb410b'>Os remanejamentos excederam 15% do orçamento do projeto. Portanto, as próximas solicitações serão analisadas pela equipe do Fundo.</span>",
-            unsafe_allow_html=True
-        )
-
-
-
 
 
     lista_remanej = financeiro.get("remanejamentos_financeiros", [])
