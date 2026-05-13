@@ -2263,7 +2263,7 @@ with col_identificacao:
 
 
 #plano_trabalho, impactos, indicadores, monitoramento, salvaguardas, remanejamentos = st.tabs(["Plano de trabalho", "Impactos", "Indicadores do Portifólio", "Plano de Monitoramento", "Salvaguardas", "Remanejamentos"])
-plano_trabalho, indicadores, remanejamentos = st.tabs(["Plano de trabalho", "Indicadores do Portifólio", "Remanejamentos"])
+plano_trabalho, indicadores, remanejamentos = st.tabs(["Plano de trabalho", "Indicadores", "Remanejamentos"])
 
 
 
@@ -3042,7 +3042,7 @@ with indicadores:
                 key="editar_indicadores"
             )
 
-    st.subheader("Indicadores de Portifólio")
+    st.subheader("Indicadores")
 
     #######################################################################################################
     # MODO VISUALIZAÇÃO
@@ -3074,14 +3074,15 @@ with indicadores:
                         item.get("id_indicador"),
                         "Indicador não encontrado"
                     ),
-                    "Contribuição esperada": item.get("valor"),
+                    "Início do projeto (marco zero)": item.get(
+                        "marco_zero", ""
+                    ),
+                    "Contribuição esperada (meta)": item.get("valor"),
                     "Descrição da contribuição": item.get(
                         "descricao_contribuicao", ""
                     ),
-                    "Resultado intermediário": item.get(
-                        "resultado_intermediario", ""
-                    ),
-                    "Resultado final": item.get(
+
+                    "Resultado final (alcançado)": item.get(
                         "resultado_final", ""
                     )
                 })
@@ -3127,7 +3128,7 @@ with indicadores:
                 estado[item["id_indicador"]] = {
                     "valor": item.get("valor", 0),
                     "descricao": item.get("descricao_contribuicao", ""),
-                    "resultado_intermediario": item.get("resultado_intermediario", ""),
+                    "marco_zero": item.get("marco_zero", ""),
                     "resultado_final": item.get("resultado_final", "")
                 }
 
@@ -3145,22 +3146,22 @@ with indicadores:
         else:
 
             # Configuração fixa das colunas da tabela
-            colunas_indicadores = [5, 2, 4, 2, 2]
+            colunas_indicadores = [5, 2, 2, 4, 2]
 
             # Cabeçalho da tabela
             col_h1, col_h2, col_h3, col_h4, col_h5 = st.columns(colunas_indicadores)
 
             with col_h1:
-                st.markdown("**Indicadores do CEPF**")
+                st.markdown("**Indicadores**")
 
             with col_h2:
-                st.markdown("**Contribuição esperada**")
+                st.markdown("**Início do projeto**")
 
             with col_h3:
-                st.markdown("**Descrição da contribuição esperada**")
+                st.markdown("**Contribuição esperada**")
 
             with col_h4:
-                st.markdown("**Resultado intermediário**")
+                st.markdown("**Descrição da contribuição**")
 
             with col_h5:
                 st.markdown("**Resultado final**")
@@ -3185,13 +3186,13 @@ with indicadores:
                     {
                         "valor": 0,
                         "descricao": "",
-                        "resultado_intermediario": "",
+                        "marco_zero": "",
                         "resultado_final": ""
                     }
                 )
 
                 # Criação das colunas de inputs
-                col_check, col_valor, col_desc, col_res_int, col_res_final = st.columns(colunas_indicadores)
+                col_check, col_marco_zero, col_valor, col_desc, col_res_final = st.columns(colunas_indicadores)
 
 
                 # --------------------------------------------------
@@ -3204,6 +3205,28 @@ with indicadores:
                         key=f"chk_{id_indicador}",
                         value=id_indicador in st.session_state.valores_indicadores
                     )
+
+
+                # --------------------------------------------------
+                # MARCO ZERO
+                # --------------------------------------------------
+                with col_marco_zero:
+
+                    if marcado:
+
+                        resultado_intermediario = st.number_input(
+                            "Label",
+                            step=1,
+                            value=(
+                                dados_atual.get("resultado_intermediario")
+                                if isinstance(
+                                    dados_atual.get("resultado_intermediario"), (int, float)
+                                )
+                                else 0
+                            ),
+                            key=f"res_int_{id_indicador}",
+                            label_visibility="hidden"
+                        )
 
 
                 # --------------------------------------------------
@@ -3237,27 +3260,6 @@ with indicadores:
                             label_visibility="hidden"
                         )
 
-
-                # --------------------------------------------------
-                # RESULTADO INTERMEDIÁRIO
-                # --------------------------------------------------
-                with col_res_int:
-
-                    if marcado:
-
-                        resultado_intermediario = st.number_input(
-                            "Label",
-                            step=1,
-                            value=(
-                                dados_atual.get("resultado_intermediario")
-                                if isinstance(
-                                    dados_atual.get("resultado_intermediario"), (int, float)
-                                )
-                                else 0
-                            ),
-                            key=f"res_int_{id_indicador}",
-                            label_visibility="hidden"
-                        )
 
 
                 # --------------------------------------------------

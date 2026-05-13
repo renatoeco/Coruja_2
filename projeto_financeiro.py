@@ -1596,7 +1596,7 @@ with cron_desemb:
             linhas_cronograma.append(
                 {
                     "evento": f"Parcela {numero}",
-                    "Entregas": "",
+                    # "Entregas": "",
                     "Valor R$": (
                         f"{valor:,.2f}".replace(",", "X")
                         .replace(".", ",")
@@ -1618,7 +1618,7 @@ with cron_desemb:
 
         for r in relatorios:
             numero = r.get("numero")
-            entregas = r.get("entregas", [])
+            # entregas = r.get("entregas", [])
             data_prevista = r.get("data_prevista")
             data_realizada = r.get("data_envio")
 

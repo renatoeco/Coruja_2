@@ -58,8 +58,8 @@ if "form_projeto" not in st.session_state:
 st.logo("images/logo_fundo_ecos.png", size="large")
 st.header("Novo projeto")
 
-st.write(
-    "*Antes de cadastrar o **projeto**, cadastre a **Organização** e as **Pessoas** envolvidas.*"
+st.caption(
+    "Antes de cadastrar o **projeto**, cadastre o **EDITAL** e a **ORGANIZAÇÃO**."
 )
 
 
