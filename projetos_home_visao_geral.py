@@ -410,7 +410,7 @@ else:
             df_exibir = df_exibir.rename(columns={
                 "codigo": "Código",
                 "sigla": "Sigla",
-                "padrinho": "Padrinho/Madrinha",
+                "padrinho": "Ponto focal",
                 "dias_atraso": "Dias de atraso",
                 "edital": "Edital"
             })

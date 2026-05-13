@@ -1566,10 +1566,10 @@ else:
                 default=responsaveis_atuais
             )
 
-            # ---------- PADRINHO / MADRINHA ----------
+            # ---------- PONTOS FOCAIS ----------
 
             # Lista de opções
-            opcoes_padrinho_madrinha = sorted(df_pessoas_internos["nome_completo"].tolist())
+            opcoes_pontos_focais = sorted(df_pessoas_internos["nome_completo"].tolist())
 
             # Pessoas atualmente associadas a este projeto
             codigo_projeto = projeto["codigo"]
@@ -1582,7 +1582,7 @@ else:
 
             padrinho_madrinha = st.multiselect(
                 "Ponto focal",
-                options=opcoes_padrinho_madrinha,
+                options=opcoes_pontos_focais,
                 default=padrinhos_atuais
             )
 
