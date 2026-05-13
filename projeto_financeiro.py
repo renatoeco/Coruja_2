@@ -2595,13 +2595,6 @@ with orcamento:
         # --------------------------------------------------
         df_orcamento = pd.DataFrame(orcamento)
 
-        # Mostrar apenas despesas com valor solicitado válido
-        df_orcamento = df_orcamento[
-            df_orcamento["valor_total"].notna() &
-            (pd.to_numeric(df_orcamento["valor_total"], errors="coerce") > 0)
-        ].copy()
-
-
         # --------------------------------------------------
         # Converter ID categoria -> nome
         # --------------------------------------------------
@@ -2721,6 +2714,16 @@ with orcamento:
 
             # Filtra categoria
             df_cat = df_orcamento[df_orcamento["categoria_nome"] == categoria].copy()
+
+            # Mostrar apenas despesas com valor solicitado
+            df_cat = df_cat[
+                df_cat["valor_total"].notna() &
+                (pd.to_numeric(df_cat["valor_total"], errors="coerce") > 0)
+            ].copy()
+
+            # Se não sobrou nenhuma despesa nessa categoria, não renderiza
+            if df_cat.empty:
+                continue
 
             # Renomeia colunas para exibição
             df_vis = df_cat.rename(columns={
@@ -3845,11 +3848,6 @@ with remanejamentos:
                 st.stop()
 
             df_orcamento = pd.DataFrame(orcamento)
-
-            df_orcamento = df_orcamento[
-                df_orcamento["valor_total"].notna() &
-                (pd.to_numeric(df_orcamento["valor_total"], errors="coerce") > 0)
-            ].copy()
 
             if df_orcamento.empty:
                 st.caption("Nenhuma despesa com valor solicitado cadastrada.")
