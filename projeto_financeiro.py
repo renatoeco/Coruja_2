@@ -179,12 +179,15 @@ mapa_org_id_nome = {
 # Formata float para moeda R$
 # -----------------------------------
 def format_brl(valor):
+    if valor is None or pd.isna(valor):
+        return ""
+
     return (
-        f"R$ {valor:,.2f}"
+        f"R$ {float(valor):,.2f}"
         .replace(",", "X")
         .replace(".", ",")
         .replace("X", ".")
-    ) if valor else ""
+    )
 
 
 
@@ -2464,7 +2467,7 @@ with orcamento:
         col1, col2, col3 = st.columns(3)
 
         col1.metric(
-            label="Valor total do projeto",
+            label="Valor solicitado ao Fundo Ecos",
             value=f"R$ {valor_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
         )
 
@@ -2567,16 +2570,36 @@ with orcamento:
         # Cálculo de gasto e saldo (inalterado)
         # --------------------------------------------------
         for item in orcamento:
+
             gasto = calcular_gasto(item)
+
+            gasto_contrapartida_financeira = sum(
+                l.get("valor_despesa_contrapartida_financeira", 0) or 0
+                for l in item.get("lancamentos", [])
+            )
+
+            gasto_contrapartida_nao_financeira = sum(
+                l.get("valor_despesa_contrapartida_nao_financeira", 0) or 0
+                for l in item.get("lancamentos", [])
+            )
+
             valor_item = item.get("valor_total", 0) or 0
 
             item["gasto"] = gasto
             item["saldo"] = valor_item - gasto
+            item["gasto_contrapartida_financeira"] = gasto_contrapartida_financeira
+            item["gasto_contrapartida_nao_financeira"] = gasto_contrapartida_nao_financeira
 
         # --------------------------------------------------
         # Criação do DataFrame
         # --------------------------------------------------
         df_orcamento = pd.DataFrame(orcamento)
+
+        # Mostrar apenas despesas com valor solicitado válido
+        df_orcamento = df_orcamento[
+            df_orcamento["valor_total"].notna() &
+            (pd.to_numeric(df_orcamento["valor_total"], errors="coerce") > 0)
+        ].copy()
 
 
         # --------------------------------------------------
@@ -2608,10 +2631,9 @@ with orcamento:
             "categoria",
             "nome_despesa",
             "descricao_despesa",
-            "unidade",
-            "quantidade",
-            "valor_unitario",
             "valor_total",
+            "contrapartida_financeira",
+            "contrapartida_nao_financeira",
         ]:
             if col not in df_orcamento.columns:
                 df_orcamento[col] = None
@@ -2624,11 +2646,18 @@ with orcamento:
                 return ""
             return f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-        df_orcamento["Valor unitário"] = df_orcamento["valor_unitario"].apply(fmt_moeda)
-        df_orcamento["Valor total"] = df_orcamento["valor_total"].apply(fmt_moeda)
+        df_orcamento["Valor solicitado"] = df_orcamento["valor_total"].apply(fmt_moeda)
+        df_orcamento["Contrapartida financeira"] = df_orcamento["contrapartida_financeira"].apply(fmt_moeda)
+        df_orcamento["Contrapartida não-financeira"] = df_orcamento["contrapartida_nao_financeira"].apply(fmt_moeda)
         df_orcamento["Gasto"] = df_orcamento["gasto"].apply(fmt_moeda)
         df_orcamento["Saldo"] = df_orcamento["saldo"].apply(fmt_moeda)
+        df_orcamento["Gasto contrapartida financeira"] = (
+            df_orcamento["gasto_contrapartida_financeira"].apply(fmt_moeda)
+        )
 
+        df_orcamento["Gasto contrapartida não-financeira"] = (
+            df_orcamento["gasto_contrapartida_nao_financeira"].apply(fmt_moeda)
+        )
 
         # --------------------------------------------------
         # Agrupamento por categoria (ordem alfabética)
@@ -2666,10 +2695,9 @@ with orcamento:
                     "categoria": linha.get("categoria", ""),
                     "nome_despesa": linha.get("nome_despesa", ""),
                     "descricao_despesa": linha.get("descricao_despesa", ""),
-                    "unidade": linha.get("unidade", ""),
-                    "quantidade": linha.get("quantidade", 0),
-                    "valor_unitario": linha.get("valor_unitario", 0),
                     "valor_total": linha.get("valor_total", 0),
+                    "contrapartida_financeira": linha.get("contrapartida_financeira", 0),
+                    "contrapartida_nao_financeira": linha.get("contrapartida_nao_financeira", 0),
                     "indice": idx,
                 }
 
@@ -2698,17 +2726,12 @@ with orcamento:
             df_vis = df_cat.rename(columns={
                 "nome_despesa": "Despesa",
                 "descricao_despesa": "Descrição",
-                "unidade": "Unidade",
-                "quantidade": "Quantidade",
             })
 
             colunas_vis = [
                 "Despesa",
                 "Descrição",
-                # "Unidade",
-                # "Quantidade",
-                # "Valor unitário",
-                "Valor total",
+                "Valor solicitado",
                 "Gasto",
                 "Saldo",
             ]
@@ -2750,10 +2773,7 @@ with orcamento:
                 column_config={
                     "Despesa": st.column_config.TextColumn(width=220),
                     "Descrição": st.column_config.TextColumn(width=420),
-                    "Unidade": st.column_config.TextColumn(width=120),
-                    "Quantidade": st.column_config.NumberColumn(width=80),
-                    "Valor unitário": st.column_config.TextColumn(width=120),
-                    "Valor total": st.column_config.TextColumn(width=120),
+                    "Valor solicitado": st.column_config.TextColumn(width=120),
                     "Gasto": st.column_config.TextColumn(width=120),
                     "Saldo": st.column_config.TextColumn(width=120),
                 }
@@ -2765,6 +2785,165 @@ with orcamento:
         if st.session_state.get("abrir_dialogo_despesa"):
             dialog_relatos_fin()
             st.session_state["abrir_dialogo_despesa"] = False
+            
+        # ==================================================
+        # CONTRAPARTIDA FINANCEIRA
+        # ==================================================
+        
+        st.divider()
+
+        total_contrapartida_financeira = df_orcamento["contrapartida_financeira"].sum()
+        gasto_contrapartida_financeira = df_orcamento["gasto_contrapartida_financeira"].sum()
+
+        if total_contrapartida_financeira > 0:
+
+            st.write("")
+            st.markdown("### Contrapartida financeira")
+            st.write("")
+
+            col1, col2 = st.columns(2)
+
+            col1.metric(
+                "Valor",
+                fmt_moeda(total_contrapartida_financeira)
+            )
+
+            col2.metric(
+                "Gasto",
+                fmt_moeda(gasto_contrapartida_financeira)
+            )
+
+            # -----------------------------------
+            # Barra de progresso
+            # -----------------------------------
+            if total_contrapartida_financeira > 0:
+                pct_contr_fin = min(
+                    gasto_contrapartida_financeira / total_contrapartida_financeira,
+                    1
+                )
+            else:
+                pct_contr_fin = 0
+
+            st.progress(
+                pct_contr_fin,
+                text=(
+                    f"Gasto: "
+                    f"{fmt_moeda(gasto_contrapartida_financeira)}"
+                )
+            )
+
+            st.write("")
+
+            df_contr_fin = df_orcamento[
+                df_orcamento["contrapartida_financeira"] > 0
+            ].copy()
+
+            df_contr_fin = df_contr_fin.rename(columns={
+                "nome_despesa": "Despesa",
+                "descricao_despesa": "Descrição",
+                "Contrapartida financeira": "Valor"
+            })
+
+            st.dataframe(
+                df_contr_fin[
+                    [
+                        "Despesa",
+                        "Descrição",
+                        "Valor",
+                        "Gasto contrapartida financeira",
+                    ]
+                ],
+                hide_index=True,
+                column_config={
+                    "Despesa": st.column_config.TextColumn(width=220),
+                    "Descrição": st.column_config.TextColumn(width=420),
+                    "Valor": st.column_config.TextColumn(width=120),
+                    "Gasto contrapartida financeira": st.column_config.TextColumn(
+                        "Gasto",
+                        width=120
+                    ),
+                }
+            )
+
+
+        # ==================================================
+        # CONTRAPARTIDA NÃO-FINANCEIRA
+        # ==================================================
+        
+        st.divider()
+
+        total_contrapartida_nao_financeira = df_orcamento["contrapartida_nao_financeira"].sum()
+        gasto_contrapartida_nao_financeira = df_orcamento["gasto_contrapartida_nao_financeira"].sum()
+
+        if total_contrapartida_nao_financeira > 0:
+
+            st.write("")
+            st.markdown("### Contrapartida não-financeira")
+            st.write("")
+
+            col1, col2 = st.columns(2)
+
+            col1.metric(
+                "Valor",
+                fmt_moeda(total_contrapartida_nao_financeira)
+            )
+
+            col2.metric(
+                "Gasto",
+                fmt_moeda(gasto_contrapartida_nao_financeira)
+            )
+
+            # -----------------------------------
+            # Barra de progresso
+            # -----------------------------------
+            if total_contrapartida_nao_financeira > 0:
+                pct_contr_nao_fin = min(
+                    gasto_contrapartida_nao_financeira / total_contrapartida_nao_financeira,
+                    1
+                )
+            else:
+                pct_contr_nao_fin = 0
+
+            st.progress(
+                pct_contr_nao_fin,
+                text=(
+                    f"Gasto: "
+                    f"{fmt_moeda(gasto_contrapartida_nao_financeira)}"
+                )
+            )
+
+            st.write("")
+
+            df_contr_nao_fin = df_orcamento[
+                df_orcamento["contrapartida_nao_financeira"] > 0
+            ].copy()
+
+            df_contr_nao_fin = df_contr_nao_fin.rename(columns={
+                "nome_despesa": "Despesa",
+                "descricao_despesa": "Descrição",
+                "Contrapartida não-financeira": "Valor"
+            })
+
+            st.dataframe(
+                df_contr_nao_fin[
+                    [
+                        "Despesa",
+                        "Descrição",
+                        "Valor",
+                        "Gasto contrapartida não-financeira",
+                    ]
+                ],
+                hide_index=True,
+                column_config={
+                    "Despesa": st.column_config.TextColumn(width=220),
+                    "Descrição": st.column_config.TextColumn(width=420),
+                    "Valor": st.column_config.TextColumn(width=120),
+                    "Gasto contrapartida não-financeira": st.column_config.TextColumn(
+                        "Gasto",
+                        width=120
+                    ),
+                }
+            )
 
 
 
@@ -2809,9 +2988,6 @@ with orcamento:
                     "categoria",
                     "nome_despesa",
                     "descricao_despesa",
-                    "unidade",
-                    "quantidade",
-                    "valor_unitario",
                     "id_despesa"
                 ]
             )
@@ -2823,13 +2999,20 @@ with orcamento:
             "categoria",
             "nome_despesa",
             "descricao_despesa",
-            "unidade",
-            "quantidade",
-            "valor_unitario",
-            "id_despesa"
+            "id_despesa",
+            "valor_total",
+            "contrapartida_financeira",
+            "contrapartida_nao_financeira",
         ]:
             if col not in df_orcamento.columns:
-                df_orcamento[col] = None
+                if col in [
+                    "valor_total",
+                    "contrapartida_financeira",
+                    "contrapartida_nao_financeira",
+                ]:
+                    df_orcamento[col] = 0.0
+                else:
+                    df_orcamento[col] = None
 
 
 
@@ -2841,21 +3024,7 @@ with orcamento:
             .astype(str)
             .map(mapa_categoria_id_nome)
         )
-
-
-
-        # -----------------------------------
-        # Preencher valores nulos
-        # -----------------------------------
-        df_orcamento["quantidade"] = df_orcamento["quantidade"].fillna(0)
-        df_orcamento["valor_unitario"] = df_orcamento["valor_unitario"].fillna(0)
-
-        # -----------------------------------
-        # Calcular valor total
-        # -----------------------------------
-        df_orcamento["valor_total"] = (
-            df_orcamento["quantidade"] * df_orcamento["valor_unitario"]
-        )
+        
 
         # -----------------------------------
         # Formatação
@@ -2866,8 +3035,6 @@ with orcamento:
             valor = float(valor)
             return str(int(valor)) if valor.is_integer() else str(valor).replace(".", ",")
 
-        df_orcamento["quantidade_fmt"] = df_orcamento["quantidade"].apply(format_decimal)
-        df_orcamento["valor_unitario_fmt"] = df_orcamento["valor_unitario"].apply(format_brl)
         df_orcamento["valor_total_fmt"] = df_orcamento["valor_total"].apply(format_brl)
 
         # -----------------------------------
@@ -2895,10 +3062,9 @@ with orcamento:
                     "categoria_nome",
                     "nome_despesa",
                     "descricao_despesa",
-                    "unidade",
-                    "quantidade_fmt",
-                    "valor_unitario_fmt",
                     "valor_total_fmt",
+                    "contrapartida_financeira",
+                    "contrapartida_nao_financeira",
                 ]
             ],
             num_rows="dynamic",
@@ -2915,12 +3081,22 @@ with orcamento:
                     required=True
                 ),
                 "descricao_despesa": st.column_config.TextColumn("Descrição"),
-                "unidade": st.column_config.TextColumn("Unidade"),
-                "quantidade_fmt": st.column_config.TextColumn("Quantidade"),
-                "valor_unitario_fmt": st.column_config.TextColumn("Valor unitário (R$)"),
                 "valor_total_fmt": st.column_config.TextColumn(
-                    "Valor total (auto)",
-                    disabled=True
+                    "Valor solicitado",
+                    required=False
+                ),
+                "contrapartida_financeira": st.column_config.NumberColumn(
+                    "Contrapartida financeira",
+                    min_value=0.0,
+                    step=100.0,
+                    format="%.2f"
+                ),
+
+                "contrapartida_nao_financeira": st.column_config.NumberColumn(
+                    "Contrapartida não-financeira",
+                    min_value=0.0,
+                    step=100.0,
+                    format="%.2f"
                 ),
             },
             key="editor_orcamento",
@@ -2931,9 +3107,23 @@ with orcamento:
         # Conversões
         # -----------------------------------
         def parse_brl(valor):
-            if not valor:
-                return 0.0
-            return float(str(valor).replace("R$", "").replace(".", "").replace(",", ".").strip())
+            if pd.isna(valor):
+                return None
+
+            texto = str(valor).strip()
+
+            if texto in ["", "None"]:
+                return None
+
+            if isinstance(valor, (int, float)):
+                return float(valor)
+
+            texto = texto.replace("R$", "").strip()
+
+            if "," in texto:
+                texto = texto.replace(".", "").replace(",", ".")
+
+            return float(texto)
 
         def parse_decimal(valor):
             if not valor:
@@ -2961,12 +3151,19 @@ with orcamento:
         # -----------------------------------
         df_temp = df_editado_orc.copy()
 
-        df_temp["quantidade"] = df_temp["quantidade_fmt"].apply(parse_decimal)
-        df_temp["valor_unitario"] = df_temp["valor_unitario_fmt"].apply(parse_brl)
+        df_temp["valor_total"] = df_temp["valor_total_fmt"].apply(parse_brl)
 
-        df_temp["valor_total"] = (
-            df_temp["quantidade"] * df_temp["valor_unitario"]
-        )
+        for col in [
+            "contrapartida_financeira",
+            "contrapartida_nao_financeira",
+        ]:
+            if col not in df_temp.columns:
+                df_temp[col] = 0.0
+
+            df_temp[col] = pd.to_numeric(
+                df_temp[col],
+                errors="coerce"
+            ).fillna(0.0)
 
         soma_despesas = df_temp["valor_total"].sum()
 
@@ -2990,15 +3187,6 @@ with orcamento:
             if st.button("Atualizar tabela", icon=":material/sync:", width=200):
 
                 df_temp = df_editado_orc.copy()
-
-                df_temp["quantidade"] = df_temp["quantidade_fmt"].apply(parse_decimal)
-                df_temp["valor_unitario"] = df_temp["valor_unitario_fmt"].apply(parse_brl)
-
-                df_temp["valor_total"] = (
-                    df_temp["quantidade"] * df_temp["valor_unitario"]
-                )
-
-                df_temp["valor_total_fmt"] = df_temp["valor_total"].apply(format_brl)
 
                 # Atualiza estado corretamente (sem erro de widget)
                 st.session_state["df_orcamento_editor"] = df_temp
@@ -3093,22 +3281,23 @@ with orcamento:
             # Atualizar tabela antes de salvar (mesma lógica do botão Atualizar)
             # -----------------------------------
             df_temp = df_editado_orc.copy()
+            df_temp["valor_total"] = df_temp["valor_total_fmt"].apply(parse_brl)
 
-            df_temp["quantidade"] = df_temp["quantidade_fmt"].apply(parse_decimal)
-            df_temp["valor_unitario"] = df_temp["valor_unitario_fmt"].apply(parse_brl)
+            df_salvar = df_editado_orc.copy()
 
-            df_temp["valor_total"] = (
-                df_temp["quantidade"] * df_temp["valor_unitario"]
-            )
+            # normalizar strings vazias
+            for col in ["categoria_nome", "nome_despesa", "descricao_despesa"]:
+                df_salvar[col] = df_salvar[col].astype(str).str.strip()
 
-            df_temp["valor_total_fmt"] = df_temp["valor_total"].apply(format_brl)
-
-
-
-            df_salvar = df_editado_orc.dropna(
-                subset=["categoria_nome", "nome_despesa"],
-                how="any"
-            ).copy()
+            # remover linhas realmente vazias
+            df_salvar = df_salvar[
+                ~(
+                    (df_salvar["categoria_nome"] == "") &
+                    (df_salvar["nome_despesa"] == "") &
+                    (df_salvar["descricao_despesa"] == "") &
+                    (df_salvar["valor_total_fmt"].fillna("") == "")
+                )
+            ].copy()
 
             # -----------------------------------
             # Validação
@@ -3117,18 +3306,12 @@ with orcamento:
                 "categoria_nome",
                 "nome_despesa",
                 "descricao_despesa",
-                "unidade",
-                "quantidade_fmt",
-                "valor_unitario_fmt",
             ]
 
             nomes_legiveis = {
                 "categoria_nome": "Categoria",
                 "nome_despesa": "Despesa",
                 "descricao_despesa": "Descrição",
-                "unidade": "Unidade",
-                "quantidade_fmt": "Quantidade",
-                "valor_unitario_fmt": "Valor unitário",
             }
 
             erros = []
@@ -3136,7 +3319,7 @@ with orcamento:
             for idx, row in df_salvar.iterrows():
                 for campo in campos_obrigatorios:
                     valor = row.get(campo)
-                    if pd.isna(valor) or str(valor).strip() == "":
+                    if valor is None or str(valor).strip() == "":
                         erros.append(f"Linha {idx+1}: campo '{nomes_legiveis.get(campo)}' não preenchido.")
 
             if erros:
@@ -3146,30 +3329,25 @@ with orcamento:
                 st.stop()
 
             # -----------------------------------
-            # Conversões finais
-            # -----------------------------------
-            df_salvar["quantidade"] = df_salvar["quantidade_fmt"].apply(parse_decimal)
-            df_salvar["valor_unitario"] = df_salvar["valor_unitario_fmt"].apply(parse_brl)
-            df_salvar["valor_total"] = df_salvar["quantidade"] * df_salvar["valor_unitario"]
-
-
-            # -----------------------------------
             # Validação: soma das despesas vs valor do projeto
             # -----------------------------------
 
-            # Valor total do projeto (ajustado)
+            df_salvar["valor_total"] = df_salvar["valor_total_fmt"].apply(parse_brl)
+
+            # Soma apenas valores solicitados preenchidos
+            soma_despesas = pd.to_numeric(
+                df_salvar["valor_total"],
+                errors="coerce"
+            ).fillna(0.0).sum()
+
+            # Valor total do projeto
             valor_total_base = financeiro.get("valor_total") or 0.0
             valor_aditivo = financeiro.get("valor_aditivo") or 0.0
             valor_devolucao = financeiro.get("valor_devolucao") or 0.0
 
             valor_total_projeto = valor_total_base + valor_aditivo - valor_devolucao
 
-            # Soma das despesas
-            soma_despesas = df_salvar["valor_total"].sum()
-
-            # -----------------------------------
             # Comparação com tolerância de centavos
-            # -----------------------------------
             if round(soma_despesas, 2) != round(valor_total_projeto, 2):
 
                 soma_fmt = format_brl(soma_despesas).replace('$', '\\$')
@@ -3181,8 +3359,6 @@ with orcamento:
                 )
 
                 st.stop()
-
-
 
             # -----------------------------------
             # Merge com banco (preservando dados)
@@ -3225,10 +3401,17 @@ with orcamento:
                     "categoria": id_categoria,
                     "nome_despesa": row["nome_despesa"],
                     "descricao_despesa": row.get("descricao_despesa"),
-                    "unidade": row.get("unidade"),
-                    "quantidade": float(row["quantidade"]),
-                    "valor_unitario": float(row["valor_unitario"]),
-                    "valor_total": float(row["valor_total"]),
+                    "valor_total": (
+                        None
+                        if pd.isna(row["valor_total"])
+                        else float(row["valor_total"])
+                    ),
+                    "contrapartida_financeira": float(
+                        row.get("contrapartida_financeira", 0) or 0
+                    ),
+                    "contrapartida_nao_financeira": float(
+                        row.get("contrapartida_nao_financeira", 0) or 0
+                    ),
                 })
 
                 # Garantir vínculo com lançamentos
@@ -3248,956 +3431,6 @@ with orcamento:
             st.success("Orçamento salvo com sucesso!", icon=":material/check:")
             time.sleep(3)
             st.rerun()
-
-
-
-
-
-
-
-
-
-
-# # --------------------------------------------------
-# # ABA ORÇAMENTO
-# # --------------------------------------------------
-
-
-# with orcamento:
-
-
-#     # ==================================================
-#     # PERMISSÃO E MODO DE EDIÇÃO
-#     # ==================================================
-#     # usuario_interno = st.session_state.tipo_usuario in ["admin", "equipe"]
-
-#     with st.container(horizontal=True, horizontal_alignment="right"):
-#         if usuario_interno:
-#             modo_edicao = st.toggle("Modo de edição", key="editar_orcamento")
-#         else:
-#             modo_edicao = False
-
-
-
-
-#     # -----------------------------------
-#     # Limpar estado temporário ao sair do modo edição
-#     # -----------------------------------
-
-#     # Detecta mudança do toggle
-#     modo_edicao_anterior = st.session_state.get("modo_edicao_orcamento_anterior", False)
-
-#     # Se estava em edição e agora não está mais
-#     if modo_edicao_anterior and not modo_edicao:
-
-#         # Remove dataframe temporário
-#         if "df_orcamento_editor" in st.session_state:
-#             del st.session_state["df_orcamento_editor"]
-
-#         # Remove estado interno do data_editor
-#         if "editor_orcamento" in st.session_state:
-#             del st.session_state["editor_orcamento"]
-
-#     # Atualiza estado anterior
-#     st.session_state["modo_edicao_orcamento_anterior"] = modo_edicao
-
-
-
-#     # -----------------------------------
-#     # Preparar categorias de despesa
-#     # -----------------------------------
-#     col_categorias_despesa = db["categorias_despesa"]
-
-#     categorias = list(
-#         col_categorias_despesa
-#         .find({}, {"categoria": 1})
-#         .sort("categoria", 1)
-#     )
-
-#     # -----------------------------------
-#     # Mapas auxiliares
-#     # -----------------------------------
-#     mapa_categoria_id_nome = {
-#         str(c["_id"]): c["categoria"]
-#         for c in categorias
-#     }
-
-#     mapa_categoria_nome_id = {
-#         c["categoria"]: str(c["_id"])
-#         for c in categorias
-#     }
-
-
-
-
-
-
-
-
-#     st.markdown("### Orçamento")
-#     st.write("")
-
-
-#     # ==================================================
-#     # NOTIFICAÇÕES PARA USUÁRIO INTERNO
-#     # ==================================================
-
-#     # ==================================================
-#     # Notificação de total do orçamento diferente do valor total do projeto
-#     # ==================================================
-
-#     if usuario_interno:
-
-
-
-#         # -----------------------------------
-#         # Valor total ajustado do projeto
-#         # -----------------------------------
-#         valor_total_base = financeiro.get("valor_total") or 0.0
-#         valor_aditivo = financeiro.get("valor_aditivo") or 0.0
-#         #valor_devolucao = financeiro.get("valor_devolucao") or 0.0
-
-#         valor_total_projeto = valor_total_base + valor_aditivo
-
-
-
-        
-#         orcamento_salvo = financeiro.get("orcamento", [])
-
-#         if valor_total_projeto and orcamento_salvo:
-
-#             soma_orcamento = sum(
-#                 item.get("valor_total", 0)
-#                 for item in orcamento_salvo
-#                 if item.get("valor_total") is not None
-#             )
-
-#             if round(soma_orcamento, 2) != round(valor_total_projeto, 2):
-
-#                 soma_fmt = (
-#                     f"R\\$ {soma_orcamento:,.2f}"
-#                     .replace(",", "X")
-#                     .replace(".", ",")
-#                     .replace("X", ".")
-#                 )
-
-#                 total_fmt = (
-#                     f"R\\$ {valor_total_projeto:,.2f}"
-#                     .replace(",", "X")
-#                     .replace(".", ",")
-#                     .replace("X", ".")
-#                 )
-
-
-#                 st.warning(
-#                     f"O total do orçamento ({soma_fmt}) é diferente do valor total do projeto ({total_fmt}).",
-#                     icon=":material/warning:"
-#                 )
-
-
-
-
-
-
-#     # ==================================================
-#     # MODO VISUALIZAÇÃO — ORÇAMENTO AGRUPADO POR CATEGORIA
-#     # ==================================================
-#     if not modo_edicao:
-
-
-#         # --------------------------------------------------
-#         # Métricas financeiras (robusto para projeto vazio)
-#         # --------------------------------------------------
-
-
-
-
-#         # --------------------------------------------------
-#         # Métricas financeiras (robusto para projeto vazio)
-#         # --------------------------------------------------
-
-
-#         # -----------------------------------
-#         # Valor total ajustado (com aditivo e devolução)
-#         # -----------------------------------
-#         valor_total_base = financeiro.get("valor_total") or 0.0
-#         valor_aditivo = financeiro.get("valor_aditivo") or 0.0
-#         #valor_devolucao = financeiro.get("valor_devolucao") or 0.0
-
-#         valor_total = valor_total_base + valor_aditivo
-
-
-
-#         orcamento = financeiro.get("orcamento", [])
-#         parcelas = financeiro.get("parcelas", [])
-
-#         gasto_total = 0
-#         valor_recebido = 0
-
-#         # -----------------------------
-#         # Calcular gasto total (se houver orçamento)
-#         # -----------------------------
-#         if orcamento:
-#             for item in orcamento:
-#                 gasto_total += sum(
-#                     l.get("valor_despesa", 0)
-#                     for l in item.get("lancamentos", [])
-#                     if l.get("valor_despesa") is not None
-#                 )
-
-#         # -----------------------------
-#         # Calcular valor recebido (se houver parcelas)
-#         # -----------------------------
-#         if parcelas:
-#             valor_recebido += sum(
-#                 p.get("valor", 0)
-#                 for p in parcelas
-#                 if p.get("data_realizada") not in [None, ""]
-#             )
-
-#         saldo_total = valor_total - gasto_total
-
-
-
-
-#         # --------------------------------------------------
-#         # Exibição das métricas em 3 colunas
-#         # --------------------------------------------------
-
-#         col1, col2, col3 = st.columns(3)
-
-#         col1.metric(
-#             label="Valor total do projeto",
-#             value=f"R$ {valor_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-#         )
-        
-#         # -----------------------------------
-#         # Soma das contrapartidas
-#         # -----------------------------------
-#         contr_fin = sum(
-#             item.get("contrapartida_financeira", 0) or 0
-#             for item in orcamento
-#         )
-
-#         contr_nao_fin = sum(
-#             item.get("contrapartida_nao_financeira", 0) or 0
-#             for item in orcamento
-#         )
-
-#         if contr_fin > 0 or contr_nao_fin > 0:
-
-#             col2.metric(
-#                 "Contrapartida financeira",
-#                 f"R$ {contr_fin:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-#             )
-
-#             col3.metric(
-#                 "Contrapartida não-financeira",
-#                 f"R$ {contr_nao_fin:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-#             )
-            
-#             col1.metric(
-#                 label="Gasto",
-#                 value=f"R$ {gasto_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-#             )
-
-#             col3.metric(
-#                 label="Saldo",
-#                 value=f"R$ {saldo_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
-#                 delta=None if saldo_total >= 0 else "Negativo",
-#                 delta_color="inverse" if saldo_total < 0 else "normal"
-#             )
-            
-#         else:
-
-#             col2.metric(
-#                 label="Gasto",
-#                 value=f"R$ {gasto_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-#             )
-
-#             col3.metric(
-#                 label="Saldo",
-#                 value=f"R$ {saldo_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
-#                 delta=None if saldo_total >= 0 else "Negativo",
-#                 delta_color="inverse" if saldo_total < 0 else "normal"
-#             )
-
-
-
-
-
-#         # --------------------------------------------------
-#         # BARRAS DE PROGRESSO: recebido x gasto
-#         # --------------------------------------------------
-
-#         # -----------------------------
-#         # Cálculo do valor recebido
-#         # -----------------------------
-#         parcelas = financeiro.get("parcelas", [])
-
-#         valor_recebido = sum(
-#             p.get("valor", 0)
-#             for p in parcelas
-#             if p.get("data_realizada") not in [None, ""]
-#         )
-
-#         # -----------------------------
-#         # Percentuais (0 a 1)
-#         # -----------------------------
-
-#         if valor_total > 0:
-#             pct_recebido = min(valor_recebido / valor_total, 1)
-#             pct_gasto = min(gasto_total / valor_total, 1)
-#         else:
-#             pct_recebido = 0
-#             pct_gasto = 0
-
-
-
-
-
-#         # -----------------------------
-#         # Barra de valor recebido
-#         # -----------------------------
-#         st.progress(
-#             pct_recebido,
-#             text=(
-#                 f"Valor recebido: R$ {valor_recebido:,.2f}"
-#                 .replace(",", "X").replace(".", ",").replace("X", ".")
-#                 # + f"  ({pct_recebido*100:.1f}%)"
-#             )
-#         )
-
-#         # -----------------------------
-#         # Barra de valor gasto
-#         # -----------------------------
-#         st.progress(
-#             pct_gasto,
-#             text=(
-#                 f"Valor gasto: R$ {gasto_total:,.2f}"
-#                 .replace(",", "X").replace(".", ",").replace("X", ".")
-#                 # + f"  ({pct_gasto*100:.1f}%)"
-#             )
-#         )
-
-
-
-#         st.write("")
-
-#         # --------------------------------------------------
-#         # ESTADOS DO DIÁLOGO (mantidos como no seu código)
-#         # --------------------------------------------------
-#         if "despesa_selecionada" not in st.session_state:
-#             st.session_state["despesa_selecionada"] = None
-
-#         if "despesa_selecionada_tabela_key" not in st.session_state:
-#             st.session_state["despesa_selecionada_tabela_key"] = None
-
-#         if "abrir_dialogo_despesa" not in st.session_state:
-#             st.session_state["abrir_dialogo_despesa"] = False
-
-#         # --------------------------------------------------
-#         # Dados do orçamento
-#         # --------------------------------------------------
-#         orcamento = financeiro.get("orcamento", [])
-
-#         if not orcamento:
-#             st.caption("Nenhuma despesa cadastrada no orçamento.")
-#             st.stop()
-
-#         # --------------------------------------------------
-#         # Cálculo de gasto e saldo (inalterado)
-#         # --------------------------------------------------
-#         for item in orcamento:
-#             gasto = calcular_gasto(item)
-#             valor_item = item.get("valor_total", 0) or 0
-
-#             item["gasto"] = gasto
-#             item["saldo"] = valor_item - gasto
-
-#         # --------------------------------------------------
-#         # Criação do DataFrame
-#         # --------------------------------------------------
-#         df_orcamento = pd.DataFrame(orcamento)
-
-
-
-#         # --------------------------------------------------
-#         # Converter ID categoria -> nome
-#         # --------------------------------------------------
-#         df_orcamento["categoria_nome"] = (
-#             df_orcamento["categoria"]
-#             .astype(str)
-#             .map(mapa_categoria_id_nome)
-#         )
-
-#         # --------------------------------------------------
-#         # Compatibilidade com registros antigos
-#         # --------------------------------------------------
-#         df_orcamento["categoria_nome"] = (
-#             df_orcamento["categoria_nome"]
-#             .fillna(df_orcamento["categoria"])
-#         )
-
-
-
-
-
-#         # coluna auxiliar numérica (NÃO exibida)
-#         df_orcamento["saldo_num"] = df_orcamento["saldo"]
-
-#         # --------------------------------------------------
-#         # Garantir colunas mínimas
-#         # --------------------------------------------------
-#         for col in [
-#             "categoria",
-#             "nome_despesa",
-#             "descricao_despesa",
-#             #"unidade",
-#             #"quantidade",
-#             #"valor_unitario",
-#             "valor_total",
-#             "contrapartida_financeira",
-#             "contrapartida_nao_financeira"
-#         ]:
-#             if col not in df_orcamento.columns:
-#                 df_orcamento[col] = None
-
-#         # --------------------------------------------------
-#         # Formatação monetária (apenas exibição)
-#         # --------------------------------------------------
-#         def fmt_moeda(x):
-#             if x in [None, ""]:
-#                 return ""
-#             return f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-#         #df_orcamento["Valor unitário"] = df_orcamento["valor_unitario"].apply(fmt_moeda)
-#         df_orcamento["Valor total"] = df_orcamento["valor_total"].apply(fmt_moeda)
-#         df_orcamento["Contrapartida financeira"] = df_orcamento["contrapartida_financeira"].apply(fmt_moeda)
-#         df_orcamento["Contrapartida não-financeira"] = df_orcamento["contrapartida_nao_financeira"].apply(fmt_moeda)
-#         df_orcamento["Gasto"] = df_orcamento["gasto"].apply(fmt_moeda)
-#         df_orcamento["Saldo"] = df_orcamento["saldo"].apply(fmt_moeda)
-
-
-#         # --------------------------------------------------
-#         # Agrupamento por categoria (ordem alfabética)
-#         # --------------------------------------------------
-#         categorias = sorted(
-#             df_orcamento["categoria_nome"]
-#             .dropna()
-#             .unique()
-#             .tolist(),
-#             key=str.lower
-#         )
-
-
-#         # --------------------------------------------------
-#         # CALLBACK - Seleção de despesa
-
-#         # --------------------------------------------------
-#         def criar_callback_selecao_orcamento(dataframe_orc, chave_tabela):
-
-#             def handle_selecao():
-
-#                 estado_tabela = st.session_state.get(chave_tabela, {})
-#                 selecao = estado_tabela.get("selection", {})
-#                 linhas = selecao.get("rows", [])
-
-#                 if not linhas:
-#                     return
-
-#                 idx = linhas[0]
-#                 linha = dataframe_orc.iloc[idx]
-
-#                 despesa_escolhida = {
-#                     "categoria": linha.get("categoria", ""),
-#                     "nome_despesa": linha.get("nome_despesa", ""),
-#                     "descricao_despesa": linha.get("descricao_despesa", ""),
-#                     #"unidade": linha.get("unidade", ""),
-#                     #"quantidade": linha.get("quantidade", 0),
-#                     #"valor_unitario": linha.get("valor_unitario", 0),
-#                     "valor_total": linha.get("valor_total", 0),
-#                     "indice": idx,
-#                 }
-
-#                 # Compatibilidade com o diálogo
-#                 despesa_escolhida["despesa"] = despesa_escolhida["nome_despesa"]
-#                 despesa_escolhida["Despesa"] = despesa_escolhida["nome_despesa"]
-
-#                 st.session_state["despesa_selecionada"] = despesa_escolhida
-#                 st.session_state["despesa_selecionada_tabela_key"] = chave_tabela
-#                 st.session_state["abrir_dialogo_despesa"] = True
-
-#             return handle_selecao
-
-#         # --------------------------------------------------
-#         # RENDERIZAÇÃO POR CATEGORIA
-#         # --------------------------------------------------
-#         for categoria in categorias:
-
-#             st.write("")
-#             st.markdown(f"##### {categoria}")
-
-#             # Filtra categoria
-#             df_cat = df_orcamento[df_orcamento["categoria_nome"] == categoria].copy()
-
-#             # Renomeia colunas para exibição
-#             df_vis = df_cat.rename(columns={
-#                 "nome_despesa": "Despesa",
-#                 "descricao_despesa": "Descrição",
-#                 "unidade": "Unidade",
-#                 "quantidade": "Quantidade",
-#                 "Valor total": "Valor solicitado"
-                
-#             })
-
-#             colunas_vis = [
-#                 "Despesa",
-#                 "Descrição",
-#                 # "Unidade",
-#                 # "Quantidade",
-#                 # "Valor unitário",
-#                 "Valor solicitado",
-#                 "Contrapartida financeira",
-#                 "Contrapartida não-financeira",
-#                 "Gasto",
-#                 "Saldo",
-#             ]
-
-#             key_df = f"df_vis_orcamento_{categoria}"
-
-#             callback_selecao = criar_callback_selecao_orcamento(
-#                 df_cat,
-#                 key_df
-#             )
-
-#             # --------------------------------------------------
-#             # Estilo: saldo negativo em vermelho
-#             # --------------------------------------------------
-#             def estilo_saldo(col):
-#                 estilos = []
-#                 for idx in col.index:
-#                     if df_cat.loc[idx, "saldo_num"] < 0:
-#                         estilos.append("color: red;")
-#                     else:
-#                         estilos.append("")
-#                 return estilos
-
-#             df_estilizado = (
-#                 df_vis[colunas_vis]
-#                 .style
-#                 .apply(estilo_saldo, subset=["Saldo"])
-#             )
-
-#             # --------------------------------------------------
-#             # DataFrame final
-#             # --------------------------------------------------
-#             st.dataframe(
-#                 df_estilizado,
-#                 hide_index=True,
-#                 selection_mode="single-row",
-#                 key=key_df,
-#                 on_select=callback_selecao,
-#                 column_config={
-#                     "Despesa": st.column_config.TextColumn(width=220),
-#                     "Descrição": st.column_config.TextColumn(width=420),
-#                     "Unidade": st.column_config.TextColumn(width=120),
-#                     "Quantidade": st.column_config.NumberColumn(width=80),
-#                     "Valor unitário": st.column_config.TextColumn(width=120),
-#                     "Valor total": st.column_config.TextColumn(width=120),
-#                     "Gasto": st.column_config.TextColumn(width=120),
-#                     "Saldo": st.column_config.TextColumn(width=120),
-#                 }
-#             )
-
-#         # --------------------------------------------------
-#         # ABRIR DIÁLOGO
-#         # --------------------------------------------------
-#         if st.session_state.get("abrir_dialogo_despesa"):
-#             dialog_relatos_fin()
-#             st.session_state["abrir_dialogo_despesa"] = False
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#     # ==================================================
-#     # MODO EDIÇÃO — CRUD DO ORÇAMENTO
-#     # ==================================================
-#     if modo_edicao:
-
-#         # -----------------------------------
-#         # Opções exibidas no selectbox
-#         # -----------------------------------
-#         opcoes_categorias = list(
-#             mapa_categoria_nome_id.keys()
-#         )
-
-#         if not opcoes_categorias:
-#             st.warning(
-#                 "Não há categorias de despesa cadastradas. "
-#                 "Cadastre primeiro nas configurações auxiliares."
-#             )
-#             st.stop()
-
-
-
-#         # -----------------------------------
-#         # Dados atuais do orçamento
-#         # -----------------------------------
-#         orcamento_atual = financeiro.get("orcamento", [])
-
-#         if orcamento_atual:
-#             df_orcamento = pd.DataFrame(orcamento_atual)
-#         else:
-#             df_orcamento = pd.DataFrame(
-#                 columns=[
-#                     "categoria",
-#                     "nome_despesa",
-#                     "descricao_despesa",
-#                     #"unidade",
-#                     #"quantidade",
-#                     #"valor_unitario",
-#                     "id_despesa"
-#                 ]
-#             )
-
-#         # -----------------------------------
-#         # Garantir existência das colunas
-#         # -----------------------------------
-#         for col in [
-#             "categoria",
-#             "nome_despesa",
-#             "descricao_despesa",
-#             #"unidade",
-#             #"quantidade",
-#             #"valor_unitario",
-#             "id_despesa",
-#             "contrapartida_financeira", 
-#             "contrapartida_nao_financeira"
-#         ]:
-#             if col not in df_orcamento.columns:
-#                 df_orcamento[col] = None
-
-#         # -----------------------------------
-#         # Preencher valores nulos
-#         # -----------------------------------
-#         #df_orcamento["quantidade"] = df_orcamento["quantidade"].fillna(0)
-#         #df_orcamento["valor_unitario"] = df_orcamento["valor_unitario"].fillna(0)
-
-#         # -----------------------------------
-#         # Calcular valor total
-#         # -----------------------------------
-#         # df_orcamento["valor_total"] = (
-#         #     df_orcamento["quantidade"] * df_orcamento["valor_unitario"]
-#         # )
-
-
-
-#         # -----------------------------------
-#         # Converter ID categoria -> nome
-#         # -----------------------------------
-#         df_orcamento["categoria_nome"] = (
-#             df_orcamento["categoria"]
-#             .astype(str)
-#             .map(mapa_categoria_id_nome)
-#         )
-
-
-
-
-
-#         # -----------------------------------
-#         # Função para formatar decimal com vírgula
-#         # Mostra casas decimais apenas quando existirem
-#         # -----------------------------------
-#         def format_decimal(valor):
-
-#             # Retornar vazio se for nulo
-#             if pd.isna(valor):
-#                 return ""
-
-#             # Converter para float
-#             valor = float(valor)
-
-#             # Se for inteiro, remover casas decimais
-#             if valor.is_integer():
-#                 return str(int(valor))
-
-#             # Caso contrário manter decimal e trocar ponto por vírgula
-#             return str(valor).replace(".", ",")
-
-
-#         # -----------------------------------
-#         # Aplicar formatação
-#         # -----------------------------------
-#         #df_orcamento["quantidade_fmt"] = df_orcamento["quantidade"].apply(format_decimal)
-
-#         #df_orcamento["valor_unitario_fmt"] = df_orcamento["valor_unitario"].apply(format_brl)
-#         df_orcamento["valor_total_fmt"] = df_orcamento["valor_total"].apply(format_brl)
-#         df_orcamento["contrapartida_financeira_fmt"] = df_orcamento["contrapartida_financeira"].apply(format_brl)
-#         df_orcamento["contrapartida_nao_financeira_fmt"] = df_orcamento["contrapartida_nao_financeira"].apply(format_brl)
-
-
-
-#         # -----------------------------------
-#         # Ordenar
-#         # -----------------------------------
-#         df_orcamento = df_orcamento.sort_values(
-#             "categoria_nome",
-#             ignore_index=True
-#         )
-
-
-
-#         # -----------------------------------
-#         # Inicializar estado do editor
-#         # -----------------------------------
-#         if "df_orcamento_editor" not in st.session_state:
-#             st.session_state["df_orcamento_editor"] = df_orcamento.copy()
-
-
-
-#         # -----------------------------------
-#         # Garantir ID no dataframe (sem sobrescrever dados existentes)
-#         # -----------------------------------
-#         if "id_despesa" not in df_orcamento.columns:
-#             df_orcamento["id_despesa"] = None
-
-
-
-#         # -----------------------------------
-#         # Editor
-#         # -----------------------------------
-#         df_editado = st.data_editor(
-#             df_orcamento[
-#                 [
-#                     "id_despesa",
-#                     "categoria_nome",
-#                     "nome_despesa",
-#                     "descricao_despesa",
-#                     #"unidade",
-#                     #"quantidade_fmt",
-#                     #"valor_unitario_fmt",
-#                     "valor_total_fmt",
-#                     "contrapartida_financeira_fmt",
-#                     "contrapartida_nao_financeira_fmt",
-#                 ]
-#             ],
-#             num_rows="dynamic",
-#             height="content",
-#             column_config={
-#                 "id_despesa": None,
-#                 "categoria_nome": st.column_config.SelectboxColumn(
-#                     "Categoria de despesa",
-#                     options=opcoes_categorias,
-#                     required=True
-#                 ),
-#                 "nome_despesa": st.column_config.TextColumn(
-#                     "Despesa",
-#                     required=True
-#                 ),
-#                 "descricao_despesa": st.column_config.TextColumn(
-#                     "Descrição"
-#                 ),
-#                 # "unidade": st.column_config.TextColumn(
-#                 #     "Unidade"
-#                 # ),
-#                 # "quantidade_fmt": st.column_config.TextColumn(
-#                 #     "Quantidade"
-#                 # ),
-#                 # "valor_unitario_fmt": st.column_config.TextColumn(
-#                 #     "Valor unitário (R$)"
-#                 # ),
-#                 "valor_total_fmt": st.column_config.TextColumn(
-#                     "Valor solicitado",
-#                 ),
-#                 "contrapartida_financeira_fmt": st.column_config.TextColumn(
-#                     "Contrapartida financeira"
-#                 ),
-
-#                 "contrapartida_nao_financeira_fmt": st.column_config.TextColumn(
-#                     "Contrapartida não-financeira"
-#                 ),
-#             },
-#             key="editor_orcamento",
-#         )
-
-#         st.write("")
-
-#         # -----------------------------------
-#         # Função para converter BRL → float
-#         # -----------------------------------
-#         def parse_brl(valor):
-#             if not valor:
-#                 return 0.0
-#             return float(
-#                 valor.replace("R$", "")
-#                 .replace(".", "")
-#                 .replace(",", ".")
-#                 .strip()
-#             )
-
-#         # -----------------------------------
-#         # Função para converter decimal com vírgula
-#         # -----------------------------------
-#         def parse_decimal(valor):
-#             if not valor:
-#                 return 0.0
-
-#             return float(
-#                 str(valor)
-#                 .replace(".", "")
-#                 .replace(",", ".")
-#                 .strip()
-#             )
-
-#         # -----------------------------------
-#         # Salvar
-#         # -----------------------------------
-
-
-
-
-
-#         if st.button("Salvar orçamento", icon=":material/save:"):
-
-#             # -----------------------------------
-#             # Filtrar linhas válidas
-#             # -----------------------------------
-#             df_salvar = df_editado.dropna(
-#                 subset=["categoria", "nome_despesa"],
-#                 how="any"
-#             ).copy()
-
-#             # -----------------------------------
-#             # Converter quantidade
-#             # -----------------------------------
-#             #df_salvar["quantidade"] = df_salvar["quantidade_fmt"].apply(parse_decimal)
-
-#             # -----------------------------------
-#             # Converter valor unitário
-#             # -----------------------------------
-#             #df_salvar["valor_unitario"] = df_salvar["valor_unitario_fmt"].apply(parse_brl)
-
-#             # -----------------------------------
-#             # Recalcular total
-#             # -----------------------------------
-#             # df_salvar["valor_total"] = (
-#             #     df_salvar["quantidade"] * df_salvar["valor_unitario"]
-#             # )
-
-#             # -----------------------------------
-#             # ORÇAMENTO ATUAL DO BANCO
-#             # -----------------------------------
-#             orcamento_atual = financeiro.get("orcamento", [])
-
-#             # -----------------------------------
-#             # MAPA POR ID 
-#             # -----------------------------------
-#             mapa_antigo = {
-#                 item.get("id_despesa"): item
-#                 for item in orcamento_atual
-#                 if item.get("id_despesa")
-#             }
-
-#             novo_orcamento = []
-
-#             # -----------------------------------
-#             # Converter valor formatado para float
-#             # -----------------------------------
-#             df_salvar["valor_total"] = df_salvar["valor_total_fmt"].apply(parse_brl)
-            
-#             df_salvar["contrapartida_financeira"] = df_salvar["contrapartida_financeira_fmt"].apply(parse_brl)
-#             df_salvar["contrapartida_nao_financeira"] = df_salvar["contrapartida_nao_financeira_fmt"].apply(parse_brl)
-            
-            
-#             # -----------------------------------
-#             # LOOP PRINCIPAL
-#             # -----------------------------------
-#             for _, row in df_salvar.iterrows():
-
-#                 # -----------------------------------
-#                 # DEFINIR ID (mantém ou cria novo)
-#                 # -----------------------------------
-#                 id_despesa = row.get("id_despesa")
-
-
-#                 # -----------------------------------
-#                 # Mantém ID existente sempre que possível
-#                 # -----------------------------------
-#                 if pd.isna(id_despesa) or not id_despesa:
-#                     id_despesa = str(uuid.uuid4())
-#                 else:
-#                     id_despesa = str(id_despesa)
-
-
-#                 # if not id_despesa or pd.isna(id_despesa):
-#                 #     id_despesa = str(uuid.uuid4())
-
-#                 # -----------------------------------
-#                 # Buscar item antigo pelo ID
-#                 # -----------------------------------
-#                 item_existente = mapa_antigo.get(id_despesa, {})
-
-#                 # -----------------------------------
-#                 # Criar item final preservando dados
-#                 # -----------------------------------
-#                 item_atualizado = {
-#                     "id_despesa": id_despesa,
-
-#                     "categoria": row["categoria"],
-#                     "nome_despesa": row["nome_despesa"],
-#                     "descricao_despesa": row.get("descricao_despesa"),
-#                     #"unidade": row.get("unidade"),
-#                     #"quantidade": float(row["quantidade"]),
-#                     #"valor_unitario": float(row["valor_unitario"]),
-#                     "valor_total": float(row["valor_total"]),
-#                     "contrapartida_financeira": float(row.get("contrapartida_financeira", 0)),
-#                     "contrapartida_nao_financeira": float(row.get("contrapartida_nao_financeira", 0)),
-
-#                     # Preservar lançamentos existentes
-#                     "lancamentos": item_existente.get("lancamentos", [])
-#                 }
-
-#                 # -----------------------------------
-#                 # Garantir consistência: vincular lançamentos ao id_despesa
-#                 # -----------------------------------
-#                 for lanc in item_atualizado["lancamentos"]:
-#                     lanc["id_despesa"] = id_despesa
-
-#                 novo_orcamento.append(item_atualizado)
-
-#             # -----------------------------------
-#             # Salvar no banco
-#             # -----------------------------------
-#             col_projetos.update_one(
-#                 {"codigo": codigo_projeto_atual},
-#                 {
-#                     "$set": {
-#                         "financeiro.orcamento": novo_orcamento
-#                     }
-#                 }
-#             )
-
-#             st.success("Orçamento salvo com sucesso!", icon=":material/check:")
-#             time.sleep(3)
-#             st.rerun()
-
-
-
-
-
-
 
 
 # --------------------------------------------------
@@ -4608,8 +3841,19 @@ with remanejamentos:
             orcamento = financeiro.get("orcamento", []) or []
 
             if not orcamento:
-                st.info("Não há linhas de despesa cadastradas no orçamento.")
-                return
+                st.caption("Nenhuma despesa cadastrada no orçamento.")
+                st.stop()
+
+            df_orcamento = pd.DataFrame(orcamento)
+
+            df_orcamento = df_orcamento[
+                df_orcamento["valor_total"].notna() &
+                (pd.to_numeric(df_orcamento["valor_total"], errors="coerce") > 0)
+            ].copy()
+
+            if df_orcamento.empty:
+                st.caption("Nenhuma despesa com valor solicitado cadastrada.")
+                st.stop()
 
             # ==================================================
             # Montar opções + saldos
