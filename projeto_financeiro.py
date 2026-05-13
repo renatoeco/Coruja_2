@@ -269,11 +269,19 @@ def aprovar_remanejamento(
     lista[idx]["status_remanejamento"] = "aceito"
     lista[idx]["data_aprov_remanej"] = datetime.datetime.now(datetime.UTC)
 
+    valor_aprovado = sum(
+        r.get("valor_reduzido", 0)
+        for r in lista[idx].get("reduzidas", [])
+    )
+
     col_projetos.update_one(
         {"codigo": codigo_projeto},
         {
             "$set": {
                 "financeiro.remanejamentos_financeiros": lista
+            },
+            "$inc": {
+                "financeiro.valor_remanejado": valor_aprovado
             }
         }
     )
@@ -717,7 +725,6 @@ def enviar_email_remanejamento(
     organizacao,
     reduzidas,
     aumentadas,
-    status_remanejamento
 ):
     """
     Envia e-mail para:
@@ -766,15 +773,10 @@ def enviar_email_remanejamento(
     # --------------------------------------------------
     # Mensagem condicional
     # --------------------------------------------------
-    if status_remanejamento == "aceito":
-        mensagem_status = (
-            "O remanejamento <strong>foi aceito automaticamente</strong> e o orçamento já está atualizado."
-        )
-    else:
-        mensagem_status = (
-            "<b>AÇÃO NECESSÁRIA: Esse remanejamento depende de análise e aprovação</b><br><br>"
-            "Visite a página de remanejamentos no Sistema de Gestão de Projetos para dar continuidade."
-        )
+    mensagem_status = (
+        "<b>AÇÃO NECESSÁRIA: Esse remanejamento depende de análise e aprovação</b><br><br>"
+        "Visite a página de remanejamentos no Sistema de Gestão de Projetos para dar continuidade."
+    )
 
     # --------------------------------------------------
     # Assunto
@@ -1262,75 +1264,47 @@ def gerar_recibo_docx(
 
 
 
-def atualizar_datas_relatorios(col_projetos, codigo_projeto):
-    # Busca o projeto no MongoDB
+def atualizar_relatorios(col_projetos, codigo_projeto):
     projeto = col_projetos.find_one({"codigo": codigo_projeto})
 
-    # Recupera a lista de parcelas do financeiro
-    # Caso não exista, retorna uma lista vazia
     parcelas = projeto.get("financeiro", {}).get("parcelas", [])
+    relatorios_existentes = projeto.get("relatorios", [])
 
-    # Recupera a lista de relatórios do projeto
-    # Caso não exista, retorna uma lista vazia
-    relatorios = projeto.get("relatorios", [])
-
-    # Se não houver parcelas ou relatórios, não há nada a atualizar
-    if not parcelas or not relatorios:
+    if len(parcelas) < 2:
+        col_projetos.update_one(
+            {"codigo": codigo_projeto},
+            {"$set": {"relatorios": []}}
+        )
         return
 
-    # Cria um dicionário para mapear as parcelas pelo número
-    # Exemplo: {1: parcela1, 2: parcela2, ...}
-    # Isso facilita e otimiza a busca da parcela correspondente ao relatório
-    mapa_parcelas = {
-        p["numero"]: p
-        for p in parcelas
-        if p.get("numero") is not None
+    parcelas = sorted(
+        [p for p in parcelas if p.get("numero") is not None],
+        key=lambda x: x["numero"]
+    )
+
+    mapa_relatorios = {
+        r["numero"]: r
+        for r in relatorios_existentes
+        if r.get("numero") is not None
     }
 
-    # Lista que irá armazenar os relatórios atualizados
     novos_relatorios = []
 
-    # Percorre todos os relatórios existentes no banco
-    for r in relatorios:
-        # Obtém o número do relatório (normalmente vinculado à parcela)
-        numero = r.get("numero")
+    for parcela in parcelas[:-1]:
+        numero = parcela["numero"]
 
-        # Verifica se existe uma parcela correspondente a esse número
-        if numero in mapa_parcelas:
-            # Converte a data prevista da parcela para datetime
-            data_parcela = pd.to_datetime(
-                mapa_parcelas[numero]["data_prevista"]
-            )
+        relatorio_existente = mapa_relatorios.get(numero, {})
 
-            # Define a data prevista do relatório como
-            # 15 dias após a data prevista da parcela
-            data_relatorio = (
-                data_parcela + datetime.timedelta(days=15)
-            ).date().isoformat()
-        else:
-            # Caso não exista parcela correspondente,
-            # a data do relatório fica indefinida
-            data_relatorio = None
+        novos_relatorios.append({
+            "numero": numero,
+            "data_prevista": relatorio_existente.get("data_prevista"),
+            "status_relatorio": relatorio_existente.get(
+                "status_relatorio",
+                "modo_edicao"
+            ),
+            "data_envio": relatorio_existente.get("data_envio"),
+        })
 
-        # Monta o novo objeto de relatório
-        novos_relatorios.append(
-            {
-                # Mantém o número do relatório
-                "numero": numero,
-
-                # Atualiza (ou mantém) a data prevista calculada
-                "data_prevista": data_relatorio,
-
-                # Define o status do relatório da seguinte forma:
-                # - Se já existir um status no banco, ele é preservado
-                # - Se NÃO existir, define como "modo_edicao"
-                "status_relatorio": r.get("status_relatorio", "modo_edicao")
-            }
-        )
-
-    # Atualiza o documento do projeto no MongoDB
-    # Substitui completamente o array de relatórios
-    # pelos novos relatórios processados
     col_projetos.update_one(
         {"codigo": codigo_projeto},
         {"$set": {"relatorios": novos_relatorios}}
@@ -1645,8 +1619,12 @@ with cron_desemb:
         # DataFrame final
         # -----------------------------
         df_cronograma = pd.DataFrame(linhas_cronograma)
-        df_cronograma = df_cronograma.replace({pd.NA: None})
-        df_cronograma = df_cronograma.fillna("")
+
+        # Garantir que a coluna continue datetime
+        df_cronograma["Data prevista"] = pd.to_datetime(
+            df_cronograma["Data prevista"],
+            errors="coerce"
+        )
 
 
         if df_cronograma.empty:
@@ -1660,8 +1638,10 @@ with cron_desemb:
             )
 
             # Formatar data prevista para exibição
-            df_cronograma["Data prevista"] = df_cronograma["Data prevista"].dt.strftime(
-                "%d/%m/%Y"
+            df_cronograma["Data prevista"] = (
+                df_cronograma["Data prevista"]
+                .dt.strftime("%d/%m/%Y")
+                .fillna("")
             )
 
             # Renomear a coluna evento
@@ -1937,7 +1917,7 @@ with cron_desemb:
                 width=800,
                 column_config={
                     "numero": st.column_config.NumberColumn(
-                        "Número",
+                        "Número (auto)",
                         min_value=1,
                         step=1,
                         width=60
@@ -1947,7 +1927,7 @@ with cron_desemb:
                         width=150
                     ),
                     "percentual": st.column_config.NumberColumn(
-                        "Percentual (%)",
+                        "Percentual (% auto)",
                         format="%.2f%%",
                         disabled=True,
                         width=100
@@ -2091,9 +2071,9 @@ with cron_desemb:
 
                 parcelas_final = []
 
-                for _, row in df_salvar.iterrows():
+                for idx, row in df_salvar.iterrows():
 
-                    numero = int(row["numero"]) if not pd.isna(row["numero"]) else None
+                    numero = idx + 1
 
                     parcela_antiga = mapa_existente.get(numero, {})
 
@@ -2131,7 +2111,7 @@ with cron_desemb:
 
 
                 # Atualizar relatórios vinculados
-                atualizar_datas_relatorios(col_projetos, codigo_projeto_atual)
+                atualizar_relatorios(col_projetos, codigo_projeto_atual)
 
                 st.success("Parcelas salvas com sucesso!", icon=":material/check:")
                 time.sleep(3)
@@ -2175,20 +2155,25 @@ with cron_desemb:
                 # --------------------------------------------------
                 linhas_relatorios = []
 
-                for parcela in parcelas[:-1]:  # ignora a última parcela
-                    numero = parcela["numero"]
-                    data_parcela = pd.to_datetime(parcela["data_prevista"], errors="coerce")
+                relatorios_existentes = projeto.get("relatorios", [])
+                mapa_relatorios = {
+                    r["numero"]: r
+                    for r in relatorios_existentes
+                    if r.get("numero") is not None
+                }
 
-                    data_relatorio = (
-                        data_parcela + datetime.timedelta(days=15)
-                        if not pd.isna(data_parcela)
-                        else pd.NaT
-                    )
+                for parcela in parcelas[:-1]:
+                    numero = parcela["numero"]
+
+                    data_existente = mapa_relatorios.get(numero, {}).get("data_prevista")
 
                     linhas_relatorios.append(
                         {
                             "numero": numero,
-                            "data_prevista": data_relatorio,
+                            "data_prevista": pd.to_datetime(
+                                data_existente,
+                                errors="coerce"
+                            )
                         }
                     )
 
@@ -2220,14 +2205,13 @@ with cron_desemb:
                     num_rows="fixed",
                     column_config={
                         "numero": st.column_config.NumberColumn(
-                            "Número (auto)",
+                            "Número",
                             disabled=True,
-                            width=5
+                            width=60
                         ),
                         "data_prevista": st.column_config.DateColumn(
-                            "Data prevista (auto)",
+                            "Data prevista",
                             format="DD/MM/YYYY",
-                            disabled=True,
                             width=20
                         ),
                     },
@@ -2642,14 +2626,14 @@ with orcamento:
         df_orcamento["Valor solicitado"] = df_orcamento["valor_total"].apply(fmt_moeda)
         df_orcamento["Contrapartida financeira"] = df_orcamento["contrapartida_financeira"].apply(fmt_moeda)
         df_orcamento["Contrapartida não-financeira"] = df_orcamento["contrapartida_nao_financeira"].apply(fmt_moeda)
-        df_orcamento["Gasto"] = df_orcamento["gasto"].apply(fmt_moeda)
+        df_orcamento["Gasto"] = df_orcamento["gasto"]
         df_orcamento["Saldo"] = df_orcamento["saldo"].apply(fmt_moeda)
         df_orcamento["Gasto contrapartida financeira"] = (
-            df_orcamento["gasto_contrapartida_financeira"].apply(fmt_moeda)
+            df_orcamento["gasto_contrapartida_financeira"]
         )
 
         df_orcamento["Gasto contrapartida não-financeira"] = (
-            df_orcamento["gasto_contrapartida_nao_financeira"].apply(fmt_moeda)
+            df_orcamento["gasto_contrapartida_nao_financeira"]
         )
 
         # --------------------------------------------------
@@ -2777,7 +2761,13 @@ with orcamento:
                     "Despesa": st.column_config.TextColumn(width=220),
                     "Descrição": st.column_config.TextColumn(width=420),
                     "Valor solicitado": st.column_config.TextColumn(width=120),
-                    "Gasto": st.column_config.TextColumn(width=120),
+                    "Gasto": st.column_config.ProgressColumn(
+                        "Gasto",
+                        width=140,
+                        min_value=0,
+                        max_value=float(df_cat["valor_total"].max()),
+                        format="R$ %.2f",
+                    ),
                     "Saldo": st.column_config.TextColumn(width=120),
                 }
             )
@@ -2793,12 +2783,13 @@ with orcamento:
         # CONTRAPARTIDA FINANCEIRA
         # ==================================================
         
-        st.divider()
 
         total_contrapartida_financeira = df_orcamento["contrapartida_financeira"].sum()
         gasto_contrapartida_financeira = df_orcamento["gasto_contrapartida_financeira"].sum()
 
         if total_contrapartida_financeira > 0:
+            
+            st.divider()
 
             st.write("")
             st.markdown("### Contrapartida financeira")
@@ -2814,25 +2805,6 @@ with orcamento:
             col2.metric(
                 "Gasto",
                 fmt_moeda(gasto_contrapartida_financeira)
-            )
-
-            # -----------------------------------
-            # Barra de progresso
-            # -----------------------------------
-            if total_contrapartida_financeira > 0:
-                pct_contr_fin = min(
-                    gasto_contrapartida_financeira / total_contrapartida_financeira,
-                    1
-                )
-            else:
-                pct_contr_fin = 0
-
-            st.progress(
-                pct_contr_fin,
-                text=(
-                    f"Gasto: "
-                    f"{fmt_moeda(gasto_contrapartida_financeira)}"
-                )
             )
 
             st.write("")
@@ -2861,9 +2833,12 @@ with orcamento:
                     "Despesa": st.column_config.TextColumn(width=220),
                     "Descrição": st.column_config.TextColumn(width=420),
                     "Valor": st.column_config.TextColumn(width=120),
-                    "Gasto contrapartida financeira": st.column_config.TextColumn(
+                    "Gasto contrapartida financeira": st.column_config.ProgressColumn(
                         "Gasto",
-                        width=120
+                        width=140,
+                        min_value=0,
+                        max_value=float(df_contr_fin["contrapartida_financeira"].max()),
+                        format="R$ %.2f",
                     ),
                 }
             )
@@ -2873,12 +2848,12 @@ with orcamento:
         # CONTRAPARTIDA NÃO-FINANCEIRA
         # ==================================================
         
-        st.divider()
-
         total_contrapartida_nao_financeira = df_orcamento["contrapartida_nao_financeira"].sum()
         gasto_contrapartida_nao_financeira = df_orcamento["gasto_contrapartida_nao_financeira"].sum()
 
         if total_contrapartida_nao_financeira > 0:
+            
+            st.divider()
 
             st.write("")
             st.markdown("### Contrapartida não-financeira")
@@ -2894,25 +2869,6 @@ with orcamento:
             col2.metric(
                 "Gasto",
                 fmt_moeda(gasto_contrapartida_nao_financeira)
-            )
-
-            # -----------------------------------
-            # Barra de progresso
-            # -----------------------------------
-            if total_contrapartida_nao_financeira > 0:
-                pct_contr_nao_fin = min(
-                    gasto_contrapartida_nao_financeira / total_contrapartida_nao_financeira,
-                    1
-                )
-            else:
-                pct_contr_nao_fin = 0
-
-            st.progress(
-                pct_contr_nao_fin,
-                text=(
-                    f"Gasto: "
-                    f"{fmt_moeda(gasto_contrapartida_nao_financeira)}"
-                )
             )
 
             st.write("")
@@ -2941,9 +2897,12 @@ with orcamento:
                     "Despesa": st.column_config.TextColumn(width=220),
                     "Descrição": st.column_config.TextColumn(width=420),
                     "Valor": st.column_config.TextColumn(width=120),
-                    "Gasto contrapartida não-financeira": st.column_config.TextColumn(
+                    "Gasto contrapartida não-financeira": st.column_config.ProgressColumn(
                         "Gasto",
-                        width=120
+                        width=140,
+                        min_value=0,
+                        max_value=float(df_contr_nao_fin["contrapartida_nao_financeira"].max()),
+                        format="R$ %.2f",
                     ),
                 }
             )
@@ -3182,19 +3141,19 @@ with orcamento:
 
 
 
-        # -----------------------------------
-        # BOTÃO ATUALIZAR
-        # -----------------------------------
-        with st.container(horizontal=True, horizontal_alignment="right"):
+        # # -----------------------------------
+        # # BOTÃO ATUALIZAR
+        # # -----------------------------------
+        # with st.container(horizontal=True, horizontal_alignment="right"):
 
-            if st.button("Atualizar tabela", icon=":material/sync:", width=200):
+        #     if st.button("Atualizar tabela", icon=":material/sync:", width=200):
 
-                df_temp = df_editado_orc.copy()
+        #         df_temp = df_editado_orc.copy()
 
-                # Atualiza estado corretamente (sem erro de widget)
-                st.session_state["df_orcamento_editor"] = df_temp
+        #         # Atualiza estado corretamente (sem erro de widget)
+        #         st.session_state["df_orcamento_editor"] = df_temp
 
-                st.rerun()
+        #         st.rerun()
 
             
 
@@ -4211,34 +4170,12 @@ with remanejamentos:
                             ]
 
 
-
-                            # ------------------------------------------------------
-                            # REGRA AUTOMÁTICA DE STATUS
-                            # ------------------------------------------------------
-                            # • soma o total já remanejado no projeto
-                            # • adiciona o valor desta solicitação
-                            # • compara com 15% do valor total do projeto
-                            # ------------------------------------------------------
-
-                            valor_remanejado_atual = financeiro.get("valor_remanejado", 0) or 0
-                            valor_total_projeto = financeiro.get("valor_total", 0) or 0
-
-                            novo_total_remanejado = valor_remanejado_atual + float(total_reduzido)
-
-                            limite_remanejamento = valor_total_projeto * 0.15
-
-                            if novo_total_remanejado <= limite_remanejamento:
-                                status_remanejamento = "aceito"
-                            else:
-                                status_remanejamento = "em_analise"
-
-
                             # ------------------------------------------------------
                             # Estrutura do registro no MongoDB
                             # ------------------------------------------------------
                             registro = {
                                 "data_solicit_remanej": datetime.datetime.now(datetime.UTC),
-                                "status_remanejamento": status_remanejamento,
+                                "status_remanejamento": "em_analise",
                                 "justificativa": justificativa.strip(),
                                 "reduzidas": reduzidas,
                                 "aumentadas": aumentadas
@@ -4256,25 +4193,8 @@ with remanejamentos:
                                     "$push": {
                                         "financeiro.remanejamentos_financeiros": registro
                                     },
-                                    "$inc": {
-                                        "financeiro.valor_remanejado": float(total_reduzido)
-                                    }
                                 }
                             )
-
-
-                            # --------------------------------------------------
-                            # Se aprovado automaticamente, efetiva no orçamento
-                            # --------------------------------------------------
-                            if status_remanejamento == "aceito":
-                                efetivar_remanejamento(
-                                    col_projetos,
-                                    codigo_projeto_atual,
-                                    financeiro,
-                                    reduzidas,
-                                    aumentadas
-                                )
-
 
 
                             # -----------------------------------
@@ -4296,7 +4216,6 @@ with remanejamentos:
                                 organizacao_nome,
                                 reduzidas,
                                 aumentadas,
-                                status_remanejamento
                             )
 
 
@@ -4390,23 +4309,6 @@ with remanejamentos:
     st.write("")
     st.write("")
     st.write("##### Histórico de remanejamentos")
-
-
-    # --------------------------------------------------
-    # Aviso quando remanejamentos excedem 15% do orçamento
-    # --------------------------------------------------
-    valor_remanejado = financeiro.get("valor_remanejado", 0) or 0
-    valor_total = financeiro.get("valor_total", 0) or 0
-
-    if valor_total and valor_remanejado > valor_total * 0.15:
-
-        st.markdown(
-            "<span style='color: #cb410b'>Os remanejamentos excederam 15% do orçamento do projeto. Portanto, as próximas solicitações serão analisadas pela equipe do Fundo.</span>",
-            unsafe_allow_html=True
-        )
-
-
-
 
 
     lista_remanej = financeiro.get("remanejamentos_financeiros", [])
