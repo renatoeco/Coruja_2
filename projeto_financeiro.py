@@ -2642,14 +2642,14 @@ with orcamento:
         df_orcamento["Valor solicitado"] = df_orcamento["valor_total"].apply(fmt_moeda)
         df_orcamento["Contrapartida financeira"] = df_orcamento["contrapartida_financeira"].apply(fmt_moeda)
         df_orcamento["Contrapartida não-financeira"] = df_orcamento["contrapartida_nao_financeira"].apply(fmt_moeda)
-        df_orcamento["Gasto"] = df_orcamento["gasto"].apply(fmt_moeda)
+        df_orcamento["Gasto"] = df_orcamento["gasto"]
         df_orcamento["Saldo"] = df_orcamento["saldo"].apply(fmt_moeda)
         df_orcamento["Gasto contrapartida financeira"] = (
-            df_orcamento["gasto_contrapartida_financeira"].apply(fmt_moeda)
+            df_orcamento["gasto_contrapartida_financeira"]
         )
 
         df_orcamento["Gasto contrapartida não-financeira"] = (
-            df_orcamento["gasto_contrapartida_nao_financeira"].apply(fmt_moeda)
+            df_orcamento["gasto_contrapartida_nao_financeira"]
         )
 
         # --------------------------------------------------
@@ -2777,7 +2777,13 @@ with orcamento:
                     "Despesa": st.column_config.TextColumn(width=220),
                     "Descrição": st.column_config.TextColumn(width=420),
                     "Valor solicitado": st.column_config.TextColumn(width=120),
-                    "Gasto": st.column_config.TextColumn(width=120),
+                    "Gasto": st.column_config.ProgressColumn(
+                        "Gasto",
+                        width=140,
+                        min_value=0,
+                        max_value=float(df_cat["valor_total"].max()),
+                        format="R$ %.2f",
+                    ),
                     "Saldo": st.column_config.TextColumn(width=120),
                 }
             )
@@ -2793,12 +2799,13 @@ with orcamento:
         # CONTRAPARTIDA FINANCEIRA
         # ==================================================
         
-        st.divider()
 
         total_contrapartida_financeira = df_orcamento["contrapartida_financeira"].sum()
         gasto_contrapartida_financeira = df_orcamento["gasto_contrapartida_financeira"].sum()
 
         if total_contrapartida_financeira > 0:
+            
+            st.divider()
 
             st.write("")
             st.markdown("### Contrapartida financeira")
@@ -2814,25 +2821,6 @@ with orcamento:
             col2.metric(
                 "Gasto",
                 fmt_moeda(gasto_contrapartida_financeira)
-            )
-
-            # -----------------------------------
-            # Barra de progresso
-            # -----------------------------------
-            if total_contrapartida_financeira > 0:
-                pct_contr_fin = min(
-                    gasto_contrapartida_financeira / total_contrapartida_financeira,
-                    1
-                )
-            else:
-                pct_contr_fin = 0
-
-            st.progress(
-                pct_contr_fin,
-                text=(
-                    f"Gasto: "
-                    f"{fmt_moeda(gasto_contrapartida_financeira)}"
-                )
             )
 
             st.write("")
@@ -2861,9 +2849,12 @@ with orcamento:
                     "Despesa": st.column_config.TextColumn(width=220),
                     "Descrição": st.column_config.TextColumn(width=420),
                     "Valor": st.column_config.TextColumn(width=120),
-                    "Gasto contrapartida financeira": st.column_config.TextColumn(
+                    "Gasto contrapartida financeira": st.column_config.ProgressColumn(
                         "Gasto",
-                        width=120
+                        width=140,
+                        min_value=0,
+                        max_value=float(df_contr_fin["contrapartida_financeira"].max()),
+                        format="R$ %.2f",
                     ),
                 }
             )
@@ -2873,12 +2864,12 @@ with orcamento:
         # CONTRAPARTIDA NÃO-FINANCEIRA
         # ==================================================
         
-        st.divider()
-
         total_contrapartida_nao_financeira = df_orcamento["contrapartida_nao_financeira"].sum()
         gasto_contrapartida_nao_financeira = df_orcamento["gasto_contrapartida_nao_financeira"].sum()
 
         if total_contrapartida_nao_financeira > 0:
+            
+            st.divider()
 
             st.write("")
             st.markdown("### Contrapartida não-financeira")
@@ -2894,25 +2885,6 @@ with orcamento:
             col2.metric(
                 "Gasto",
                 fmt_moeda(gasto_contrapartida_nao_financeira)
-            )
-
-            # -----------------------------------
-            # Barra de progresso
-            # -----------------------------------
-            if total_contrapartida_nao_financeira > 0:
-                pct_contr_nao_fin = min(
-                    gasto_contrapartida_nao_financeira / total_contrapartida_nao_financeira,
-                    1
-                )
-            else:
-                pct_contr_nao_fin = 0
-
-            st.progress(
-                pct_contr_nao_fin,
-                text=(
-                    f"Gasto: "
-                    f"{fmt_moeda(gasto_contrapartida_nao_financeira)}"
-                )
             )
 
             st.write("")
@@ -2941,9 +2913,12 @@ with orcamento:
                     "Despesa": st.column_config.TextColumn(width=220),
                     "Descrição": st.column_config.TextColumn(width=420),
                     "Valor": st.column_config.TextColumn(width=120),
-                    "Gasto contrapartida não-financeira": st.column_config.TextColumn(
+                    "Gasto contrapartida não-financeira": st.column_config.ProgressColumn(
                         "Gasto",
-                        width=120
+                        width=140,
+                        min_value=0,
+                        max_value=float(df_contr_nao_fin["contrapartida_nao_financeira"].max()),
+                        format="R$ %.2f",
                     ),
                 }
             )
@@ -3182,19 +3157,19 @@ with orcamento:
 
 
 
-        # -----------------------------------
-        # BOTÃO ATUALIZAR
-        # -----------------------------------
-        with st.container(horizontal=True, horizontal_alignment="right"):
+        # # -----------------------------------
+        # # BOTÃO ATUALIZAR
+        # # -----------------------------------
+        # with st.container(horizontal=True, horizontal_alignment="right"):
 
-            if st.button("Atualizar tabela", icon=":material/sync:", width=200):
+        #     if st.button("Atualizar tabela", icon=":material/sync:", width=200):
 
-                df_temp = df_editado_orc.copy()
+        #         df_temp = df_editado_orc.copy()
 
-                # Atualiza estado corretamente (sem erro de widget)
-                st.session_state["df_orcamento_editor"] = df_temp
+        #         # Atualiza estado corretamente (sem erro de widget)
+        #         st.session_state["df_orcamento_editor"] = df_temp
 
-                st.rerun()
+        #         st.rerun()
 
             
 
