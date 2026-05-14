@@ -1960,44 +1960,8 @@ else:
 
         with st.form("form_contratos", border=False):
 
-            st.markdown("##### Dados do contrato")
-
-
-            with st.container(horizontal=True):
-
-                # Data de assinatura
-                data_assinatura_salva = projeto.get("contrato_data_assinatura")
-
-                if data_assinatura_salva:
-                    data_assinatura_default = pd.to_datetime(data_assinatura_salva).date()
-                else:
-                    data_assinatura_default = None
-
-                data_assinatura_contrato = st.date_input(
-                    "Data de assinatura do contrato",
-                    value=data_assinatura_default,
-                    format="DD/MM/YYYY",
-                    width=250
-                )
-
-                # Nome do contrato
-                contrato_nome = st.text_input(
-                    "Nome/Número do contrato",
-                    value=projeto.get("contrato_nome", ""),
-                    placeholder="Ex: IEB/CEPF/33-2026",
-                    width=400
-                )
-
-
-
-            st.divider()
-
 
             col1, col2 = st.columns(2, gap="large")
-
-
-
-
 
             # st.divider()
             
@@ -2046,26 +2010,6 @@ else:
             if salvar_contrato:
 
                 with st.spinner("Salvando alterações..."):
-
-                    # Converte data para datetime
-                    if data_assinatura_contrato:
-                        data_assinatura_dt = datetime.datetime.combine(
-                            data_assinatura_contrato,
-                            datetime.datetime.min.time()
-                        )
-                    else:
-                        data_assinatura_dt = None
-
-                    # Atualiza dados do contrato
-                    col_projetos.update_one(
-                        {"_id": projeto["_id"]},
-                        {
-                            "$set": {
-                                "contrato_data_assinatura": data_assinatura_dt,
-                                "contrato_nome": contrato_nome.strip() if contrato_nome else None
-                            }
-                        }
-                    )
 
                     # Se adicionou documento
                     if descricao_contrato and arquivo_contrato:
