@@ -58,13 +58,11 @@ df_editais = df_editais.rename(columns={
     }.items() if col in df_editais.columns
 })
 
-# Renomear as colunas de df_investidores
-# df_investidores = df_investidores.rename(columns={
-#     col: novo for col, novo in {
-#         "sigla_investidor": "Sigla",
-#         "nome_investidor": "Nome",
-#     }.items() if col in df_investidores.columns
-# })
+# Converter lista de fases operacionais para texto separado por vírgula
+if "Fase operacional" in df_editais.columns:
+    df_editais["Fase operacional"] = df_editais["Fase operacional"].apply(
+        lambda x: ", ".join(x) if isinstance(x, list) else x
+    )
 
 # Renomear as colunas de df_doadores
 df_doadores = df_doadores.rename(columns={
@@ -196,7 +194,11 @@ if filtro_ciclo != "Todos" and "Código" in df_ciclos.columns:
     df_ciclos_filtrado = df_ciclos[df_ciclos["Código"] == filtro_ciclo]
 
     # Editais relacionados
-    df_editais_filtrado = df_editais[df_editais["Fase operacional"] == filtro_ciclo]
+    df_editais_filtrado = df_editais[
+        df_editais["Fase operacional"].apply(
+            lambda x: filtro_ciclo in x if isinstance(x, str) else False
+        )
+    ]
 
     # Investidores e doadores relacionados
     #investidores_rel = df_ciclos_filtrado["Investidores"].explode().dropna().unique().tolist()
@@ -210,11 +212,17 @@ if filtro_ciclo != "Todos" and "Código" in df_ciclos.columns:
 elif filtro_edital != "Todos" and "Código" in df_editais.columns:
     df_editais_filtrado = df_editais[df_editais["Código"] == filtro_edital]
 
-    ciclo_rel = None
+    ciclos_rel = []
+
     if not df_editais_filtrado.empty and "Fase operacional" in df_editais_filtrado.columns:
-        ciclo_rel = df_editais_filtrado["Fase operacional"].iloc[0]
-        
-    df_ciclos_filtrado = df_ciclos[df_ciclos["Código"] == ciclo_rel]
+        valor = df_editais_filtrado["Fase operacional"].iloc[0]
+
+        if isinstance(valor, str):
+            ciclos_rel = [v.strip() for v in valor.split(",") if v.strip()]
+
+    df_ciclos_filtrado = df_ciclos[
+        df_ciclos["Código"].isin(ciclos_rel)
+    ]
 
     #investidores_rel = df_ciclos_filtrado["Investidores"].explode().dropna().unique().tolist()
     doadores_rel = df_ciclos_filtrado["Doadores"].explode().dropna().unique().tolist()
@@ -245,7 +253,11 @@ elif filtro_doador != "Todos" and "Doadores" in df_ciclos.columns:
     ]
 
     codigos_ciclos_rel = df_ciclos_filtrado["Código"].unique().tolist()
-    df_editais_filtrado = df_editais[df_editais["Fase operacional"].isin(codigos_ciclos_rel)]
+    df_editais_filtrado = df_editais[
+        df_editais["Fase operacional"].apply(
+            lambda x: any(c in x for c in codigos_ciclos_rel) if isinstance(x, str) else False
+        )
+    ]
 
     #investidores_rel = df_ciclos_filtrado["Investidores"].explode().dropna().unique().tolist()
     #df_investidores_filtrado = df_investidores[df_investidores["Sigla"].isin(investidores_rel)]

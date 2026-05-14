@@ -471,11 +471,11 @@ with tab3:
             data_lancamento = st.date_input("Data de lançamento:", format="DD/MM/YYYY")
             
             codigos_ciclos = sorted(col_ciclos.distinct("codigo_ciclo"))
-            codigos_ciclos.insert(0, "")  # adiciona uma opção vazia
 
-            ciclo = st.selectbox(
-                "Fase Operacional:",
-                options=sorted(codigos_ciclos),
+            ciclos = st.multiselect(
+                "Fases Operacionais:",
+                options=codigos_ciclos,
+                placeholder=""
             )
 
             st.write('')
@@ -485,7 +485,7 @@ with tab3:
             if submit:
 
                 # Validação de campos vazios
-                if not codigo_edital or not nome_edital or not data_lancamento or not ciclo:
+                if not codigo_edital or not nome_edital or not data_lancamento or not ciclos:
                     st.error("Todos os campos devem ser preenchidos.")
 
                 else:
@@ -505,7 +505,7 @@ with tab3:
                             "codigo_edital": codigo_edital,
                             "nome_edital": nome_edital,
                             "data_lancamento": data_lancamento_dt,
-                            "ciclo_investimento": ciclo  
+                            "ciclo_investimento": ciclos 
                         }
                         col_editais.insert_one(novo_edital)
                         st.success("Edital cadastrado com sucesso!")
@@ -568,13 +568,17 @@ with tab3:
 
                     # Fase Operacional vinculado
                     codigos_ciclos = sorted(col_ciclos.distinct("codigo_ciclo"))
-                    codigos_ciclos.insert(0, "")
 
-                    ciclo_atual = edital.get("ciclo_investimento", "")
-                    ciclo = st.selectbox(
-                        "Fase Operacional:",
+                    ciclos_atuais = edital.get("ciclo_investimento", [])
+
+                    # Compatibilidade com registros antigos
+                    if isinstance(ciclos_atuais, str):
+                        ciclos_atuais = [ciclos_atuais]
+
+                    ciclos = st.multiselect(
+                        "Fases Operacionais:",
                         options=codigos_ciclos,
-                        index=codigos_ciclos.index(ciclo_atual) if ciclo_atual in codigos_ciclos else 0
+                        default=ciclos_atuais
                     )
 
                     st.write('')
@@ -587,7 +591,7 @@ with tab3:
 
                     if submit_editar:
                         # Validação de campos obrigatórios
-                        if not nome_edital or not ciclo:
+                        if not nome_edital or not ciclos:
                             st.error("Todos os campos obrigatórios devem ser preenchidos.")
                         else:
                             # Atualizar no MongoDB
@@ -596,7 +600,7 @@ with tab3:
                                 {"$set": {
                                     "nome_edital": nome_edital,
                                     "data_lancamento": data_lancamento.strftime("%d/%m/%Y") if data_lancamento else None,
-                                    "ciclo_investimento": ciclo,
+                                    "ciclo_investimento": ciclos,
                                     "doadores": doador
                                 }}
                             )
