@@ -2020,7 +2020,7 @@ with cron_desemb:
                 f"**Total das parcelas:** {soma_fmt.replace('$', '\\$')}"
             )
             st.write(
-                f"**Valor total ajustado do projeto:** {total_fmt.replace('$', '\\$')}"
+                f"**Valor total do projeto:** {total_fmt.replace('$', '\\$')}"
             )
 
             # -----------------------------------
