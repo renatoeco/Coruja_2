@@ -195,39 +195,72 @@ st.write("")
 st.write("Preencha os dados diretamente na tabela abaixo:")
 
 # ---------------------------------------------------------------------------------------------
-# DATAFRAME INICIAL (VAZIO)
+# LISTAS FIXAS
 # ---------------------------------------------------------------------------------------------
-df_base = pd.DataFrame({
-    "sigla_organizacao": [""],
-    "nome_organizacao": [""],
-    "cnpj": [""],
-    "endereco": [""],
-    "uf": [""],
-    "municipio": [""],
-    "cep": [""]
-})
+lista_ufs = [""] + (
+    sorted(df_ufs["sigla_uf"].dropna().tolist())
+    if "sigla_uf" in df_ufs.columns else []
+)
+
+lista_municipios = [""] + (
+    sorted(df_municipios["nome_municipio"].dropna().tolist())
+    if "nome_municipio" in df_municipios.columns else []
+)
 
 # ---------------------------------------------------------------------------------------------
-# LISTAS PARA SELECTBOX
+# DATAFRAME BASE PERSISTENTE
 # ---------------------------------------------------------------------------------------------
-lista_ufs = [""] + sorted(df_ufs["sigla_uf"].tolist())
-lista_municipios = [""] + df_municipios["nome_municipio"].sort_values().tolist()
+if "organizacoes_df_base" not in st.session_state:
+    st.session_state.organizacoes_df_base = pd.DataFrame({
+        "sigla_organizacao": [""],
+        "nome_organizacao": [""],
+        "cnpj": [""],
+        "endereco": [""],
+        "uf": [""],
+        "municipio": [""],
+        "cep": [""]
+    })
 
 # ---------------------------------------------------------------------------------------------
 # DATA EDITOR
 # ---------------------------------------------------------------------------------------------
 df_editado = st.data_editor(
-    df_base,
+    st.session_state.organizacoes_df_base,
+    key="editor_organizacoes",
     num_rows="dynamic",
     width="stretch",
+    hide_index=True,
     column_config={
-        "sigla_organizacao": st.column_config.TextColumn("Sigla", width=1),
-        "nome_organizacao": st.column_config.TextColumn("Nome da Organização", width=200),
-        "cnpj": st.column_config.TextColumn("CNPJ", width=1),
-        "endereco": st.column_config.TextColumn("Endereço", width=200),
-        "uf": st.column_config.SelectboxColumn("UF", options=lista_ufs, width=1),
-        "municipio": st.column_config.SelectboxColumn("Município", options=lista_municipios, width=1),
-        "cep": st.column_config.TextColumn("CEP", width=1),
+        "sigla_organizacao": st.column_config.TextColumn(
+            "Sigla",
+            width="small"
+        ),
+        "nome_organizacao": st.column_config.TextColumn(
+            "Nome da Organização",
+            width="large"
+        ),
+        "cnpj": st.column_config.TextColumn(
+            "CNPJ",
+            width="medium"
+        ),
+        "endereco": st.column_config.TextColumn(
+            "Endereço",
+            width="large"
+        ),
+        "uf": st.column_config.SelectboxColumn(
+            "UF",
+            options=lista_ufs,
+            width="small"
+        ),
+        "municipio": st.column_config.SelectboxColumn(
+            "Município",
+            options=lista_municipios,
+            width="medium"
+        ),
+        "cep": st.column_config.TextColumn(
+            "CEP",
+            width="small"
+        ),
     }
 )
 
