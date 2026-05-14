@@ -231,7 +231,7 @@ def notifica_parcelas_desencontradas():
         if round(soma_parcelas, 2) != round(valor_total_ajustado, 2):
 
             st.warning(
-                "O valor total das parcelas está diferente do valor total atualizado do projeto após ajustes financeiros. **Atualize o cronograma de parcelas.**",
+                "O valor total das parcelas está diferente do valor total do projeto. **Atualize o cronograma de parcelas.**",
                 icon=":material/warning:"
             )
 
@@ -1265,23 +1265,34 @@ def gerar_recibo_docx(
 
 
 def atualizar_relatorios(col_projetos, codigo_projeto):
+    """
+    Garante a existência de 1 relatório para cada parcela.
+    Preserva dados já existentes do relatório.
+    """
+
     projeto = col_projetos.find_one({"codigo": codigo_projeto})
+
+    if not projeto:
+        return
 
     parcelas = projeto.get("financeiro", {}).get("parcelas", [])
     relatorios_existentes = projeto.get("relatorios", [])
 
-    if len(parcelas) < 2:
+    # Se não houver parcelas, remove relatórios
+    if not parcelas:
         col_projetos.update_one(
             {"codigo": codigo_projeto},
             {"$set": {"relatorios": []}}
         )
         return
 
+    # Ordenar parcelas válidas
     parcelas = sorted(
         [p for p in parcelas if p.get("numero") is not None],
         key=lambda x: x["numero"]
     )
 
+    # Mapa dos relatórios existentes
     mapa_relatorios = {
         r["numero"]: r
         for r in relatorios_existentes
@@ -1290,7 +1301,8 @@ def atualizar_relatorios(col_projetos, codigo_projeto):
 
     novos_relatorios = []
 
-    for parcela in parcelas[:-1]:
+    # Criar 1 relatório para CADA parcela
+    for parcela in parcelas:
         numero = parcela["numero"]
 
         relatorio_existente = mapa_relatorios.get(numero, {})
@@ -1309,7 +1321,6 @@ def atualizar_relatorios(col_projetos, codigo_projeto):
         {"codigo": codigo_projeto},
         {"$set": {"relatorios": novos_relatorios}}
     )
-
 
 
 
@@ -1620,16 +1631,15 @@ with cron_desemb:
         # -----------------------------
         df_cronograma = pd.DataFrame(linhas_cronograma)
 
-        # Garantir que a coluna continue datetime
-        df_cronograma["Data prevista"] = pd.to_datetime(
-            df_cronograma["Data prevista"],
-            errors="coerce"
-        )
-
-
         if df_cronograma.empty:
             st.caption("Não há dados financeiros para exibição.")
         else:
+
+            # Garantir que a coluna continue datetime
+            df_cronograma["Data prevista"] = pd.to_datetime(
+                df_cronograma["Data prevista"],
+                errors="coerce"
+            )
             
             # Ordenar por data prevista
             df_cronograma = df_cronograma.sort_values(
@@ -1917,7 +1927,7 @@ with cron_desemb:
                 width=800,
                 column_config={
                     "numero": st.column_config.NumberColumn(
-                        "Número (auto)",
+                        "Número",
                         min_value=1,
                         step=1,
                         width=60
@@ -2143,9 +2153,9 @@ with cron_desemb:
                 key=lambda x: x["numero"]
             )
 
-            # Se não houver parcelas suficientes, não há relatórios
-            if len(parcelas) < 2:
-                st.caption("É necessário ter ao menos duas parcelas para gerar relatórios.")
+            # Se não houver parcelas
+            if not parcelas:
+                st.caption("É necessário cadastrar ao menos uma parcela para gerar relatórios.")
             else:
 
 
@@ -2162,7 +2172,8 @@ with cron_desemb:
                     if r.get("numero") is not None
                 }
 
-                for parcela in parcelas[:-1]:
+                # Uma linha para cada parcela
+                for parcela in parcelas:
                     numero = parcela["numero"]
 
                     data_existente = mapa_relatorios.get(numero, {}).get("data_prevista")
@@ -2236,7 +2247,7 @@ with cron_desemb:
                                 "data_prevista": (
                                     None
                                     if pd.isna(row["data_prevista"])
-                                    else row["data_prevista"].date().isoformat()
+                                    else pd.to_datetime(row["data_prevista"]).date().isoformat()
                                 ),
                             }
                         )
