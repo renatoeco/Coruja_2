@@ -3008,7 +3008,11 @@ with orcamento:
             valor = float(valor)
             return str(int(valor)) if valor.is_integer() else str(valor).replace(".", ",")
 
-        df_orcamento["valor_total_fmt"] = df_orcamento["valor_total"].apply(format_brl)
+        df_orcamento["valor_total_fmt"] = (
+            df_orcamento["valor_total"]
+            .apply(format_brl)
+            .astype(str)
+        )
 
         # -----------------------------------
         # Ordenar
@@ -3018,6 +3022,23 @@ with orcamento:
             ignore_index=True
         )
         # df_orcamento = df_orcamento.sort_values("categoria", ignore_index=True)
+
+        # Garantir tipo string para compatibilidade com TextColumn
+        df_orcamento["valor_total_fmt"] = (
+            df_orcamento["valor_total_fmt"]
+            .fillna("")
+            .astype(str)
+        )
+
+        # Se o estado antigo tiver dtype incorreto, recria
+        if "df_orcamento_editor" in st.session_state:
+            if "valor_total_fmt" in st.session_state["df_orcamento_editor"].columns:
+                dtype_atual = st.session_state["df_orcamento_editor"]["valor_total_fmt"].dtype
+
+                if pd.api.types.is_numeric_dtype(dtype_atual):
+                    del st.session_state["df_orcamento_editor"]
+                    if "editor_orcamento" in st.session_state:
+                        del st.session_state["editor_orcamento"]
 
         # -----------------------------------
         # Inicializar estado do editor
