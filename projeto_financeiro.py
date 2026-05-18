@@ -774,9 +774,11 @@ def enviar_email_remanejamento(
     # Mensagem condicional
     # --------------------------------------------------
     mensagem_status = (
-        "<b>AÇÃO NECESSÁRIA: Esse remanejamento depende de análise e aprovação</b><br><br>"
-        "Visite a página de remanejamentos no Sistema de Gestão de Projetos para dar continuidade."
-    )
+            "<b>AÇÃO NECESSÁRIA: Esse remanejamento depende de análise e aprovação</b><br><br>"
+            'Visite a página de remanejamentos no '
+            '<a href="https://coruja-2-dev.streamlit.app" target="_blank">Sistema de Gestão de Projetos</a> '
+            "para dar continuidade."
+        )
 
     # --------------------------------------------------
     # Assunto
@@ -859,24 +861,6 @@ def enviar_email_remanejamento(
                 da organização <span class="highlight">{organizacao}</span>,
                 enviou uma nova solicitação de remanejamento financeiro.
                 </p>
-
-                <br>
-
-                <p><strong>Resumo do remanejamento:</strong></p>
-
-                <table width="100%">
-                <tr>
-                    <td valign="top" width="50%">
-                    <strong>Reduções</strong>
-                    {lista_reduzidas}
-                    </td>
-
-                    <td valign="top" width="50%">
-                    <strong>Aumentos</strong>
-                    {lista_aumentadas}
-                    </td>
-                </tr>
-                </table>
 
                 <br>
 
@@ -3808,10 +3792,6 @@ if usuario_interno:
 # --------------------------------------------------
 
 
-
-
-
-
 with remanejamentos:
 
     st.markdown("### Remanejamentos")
@@ -4514,58 +4494,12 @@ with remanejamentos:
                     if st.session_state.get("tipo_usuario") in ["admin", "equipe"] and status != "aceito":
 
                         # ==================================================
-                        # PRE-CARREGAR estados a partir do banco
-                        # (ESSENCIAL para checkbox iniciar marcado)
-                        # ==================================================
-
-                        tec_key = f"tec_{idx}"
-                        fin_key = f"fin_{idx}"
-
-                        if tec_key not in st.session_state:
-                            st.session_state[tec_key] = "aceite_tecnico" in item
-
-                        if fin_key not in st.session_state:
-                            st.session_state[fin_key] = "aceite_financeiro" in item
-
-
-                        # ==================================================
-                        # CHECKBOX TÉCNICO
-                        # ==================================================
-                        st.checkbox(
-                            "Aceite técnico",
-                            key=tec_key,
-                            on_change=atualizar_aceite_remanejamento,
-                            args=(codigo_projeto_atual, idx, "aceite_tecnico", tec_key)
-                        )
-
-                        if item.get("aceite_tecnico"):
-                            st.caption(item["aceite_tecnico"])
-
-
-                        # ==================================================
-                        # CHECKBOX FINANCEIRO
-                        # ==================================================
-                        st.checkbox(
-                            "Aceite financeiro",
-                            key=fin_key,
-                            on_change=atualizar_aceite_remanejamento,
-                            args=(codigo_projeto_atual, idx, "aceite_financeiro", fin_key)
-                        )
-
-                        if item.get("aceite_financeiro"):
-                            st.caption(item["aceite_financeiro"])
-
-
-                        # ==================================================
                         # BOTÃO APROVAR
                         # ==================================================
-
-                        habilitar = st.session_state[tec_key] and st.session_state[fin_key]
 
 
                         if st.button(
                             "Aprovar remanejamento",
-                            disabled=not habilitar,
                             key=f"aprovar_{idx}",
                             type="primary",
                             icon=":material/check:",
@@ -4674,10 +4608,4 @@ with remanejamentos:
                 # JUSTIFICATIVA (fora das colunas)
                 # ==================================================
                 st.write(f"**Justificativa:** {item.get('justificativa', '')}")
-
-
-
-
-
-
 
