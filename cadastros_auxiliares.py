@@ -1321,7 +1321,7 @@ with aba_indicadores:
                         )
                     }
                 )                
-
+        
         # ======================================================
         # MODO EDIÇÃO
         # ======================================================
@@ -1330,25 +1330,50 @@ with aba_indicadores:
 
             st.write("Edite, adicione e exclua linhas.")
 
+            # --------------------------------------------------
+            # PREPARA DATAFRAME PARA EDIÇÃO
+            # Mantém _id oculto para identificar registros existentes
+            # --------------------------------------------------
             if df_indicadores.empty:
                 df_editor = pd.DataFrame(
                     {
-                        "codigo_indicador": pd.Series(dtype="str"),
+                        "_id": pd.Series(dtype="str"),
                         "indicador": pd.Series(dtype="str"),
                     }
                 )
             else:
-                df_editor = df_indicadores[
-                    ["codigo_indicador", "indicador"]
-                ].copy()
+                df_editor = df_indicadores.copy()
 
+                # Garante colunas
+                if "_id" not in df_editor.columns:
+                    df_editor["_id"] = ""
+
+                df_editor["_id"] = df_editor["_id"].astype(str)
+                df_editor["indicador"] = df_editor["indicador"].astype(str)
+
+                # Exibe apenas campos necessários
+                df_editor = df_editor[["_id", "indicador"]]
+
+            # --------------------------------------------------
+            # EDITOR
+            # --------------------------------------------------
             df_editado = st.data_editor(
                 df_editor,
                 num_rows="dynamic",
                 hide_index=True,
                 key="editor_indicadores_por_edital",
+                column_config={
+                    "_id": None,
+                    "indicador": st.column_config.TextColumn(
+                        "Indicador",
+                        width="large"
+                    )
+                }
             )
 
+            # --------------------------------------------------
+            # BOTÃO SALVAR
+            # --------------------------------------------------
             if st.button(
                 "Salvar alterações",
                 icon=":material/save:",
@@ -1356,33 +1381,28 @@ with aba_indicadores:
                 key="salvar_indicadores_por_edital"
             ):
 
-                if (
-                    "codigo_indicador" not in df_editado.columns or
-                    "indicador" not in df_editado.columns
-                ):
+                if "indicador" not in df_editado.columns:
                     st.error("Dados inválidos.")
                     st.stop()
 
                 # --------------------------------------------------
                 # NORMALIZA
                 # --------------------------------------------------
-
-                df_editado["codigo_indicador"] = (
-                    df_editado["codigo_indicador"]
-                    .astype(str)
-                    .str.strip()
-                )
-
                 df_editado["indicador"] = (
                     df_editado["indicador"]
                     .astype(str)
                     .str.strip()
                 )
 
+                df_editado["_id"] = (
+                    df_editado["_id"]
+                    .astype(str)
+                    .str.strip()
+                )
+
                 # Remove linhas vazias
                 df_editado = df_editado[
-                    (df_editado["codigo_indicador"] != "") &
-                    (df_editado["indicador"] != "")
+                    df_editado["indicador"] != ""
                 ]
 
                 if df_editado.empty:
@@ -1390,40 +1410,99 @@ with aba_indicadores:
                     st.stop()
 
                 # --------------------------------------------------
-                # VALIDA DUPLICIDADE DE CÓDIGO
+                # VALIDA DUPLICIDADE DE TEXTO
                 # --------------------------------------------------
-
-                lista_codigos = df_editado["codigo_indicador"].tolist()
+                lista_indicadores = df_editado["indicador"].tolist()
 
                 duplicados = {
-                    x for x in lista_codigos if lista_codigos.count(x) > 1
+                    x for x in lista_indicadores
+                    if lista_indicadores.count(x) > 1
                 }
 
                 if duplicados:
                     st.error(
-                        f"Existem códigos duplicados: {', '.join(duplicados)}"
+                        f"Existem indicadores duplicados: {', '.join(duplicados)}"
                     )
                     st.stop()
 
-                # Ordena por código
-                df_editado = df_editado.sort_values("codigo_indicador")
+                # --------------------------------------------------
+                # DESCOBRE MAIOR CÓDIGO EXISTENTE
+                # Exemplo esperado: IND001, IND002...
+                # --------------------------------------------------
+                maior_codigo = 0
+
+                for item in indicadores:
+                    codigo = str(item.get("codigo_indicador", "")).strip()
+
+                    if codigo.startswith("IND"):
+                        numero = codigo.replace("IND", "")
+
+                        if numero.isdigit():
+                            maior_codigo = max(
+                                maior_codigo,
+                                int(numero)
+                            )
+
+                # --------------------------------------------------
+                # MAPA DE INDICADORES EXISTENTES POR _id
+                # --------------------------------------------------
+                mapa_existentes = {}
+
+                for item in indicadores:
+                    mapa_existentes[str(item.get("_id", ""))] = item
 
                 # --------------------------------------------------
                 # MONTA ESTRUTURA FINAL
                 # --------------------------------------------------
+                estrutura_final = []
 
-                estrutura_final = df_editado.to_dict(orient="records")
+                for _, row in df_editado.iterrows():
+
+                    id_linha = row["_id"]
+                    texto_indicador = row["indicador"]
+
+                    # Registro existente → mantém código
+                    if id_linha and id_linha in mapa_existentes:
+
+                        estrutura_final.append(
+                            {
+                                "_id": mapa_existentes[id_linha]["_id"],
+                                "codigo_indicador": mapa_existentes[id_linha]["codigo_indicador"],
+                                "indicador": texto_indicador
+                            }
+                        )
+
+                    # Novo registro → gera novo código
+                    else:
+                        maior_codigo += 1
+
+                        estrutura_final.append(
+                            {
+                                "_id": str(ObjectId()),
+                                "codigo_indicador": f"IND{maior_codigo:03d}",
+                                "indicador": texto_indicador
+                            }
+                        )
+
+                # Ordena por código
+                estrutura_final = sorted(
+                    estrutura_final,
+                    key=lambda x: x["codigo_indicador"]
+                )
 
                 # --------------------------------------------------
-                # ATUALIZA EDITAL
+                # SALVA NO EDITAL
                 # --------------------------------------------------
-
                 col_editais.update_one(
                     {"codigo_edital": edital_selecionado_indicadores},
                     {"$set": {"indicadores": estrutura_final}}
                 )
 
-                st.success("Indicadores atualizados com sucesso!", icon=":material/check:")
+                st.success(
+                    "Indicadores atualizados com sucesso!",
+                    icon=":material/check:"
+                )
+
                 time.sleep(3)
                 st.rerun()
 
