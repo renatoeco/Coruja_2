@@ -238,7 +238,7 @@ with tab1:
                             "nome_doador": nome_doador,
                         }
                         col_doadores.insert_one(novo_doador)
-                        st.success("Doador cadastrado com sucesso!")
+                        st.success("Doador cadastrado com sucesso!", icon=":material/check:")
                         time.sleep(2)
                         st.rerun()
 
@@ -293,7 +293,7 @@ with tab1:
                                 {"$set": {"nome_doador": nome_doador}}
                             )
 
-                            st.success("Doador atualizado com sucesso!")
+                            st.success("Doador atualizado com sucesso!", icon=":material/check:")
                             time.sleep(2)
                             st.rerun()
             else:
@@ -368,7 +368,7 @@ with tab2:
                             "doadores": doador,
                             }
                         col_ciclos.insert_one(novo_ciclo)
-                        st.success("Fase Operacional cadastrada com sucesso!")
+                        st.success("Fase Operacional cadastrada com sucesso!", icon=":material/check:")
 
                         time.sleep(2)
                         st.rerun()
@@ -508,7 +508,7 @@ with tab3:
                             "ciclo_investimento": ciclos 
                         }
                         col_editais.insert_one(novo_edital)
-                        st.success("Edital cadastrado com sucesso!")
+                        st.success("Edital cadastrado com sucesso!", icon=":material/check:")
 
                         time.sleep(2)
                         st.rerun()
@@ -605,7 +605,7 @@ with tab3:
                                 }}
                             )
 
-                            st.success("Edital atualizado com sucesso!")
+                            st.success("Edital atualizado com sucesso!", icon=":material/check:")
                             time.sleep(2)
                             st.rerun()
             else:
