@@ -2710,6 +2710,9 @@ with orcamento:
                 "descricao_despesa": "Descrição",
             })
 
+            df_vis["Descrição"] = df_vis["Descrição"].fillna("").astype(str)
+            df_vis["Descrição"] = df_vis["Descrição"].replace("None", "")
+
             colunas_vis = [
                 "Despesa",
                 "Descrição",
@@ -3265,7 +3268,7 @@ with orcamento:
 
             # normalizar strings vazias
             for col in ["categoria_nome", "nome_despesa", "descricao_despesa"]:
-                df_salvar[col] = df_salvar[col].astype(str).str.strip()
+                df_salvar[col] = df_salvar[col].fillna("").astype(str).str.strip()
 
             # remover linhas realmente vazias
             df_salvar = df_salvar[
@@ -3283,7 +3286,6 @@ with orcamento:
             campos_obrigatorios = [
                 "categoria_nome",
                 "nome_despesa",
-                "descricao_despesa",
             ]
 
             nomes_legiveis = {
@@ -3378,7 +3380,7 @@ with orcamento:
                     "id_despesa": id_despesa,
                     "categoria": id_categoria,
                     "nome_despesa": row["nome_despesa"],
-                    "descricao_despesa": row.get("descricao_despesa"),
+                    "descricao_despesa": row.get("descricao_despesa") or "",
                     "valor_total": (
                         None
                         if pd.isna(row["valor_total"])
