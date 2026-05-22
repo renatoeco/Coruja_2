@@ -3184,7 +3184,7 @@ with indicadores:
                 dados_atual = st.session_state.valores_indicadores.get(
                     id_indicador,
                     {
-                        "valor": 0,
+                        "valor": "",
                         "descricao": "",
                         "marco_zero": "",
                         "resultado_final": ""
@@ -3214,17 +3214,15 @@ with indicadores:
 
                     if marcado:
 
-                        resultado_intermediario = st.number_input(
+                        marco_zero = st.number_input(
                             "Label",
                             step=1,
                             value=(
-                                dados_atual.get("resultado_intermediario")
-                                if isinstance(
-                                    dados_atual.get("resultado_intermediario"), (int, float)
-                                )
+                                dados_atual.get("marco_zero")
+                                if isinstance(dados_atual.get("marco_zero"), (int, float))
                                 else 0
                             ),
-                            key=f"res_int_{id_indicador}",
+                            key=f"marco_zero_{id_indicador}",
                             label_visibility="hidden"
                         )
 
@@ -3239,7 +3237,11 @@ with indicadores:
                         valor = st.number_input(
                             "Label",
                             step=1,
-                            value=dados_atual["valor"],
+                            value=(
+                                dados_atual["valor"]
+                                if isinstance(dados_atual["valor"], (int, float))
+                                else 0
+                            ),
                             key=f"num_{id_indicador}",
                             label_visibility="hidden"
                         )
@@ -3294,7 +3296,7 @@ with indicadores:
                     st.session_state.valores_indicadores[id_indicador] = {
                         "valor": valor,
                         "descricao": descricao,
-                        "resultado_intermediario": resultado_intermediario,
+                        "marco_zero": marco_zero,
                         "resultado_final": resultado_final
                     }
 
@@ -3333,17 +3335,14 @@ with indicadores:
 
                         st.error("O valor deve ser maior que zero.")
 
-                    elif not descricao.strip():
-
-                        st.error("A descrição da contribuição esperada não pode estar vazia.")
 
                     else:
 
                         indicador_para_salvar = {
                             "id_indicador": id_indicador,
+                            "marco_zero": marco_zero,
                             "valor": valor,
                             "descricao_contribuicao": descricao.strip(),
-                            "resultado_intermediario": resultado_intermediario,
                             "resultado_final": resultado_final
                         }
 
