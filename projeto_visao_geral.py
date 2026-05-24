@@ -1070,11 +1070,6 @@ if not editar_cadastro:
             telefone = st.text_input("Telefone")
             email = st.text_input("E-mail")
 
-            assina_docs = st.checkbox(
-                "Incluir na assinatura de contratos e recibos",
-                value=False,
-                key="novo_contato_assina_docs"
-            )
 
 
             st.write('')
@@ -1103,7 +1098,6 @@ if not editar_cadastro:
                     "funcao": funcao.strip(),
                     "telefone": telefone.strip(),
                     "email": email.strip(),
-                    "assina_docs": assina_docs,
                     "autor": st.session_state.nome,
                 }
 
@@ -1233,15 +1227,7 @@ if not editar_cadastro:
                 key=f"edit_email_{id_contato}"
             )
 
-            # CHECKBOX PRÉ-CARREGADO DO BANCO
-            if contato_selecionado.get("origem") == "contato":
-                assina_docs = st.checkbox(
-                    "Incluir na assinatura de contratos e recibos",
-                    value=contato_selecionado.get("assina_docs", False),
-                    key=f"editar_contato_assina_docs_{nome}"
-                )
-            else:
-                assina_docs = False  # ignorado
+
 
             st.write('')
             if st.button(
@@ -1274,7 +1260,6 @@ if not editar_cadastro:
                                 "contatos.$.funcao": funcao.strip(),
                                 "contatos.$.telefone": telefone.strip(),
                                 "contatos.$.email": email.strip(),
-                                "contatos.$.assina_docs": assina_docs,
                             }
                         }
                     )
@@ -1380,7 +1365,6 @@ if not editar_cadastro:
             "funcao": "Beneficiário",
             "telefone": row.get("telefone", ""),
             "email": row.get("e_mail", ""),
-            "assina_docs": False,
             "origem": "beneficiario",   # IMPORTANTE
             "_id": row.get("_id")
         })
@@ -1397,11 +1381,7 @@ if not editar_cadastro:
     else:
         df_contatos = pd.DataFrame(todos_contatos)
 
-        # Coluna de exibição: assina documentos
-        df_contatos["Assina documentos"] = df_contatos.apply(
-            lambda row: "Sim" if row.get("assina_docs", False) is True else "",
-            axis=1
-        )
+
 
         # Renomeia colunas para exibição
         df_contatos = df_contatos.rename(columns={
@@ -1413,7 +1393,8 @@ if not editar_cadastro:
 
         # Define ordem das colunas
         df_contatos = df_contatos[
-            ["Nome", "Função no projeto", "Telefone", "E-mail", "Assina documentos"]
+            ["Nome", "Função no projeto", "Telefone", "E-mail"]
+
         ]
 
         with st.container():
