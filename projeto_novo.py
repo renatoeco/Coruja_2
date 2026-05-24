@@ -218,6 +218,31 @@ with st.form(key=f"form_novo_projeto_{st.session_state.form_key}", border=False)
         value=st.session_state.form_projeto["objetivo"]
     )
 
+
+    #######################################################################################################
+    # MARCADORES DE PRIMEIRO PROJETO
+    #######################################################################################################
+
+    st.write('')
+
+    primeiro_f_ecos = st.checkbox(
+        "Primeiro projeto do Fundo Ecos",
+        value=st.session_state.form_projeto.get("primeiro_f_ecos", False)
+    )
+
+    primeiro_vida = st.checkbox(
+        "Primeiro projeto da vida da organização",
+        value=st.session_state.form_projeto.get("primeiro_vida", False)
+    )
+
+    st.write('')
+
+
+
+
+
+
+
     submit = st.form_submit_button("Cadastrar projeto", type="primary")
 
 
@@ -249,9 +274,10 @@ if submit:
         "data_inicio": data_inicio,
         "data_fim": data_fim,
         "responsavel": responsaveis_ids,  # lista de _id
-        # "direcoes": direcoes,
         "publicos": publicos,
-        "objetivo": objetivo
+        "objetivo": objetivo,
+        "primeiro_f_ecos": primeiro_f_ecos,
+        "primeiro_vida": primeiro_vida
     })
 
 
@@ -267,7 +293,7 @@ if submit:
         "Objetivo": objetivo,
         "Data início": data_inicio,
         "Data fim": data_fim,
-        # "Direções": direcoes,
+
         "Públicos": publicos
     }
 
@@ -299,9 +325,11 @@ if submit:
             "duracao": duracao,
             "data_inicio_contrato": data_inicio.strftime("%d/%m/%Y") if data_inicio else None,
             "data_fim_contrato": data_fim.strftime("%d/%m/%Y") if data_fim else None,
-            # "direcoes_estrategicas": direcoes,
             "publicos": publicos,
-            "status": "Em dia"
+            "primeiro_f_ecos": primeiro_f_ecos,
+            "primeiro_vida": primeiro_vida,
+            "status": "Em dia",
+
         })
 
         ###################################################################################################
@@ -337,9 +365,10 @@ if submit:
             "data_inicio": None,
             "data_fim": None,
             "responsavel": [],
-            # "direcoes": [],
             "publicos": [],
-            "objetivo": ""
+            "objetivo": "",
+            "primeiro_f_ecos": False,
+            "primeiro_vida": False
         }
 
         st.session_state.form_key += 1
