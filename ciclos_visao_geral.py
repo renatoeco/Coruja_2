@@ -29,6 +29,9 @@ df_editais = pd.DataFrame(list(col_editais.find()))
 col_doadores = db["doadores"]
 df_doadores = pd.DataFrame(list(col_doadores.find()))
 
+col_projetos = db["projetos"]
+df_projetos = pd.DataFrame(list(col_projetos.find()))
+
 # Define as coleções específicas que serão utilizadas a partir do banco
 # col_pessoas = db["pessoas"]
 
@@ -111,6 +114,121 @@ erros_gerais += erros
 ###########################################################################################################
 
 
+def normalizar_valor(valor):
+    """
+    Converte valores monetários para float.
+    """
+    if pd.isna(valor):
+        return 0.0
+
+    try:
+        return float(valor)
+    except:
+        return 0.0
+
+
+def agregar_metricas_projetos(df_projetos, df_editais_original, df_ciclos_original):
+    """
+    Agrega número de iniciativas e valor investido por:
+    - fase operacional
+    - edital
+    - doador
+    """
+
+    if df_projetos.empty:
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+
+    df = df_projetos.copy()
+
+    # Valor investido
+    df["valor_investido_num"] = df["financeiro"].apply(
+        lambda x: normalizar_valor(x.get("valor_total", 0))
+        if isinstance(x, dict) else 0
+    )
+    
+    # ==========================================================
+    # MÉTRICAS POR EDITAL
+    # ==========================================================
+    metricas_editais = (
+        df.groupby("edital")
+        .agg(
+            **{
+                "Número de iniciativas apoiadas": ("_id", "count"),
+                "Valor investido": ("valor_investido_num", "sum")
+            }
+        )
+        .reset_index()
+        .rename(columns={"edital": "Código"})
+    )
+
+    # ==========================================================
+    # CRUZAMENTO COM EDITAIS PARA PEGAR CICLOS
+    # ==========================================================
+    df_editais_aux = df_editais_original[["codigo_edital", "ciclo_investimento"]].copy()
+
+    df = df.merge(
+        df_editais_aux,
+        left_on="edital",
+        right_on="codigo_edital",
+        how="left"
+    )
+
+    # ==========================================================
+    # MÉTRICAS POR FASE OPERACIONAL
+    # ==========================================================
+    df_fases = df.copy()
+
+    df_fases["ciclo_investimento"] = df_fases["ciclo_investimento"].apply(
+        lambda x: x if isinstance(x, list)
+        else [x] if pd.notna(x)
+        else []
+    )
+
+    df_fases = df_fases.explode("ciclo_investimento")
+
+    metricas_fases = (
+        df_fases.groupby("ciclo_investimento")
+        .agg(
+            **{
+                "Número de iniciativas apoiadas": ("_id", "count"),
+                "Valor investido": ("valor_investido_num", "sum")
+            }
+        )
+        .reset_index()
+        .rename(columns={"ciclo_investimento": "Código"})
+    )
+
+    # ==========================================================
+    # CRUZAMENTO COM CICLOS PARA PEGAR DOADORES
+    # ==========================================================
+    df_ciclos_aux = df_ciclos_original[["codigo_ciclo", "doadores"]].copy()
+
+    df_fases = df_fases.merge(
+        df_ciclos_aux,
+        left_on="ciclo_investimento",
+        right_on="codigo_ciclo",
+        how="left"
+    )
+
+    df_fases["doadores"] = df_fases["doadores"].apply(
+        lambda x: x if isinstance(x, list) else []
+    )
+
+    df_fases = df_fases.explode("doadores")
+
+    metricas_doadores = (
+        df_fases.groupby("doadores")
+        .agg(
+            **{
+                "Número de iniciativas apoiadas": ("_id", "count"),
+                "Valor investido": ("valor_investido_num", "sum")
+            }
+        )
+        .reset_index()
+        .rename(columns={"doadores": "Sigla"})
+    )
+
+    return metricas_fases, metricas_editais, metricas_doadores
 
 
 ###########################################################################################################
@@ -123,6 +241,54 @@ st.logo("images/logo_fundo_ecos.png", size='large')
 # Título da página
 st.header("Visão geral")
 st.write('')
+
+metricas_fases, metricas_editais, metricas_doadores = agregar_metricas_projetos(
+    df_projetos,
+    pd.DataFrame(list(col_editais.find())),
+    pd.DataFrame(list(col_ciclos.find()))
+)
+
+# Merge com fases
+df_ciclos = df_ciclos.merge(
+    metricas_fases,
+    on="Código",
+    how="left"
+)
+
+# Merge com editais
+df_editais = df_editais.merge(
+    metricas_editais,
+    on="Código",
+    how="left"
+)
+
+# Merge com doadores
+df_doadores = df_doadores.merge(
+    metricas_doadores,
+    on="Sigla",
+    how="left"
+)
+
+# Preencher vazios
+for df_temp in [df_ciclos, df_editais, df_doadores]:
+    if "Número de iniciativas apoiadas" in df_temp.columns:
+        df_temp["Número de iniciativas apoiadas"] = (
+            df_temp["Número de iniciativas apoiadas"]
+            .fillna(0)
+            .astype(int)
+        )
+
+    if "Valor investido" in df_temp.columns:
+        df_temp["Valor investido"] = (
+            df_temp["Valor investido"]
+            .fillna(0)
+            .astype(float)
+        )
+        
+for df_temp in [df_ciclos, df_editais, df_doadores]:
+    df_temp["Valor investido"] = df_temp["Valor investido"].map(
+        lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    )
 
 if erros_gerais:
     st.warning(
@@ -280,7 +446,14 @@ st.subheader(pluralizar(len(df_ciclos_filtrado), "Fase Operacional", "Fases Oper
 st.dataframe(
     df_ciclos_filtrado,
     hide_index=True,
-    column_order=['Código', 'Nome', 'Data de Lançamento', 'Doadores']
+    column_order=[
+        'Código',
+        'Nome',
+        'Data de Lançamento',
+        'Doadores',
+        'Número de iniciativas apoiadas',
+        'Valor investido'
+    ]
 )
 st.write('')
 
@@ -300,7 +473,14 @@ if "Data de Lançamento" in df_editais_filtrado.columns:
 st.dataframe(
     df_editais_filtrado,
     hide_index=True,
-    column_order=['Código', 'Nome', 'Data de Lançamento', 'Fase operacional']
+    column_order=[
+        'Código',
+        'Nome',
+        'Data de Lançamento',
+        'Fase operacional',
+        'Número de iniciativas apoiadas',
+        'Valor investido'
+    ]
 )
 st.write('')
 
@@ -318,7 +498,12 @@ st.subheader(pluralizar(len(df_doadores_filtrado), "Doador", "Doadores"))
 st.dataframe(
     df_doadores_filtrado,
     hide_index=True,
-    column_order=['Sigla', 'Nome']
+    column_order=[
+        'Sigla',
+        'Nome',
+        'Número de iniciativas apoiadas',
+        'Valor investido'
+    ]
 )
 
 
