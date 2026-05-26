@@ -3426,10 +3426,6 @@ if usuario_interno:
     if "recibo_aberto_parcela" not in st.session_state:
         st.session_state["recibo_aberto_parcela"] = None
 
-    # Controla a substituição dos botões de gerar recibo para baixar recibo.
-    if "recibos_gerados" not in st.session_state:
-        st.session_state["recibos_gerados"] = {}
-
 
     with recibos:
 
@@ -3459,7 +3455,7 @@ if usuario_interno:
         # Layout único das colunas
         # (alterar aqui muda tudo)
         # ==================================================
-        LAYOUT_COLUNAS_RECIBOS = [1.5, 2, 2, 2, 5]
+        LAYOUT_COLUNAS_RECIBOS = [1.5, 2, 2, 5]
 
         # ==================================================
         # Conexão com Google Drive
@@ -3484,7 +3480,7 @@ if usuario_interno:
 
             numero = parcela.get("numero")
 
-            col1, col2, col3, col4, col5 = st.columns(LAYOUT_COLUNAS_RECIBOS)
+            col1, col2, col3, col4 = st.columns(LAYOUT_COLUNAS_RECIBOS)
 
             # --------------------------------------------------
             # COLUNA 1 — Identificação da parcela
@@ -3492,147 +3488,10 @@ if usuario_interno:
             col1.write(f"**Parcela {numero}**")
 
             # --------------------------------------------------
-            # COLUNA 2 — Gerar recibo
+            # COLUNA 2 — Guardar recibo (abre uploader)
             # --------------------------------------------------
  
-
-            with col2:
-
-                codigo = projeto["codigo"]
-                chave = f"{numero}_{codigo}"
-                contatos = projeto.get("contatos", [])
-
-
-                caminho = f"/tmp/recibo_parcela_{numero}_{codigo}.docx"
-
-                # Inicializa estado
-                if "recibos_gerados" not in st.session_state:
-                    st.session_state["recibos_gerados"] = {}
-
-                # Filtra contatos aptos para assinatura
-                contatos_assinam = [
-                    c for c in contatos
-                    if c.get("assina_docs", False) is True
-                ]
-
-
-
-                # ==========================
-                # GERAR RECIBO
-                # ==========================
-                if chave not in st.session_state["recibos_gerados"]:
-
-                    if st.button(
-                        "Gerar recibo",
-                        key=f"gerar_{chave}",
-                        width="stretch",
-                        icon=":material/receipt_long:",
-                        type="secondary"
-                    ):
-
-                        # --------------------------------------------------
-                        # 1. Validação: contatos que assinam
-                        # --------------------------------------------------
-                        if not contatos_assinam:
-                            st.error(
-                                "Não há contatos cadastrados com a responsabilidade de assinar documentos. "
-                                "Cadastre ao menos um contato com essa opção marcada antes de gerar o recibo."
-                            )
-
-                        else:
-                            # --------------------------------------------------
-                            # 2. Resolver nome do investidor
-                            # (função utilitária, sem st.stop)
-                            # --------------------------------------------------
-                            nome_investidor, erros_investidor = obter_nome_investidor(db, projeto)
-
-                            if not nome_investidor:
-                                # Mostra erro, mas NÃO interrompe a aplicação
-                                st.error(
-                                    "Não foi possível identificar o investidor do projeto:\n\n"
-                                    + "\n".join([f"- {e}" for e in erros_investidor]),
-                                    icon=":material/error:"
-                                )
-
-                            else:
-
-                                # --------------------------------------------------
-                                # 3. Buscar organização (CNPJ)
-                                # --------------------------------------------------
-
-                                # Busca a organização diretamente pelo _id armazenado no projeto
-                                organizacao_doc = col_organizacoes.find_one(
-                                    {"_id": projeto["id_organizacao"]},
-                                    {"cnpj": 1}
-                                )
-
-
-
-                                if not organizacao_doc:
-                                    st.error(
-                                        f"Não foi encontrado CNPJ para a organização '{projeto['organizacao']}'."
-                                    )
-
-                                else:
-                                    cnpj_organizacao = organizacao_doc.get("cnpj")
-
-
-                                    # --------------------------------------------------
-                                    # 4. Gerar recibo DOCX
-                                    # --------------------------------------------------
-
-                                    # Recupera nome da organização via mapa
-                                    nome_organizacao = mapa_org_id_nome.get(projeto["id_organizacao"], "")
-
-                                    sucesso = gerar_recibo_docx(
-                                        caminho_arquivo=caminho,
-                                        valor_parcela=parcela.get("valor", 0),
-                                        numero_parcela=numero,
-                                        nome_projeto=projeto["nome_do_projeto"],
-                                        data_assinatura_contrato=projeto.get("contrato_data_assinatura"),
-                                        contatos=contatos_assinam,
-                                        nome_organizacao=nome_organizacao,
-                                        cnpj_organizacao=cnpj_organizacao,
-                                        contrato_nome=projeto.get("contrato_nome"),
-                                        nome_investidor=nome_investidor
-                                    )
-
-
-                                    # --------------------------------------------------
-                                    # 5. Pós-geração
-                                    # --------------------------------------------------
-                                    if sucesso:
-                                        st.session_state["recibos_gerados"][chave] = caminho
-                                        st.rerun()
-
-
-
-       
-       
-                # ==========================
-                # BAIXAR RECIBO
-                # ==========================
-                else:
-                    with open(caminho, "rb") as f:
-                        st.download_button(
-                            label="Baixar recibo",
-                            data=f,
-                            file_name=f"recibo_parcela_{numero}_{codigo}.docx",
-                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                            key=f"baixar_{chave}",
-                            icon=":material/download:",
-                            type="primary",
-                            use_container_width=True
-                        )
-
-                    st.caption("Clique para baixar")
-
-
-
-            # --------------------------------------------------
-            # COLUNA 3 — Guardar recibo (abre uploader)
-            # --------------------------------------------------
-            if col3.button(
+            if col2.button(
                 "Guardar recibo",
                 key=f"abrir_uploader_{numero}",
                 width="stretch",
@@ -3642,7 +3501,7 @@ if usuario_interno:
 
 
             # --------------------------------------------------
-            # COLUNA 4 + 5 — Link do recibo (se existir)
+            # COLUNA 3 + 4 — Link do recibo (se existir)
             # Agora o recibo está DENTRO da parcela
             # --------------------------------------------------
             recibo = parcela.get("recibo")
@@ -3652,15 +3511,9 @@ if usuario_interno:
                 nome_arquivo = recibo.get("nome_arquivo", "Recibo")
 
                 if id_recibo:
-                    col4.write(":material/check: Recibo salvo")
+                    col3.write(":material/check: Recibo salvo")
                     link = gerar_link_drive(id_recibo)
-                    col5.markdown(f"[{nome_arquivo}]({link})")
-
-
-
-
-
-
+                    col4.markdown(f"[{nome_arquivo}]({link})")
 
 
             # ==================================================
@@ -3781,11 +3634,6 @@ if usuario_interno:
 
 
             st.divider()
-
-
-
-
-
 
 
 
