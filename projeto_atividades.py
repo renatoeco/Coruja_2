@@ -3106,6 +3106,8 @@ with indicadores:
         )
 
         st.write("")
+        st.write("")
+
 
 
         # --------------------------------------------------
@@ -3145,31 +3147,6 @@ with indicadores:
 
         else:
 
-            # Configuração fixa das colunas da tabela
-            colunas_indicadores = [5, 2, 2, 4, 2]
-
-            # Cabeçalho da tabela
-            col_h1, col_h2, col_h3, col_h4, col_h5 = st.columns(colunas_indicadores)
-
-            with col_h1:
-                st.markdown("**Indicadores**")
-
-            with col_h2:
-                st.markdown("**Início do projeto**")
-
-            with col_h3:
-                st.markdown("**Contribuição esperada**")
-
-            with col_h4:
-                st.markdown("**Descrição da contribuição**")
-
-            with col_h5:
-                st.markdown("**Resultado final**")
-
-            st.write("")
-            st.write("")
-
-
             # --------------------------------------------------
             # LISTAGEM DOS INDICADORES
             # --------------------------------------------------
@@ -3180,7 +3157,6 @@ with indicadores:
                 id_indicador = ind["codigo_indicador"]
                 nome_indicador = ind["indicador"]
 
-                # Recupera dados existentes do indicador no estado
                 dados_atual = st.session_state.valores_indicadores.get(
                     id_indicador,
                     {
@@ -3191,108 +3167,104 @@ with indicadores:
                     }
                 )
 
-                # Criação das colunas de inputs
-                col_check, col_marco_zero, col_valor, col_desc, col_res_final = st.columns(colunas_indicadores)
+                # ==================================================
+                # CHECKBOX DE SELEÇÃO
+                # ==================================================
+                marcado = st.checkbox(
+                    nome_indicador,
+                    key=f"chk_{id_indicador}",
+                    value=id_indicador in st.session_state.valores_indicadores
+                )
 
+                # Remove do estado se desmarcado
+                if not marcado:
+                    st.session_state.valores_indicadores.pop(id_indicador, None)
+                    st.divider()
+                    continue
 
-                # --------------------------------------------------
-                # CHECKBOX DO INDICADOR
-                # --------------------------------------------------
-                with col_check:
+                # ==================================================
+                # CONTAINER DO INDICADOR SELECIONADO
+                # ==================================================
+                with st.container(border=True):
 
-                    marcado = st.checkbox(
-                        nome_indicador,
-                        key=f"chk_{id_indicador}",
-                        value=id_indicador in st.session_state.valores_indicadores
-                    )
+                    # Cabeçalhos da tabela dentro do container
+                    col_h1, col_h2, col_h3, col_h4 = st.columns([2, 2, 4, 2])
 
+                    with col_h1:
+                        st.markdown("**Início do projeto**")
 
-                # --------------------------------------------------
-                # MARCO ZERO
-                # --------------------------------------------------
-                with col_marco_zero:
+                    with col_h2:
+                        st.markdown("**Contribuição esperada**")
 
-                    if marcado:
+                    with col_h3:
+                        st.markdown("**Descrição da contribuição**")
 
+                    with col_h4:
+                        st.markdown("**Resultado final**")
+
+                    st.write("")
+
+                    # Inputs
+                    col_marco_zero, col_valor, col_desc, col_res_final = st.columns([2, 2, 4, 2])
+
+                    with col_marco_zero:
                         marco_zero = st.number_input(
-                            "Label",
+                            "Marco zero",
                             step=1,
                             value=(
                                 dados_atual.get("marco_zero")
-                                if isinstance(dados_atual.get("marco_zero"), (int, float))
+                                if isinstance(
+                                    dados_atual.get("marco_zero"),
+                                    (int, float)
+                                )
                                 else 0
                             ),
                             key=f"marco_zero_{id_indicador}",
-                            label_visibility="hidden"
+                            label_visibility="collapsed"
                         )
 
-
-                # --------------------------------------------------
-                # VALOR NUMÉRICO DA CONTRIBUIÇÃO
-                # --------------------------------------------------
-                with col_valor:
-
-                    if marcado:
-
+                    with col_valor:
                         valor = st.number_input(
-                            "Label",
+                            "Valor",
                             step=1,
                             value=(
-                                dados_atual["valor"]
-                                if isinstance(dados_atual["valor"], (int, float))
+                                dados_atual.get("valor")
+                                if isinstance(
+                                    dados_atual.get("valor"),
+                                    (int, float)
+                                )
                                 else 0
                             ),
                             key=f"num_{id_indicador}",
-                            label_visibility="hidden"
+                            label_visibility="collapsed"
                         )
 
-
-                # --------------------------------------------------
-                # DESCRIÇÃO DA CONTRIBUIÇÃO
-                # --------------------------------------------------
-                with col_desc:
-
-                    if marcado:
-
+                    with col_desc:
                         descricao = st.text_area(
-                            "Label",
-                            value=dados_atual["descricao"],
+                            "Descrição",
+                            value=dados_atual.get("descricao", ""),
                             key=f"desc_{id_indicador}",
-                            height=80,
-                            label_visibility="hidden"
+                            height=100,
+                            label_visibility="collapsed"
                         )
 
-
-
-                # --------------------------------------------------
-                # RESULTADO FINAL
-                # --------------------------------------------------
-                with col_res_final:
-
-                    if marcado:
-
+                    with col_res_final:
                         resultado_final = st.number_input(
-                            "Label",
+                            "Resultado final",
                             step=1,
                             value=(
                                 dados_atual.get("resultado_final")
                                 if isinstance(
-                                    dados_atual.get("resultado_final"), (int, float)
+                                    dados_atual.get("resultado_final"),
+                                    (int, float)
                                 )
                                 else 0
                             ),
                             key=f"res_fin_{id_indicador}",
-                            label_visibility="hidden"
+                            label_visibility="collapsed"
                         )
 
-
-                # --------------------------------------------------
-                # ATUALIZA ESTADO DA SESSÃO
-                # --------------------------------------------------
-                # Mantém os valores no estado enquanto o usuário edita
-
-                if marcado:
-
+                    # Atualiza estado
                     st.session_state.valores_indicadores[id_indicador] = {
                         "valor": valor,
                         "descricao": descricao,
@@ -3300,18 +3272,7 @@ with indicadores:
                         "resultado_final": resultado_final
                     }
 
-                else:
-
-                    st.session_state.valores_indicadores.pop(id_indicador, None)
-
-
-                # --------------------------------------------------
-                # BOTÃO DE SALVAR INDIVIDUAL
-                # --------------------------------------------------
-                # Cada indicador possui seu próprio botão
-
-
-                with st.container(horizontal=True, horizontal_alignment="right"):
+                    st.write("")
 
                     salvar_indicador = st.button(
                         "Salvar",
@@ -3321,64 +3282,58 @@ with indicadores:
                         width=200
                     )
 
+                    if salvar_indicador:
 
-                # --------------------------------------------------
-                # VALIDAÇÃO E SALVAMENTO DO INDICADOR
-                # --------------------------------------------------
-                if salvar_indicador:
-
-                    if not marcado:
-
-                        st.warning("Selecione o indicador antes de salvar.")
-
-                    elif valor <= 0:
-
-                        st.error("O valor deve ser maior que zero.")
-
-
-                    else:
-
-                        indicador_para_salvar = {
-                            "id_indicador": id_indicador,
-                            "marco_zero": marco_zero,
-                            "valor": valor,
-                            "descricao_contribuicao": descricao.strip(),
-                            "resultado_final": resultado_final
-                        }
-
-                        # Busca projeto atual
-                        projeto = col_projetos.find_one({"codigo": codigo_projeto_atual})
-
-                        indicadores_existentes = projeto.get("indicadores", [])
-
-                        # Remove indicador antigo se existir
-                        indicadores_filtrados = [
-                            i for i in indicadores_existentes
-                            if i["id_indicador"] != id_indicador
-                        ]
-
-                        # Adiciona o indicador atualizado
-                        indicadores_filtrados.append(indicador_para_salvar)
-
-                        # Atualiza no banco
-                        resultado = col_projetos.update_one(
-                            {"codigo": codigo_projeto_atual},
-                            {"$set": {"indicadores": indicadores_filtrados}}
-                        )
-
-                        # Mensagem de retorno
-                        if resultado.matched_count == 1:
-
-                            st.success("Indicador atualizado com sucesso!", icon=":material/check:")
-
-                            time.sleep(3)
-
-                            st.rerun()
+                        if valor <= 0:
+                            st.error("O valor deve ser maior que zero.")
 
                         else:
 
-                            st.error("Erro ao salvar indicador.")
+                            indicador_para_salvar = {
+                                "id_indicador": id_indicador,
+                                "marco_zero": marco_zero,
+                                "valor": valor,
+                                "descricao_contribuicao": descricao.strip(),
+                                "resultado_final": resultado_final
+                            }
 
+                            projeto = col_projetos.find_one(
+                                {"codigo": codigo_projeto_atual}
+                            )
+
+                            indicadores_existentes = projeto.get(
+                                "indicadores",
+                                []
+                            )
+
+                            indicadores_filtrados = [
+                                i for i in indicadores_existentes
+                                if i["id_indicador"] != id_indicador
+                            ]
+
+                            indicadores_filtrados.append(
+                                indicador_para_salvar
+                            )
+
+                            resultado = col_projetos.update_one(
+                                {"codigo": codigo_projeto_atual},
+                                {
+                                    "$set": {
+                                        "indicadores": indicadores_filtrados
+                                    }
+                                }
+                            )
+
+                            if resultado.matched_count == 1:
+                                st.success(
+                                    "Indicador atualizado com sucesso!",
+                                    icon=":material/check:"
+                                )
+                                time.sleep(3)
+                                st.rerun()
+
+                            else:
+                                st.error("Erro ao salvar indicador.")
 
                 # Separador visual entre indicadores
                 st.divider()
