@@ -1954,13 +1954,33 @@ st.write('')
 # CONFIGURAÇÃO DOS STEPS DO RELATÓRIO
 ###########################################################################################################
 
+# if tipo_usuario in ["admin", "equipe"]:
+#     steps_relatorio = [
+#         "Atividades",
+#         "Despesas",
+#         "Resultados",
+#         "Beneficiários",
+#         "Pesquisas",
+#         "Formulário",
+#         "Avaliação"
+#     ]
+# else:
+#     steps_relatorio = [
+#         "Atividades",
+#         "Despesas",
+#         "Resultados",
+#         "Beneficiários",
+#         "Pesquisas",
+#         "Formulário",
+#         "Enviar"
+#     ]
+
 if tipo_usuario in ["admin", "equipe"]:
     steps_relatorio = [
         "Atividades",
         "Despesas",
         "Resultados",
         "Beneficiários",
-        "Pesquisas",
         "Formulário",
         "Avaliação"
     ]
@@ -1970,7 +1990,6 @@ else:
         "Despesas",
         "Resultados",
         "Beneficiários",
-        "Pesquisas",
         "Formulário",
         "Enviar"
     ]
@@ -4703,262 +4722,262 @@ if step_selecionado == "Beneficiários":
 
 
 
-# ---------- PESQUISAS ----------
-if step_selecionado == "Pesquisas":
+# # ---------- PESQUISAS ----------
+# if step_selecionado == "Pesquisas":
 
-    # ============================
-    # CONTROLE DE USUÁRIO
-    # ============================
+#     # ============================
+#     # CONTROLE DE USUÁRIO
+#     # ============================
 
-    usuario_admin = tipo_usuario == "admin"
-    usuario_equipe = tipo_usuario == "equipe"
-    usuario_beneficiario = tipo_usuario == "beneficiario"
+#     usuario_admin = tipo_usuario == "admin"
+#     usuario_equipe = tipo_usuario == "equipe"
+#     usuario_beneficiario = tipo_usuario == "beneficiario"
     
 
-    pode_editar = usuario_admin or usuario_equipe or usuario_beneficiario
-    pode_verificar = usuario_admin or usuario_equipe
+#     pode_editar = usuario_admin or usuario_equipe or usuario_beneficiario
+#     pode_verificar = usuario_admin or usuario_equipe
 
-    # ============================
-    # BUSCA DADOS
-    # ============================
+#     # ============================
+#     # BUSCA DADOS
+#     # ============================
 
-    pesquisas = edital.get("pesquisas_relatorio", []) if edital else []
+#     pesquisas = edital.get("pesquisas_relatorio", []) if edital else []
 
-    if not pesquisas:
-        st.caption("Nenhuma pesquisa cadastrada.")
-        st.stop()
+#     if not pesquisas:
+#         st.caption("Nenhuma pesquisa cadastrada.")
+#         st.stop()
 
-    st.write("")
-    st.write("")
-    st.markdown("##### Pesquisas / Ferramentas de Monitoramento")
-    st.write("")
+#     st.write("")
+#     st.write("")
+#     st.markdown("##### Pesquisas / Ferramentas de Monitoramento")
+#     st.write("")
 
-    pesquisas_projeto = projeto.get("pesquisas", [])
-    status_map = {p["id_pesquisa"]: p for p in pesquisas_projeto}
+#     pesquisas_projeto = projeto.get("pesquisas", [])
+#     status_map = {p["id_pesquisa"]: p for p in pesquisas_projeto}
 
-    # ============================
-    # RENDERIZAÇÃO DAS LINHAS
-    # ============================
+#     # ============================
+#     # RENDERIZAÇÃO DAS LINHAS
+#     # ============================
 
-    for pesquisa in pesquisas:
+#     for pesquisa in pesquisas:
 
-        status = status_map.get(pesquisa["id"], {})
+#         status = status_map.get(pesquisa["id"], {})
 
-        # Valores atuais do banco
-        respondida_db = status.get("respondida", False)
-        verificada_db = status.get("verificada", False)
-        url_anexo_db = status.get("url_anexo")
+#         # Valores atuais do banco
+#         respondida_db = status.get("respondida", False)
+#         verificada_db = status.get("verificada", False)
+#         url_anexo_db = status.get("url_anexo")
 
-        # Chaves únicas
-        upload_key = f"upload_{relatorio_numero}_{pesquisa['id']}"
-        upload_salvo_key = f"upload_salvo_{relatorio_numero}_{pesquisa['id']}"
+#         # Chaves únicas
+#         upload_key = f"upload_{relatorio_numero}_{pesquisa['id']}"
+#         upload_salvo_key = f"upload_salvo_{relatorio_numero}_{pesquisa['id']}"
 
-        col1, col2, col3, col4, col5 = st.columns([4, 3, 2, 2, 2])
+#         col1, col2, col3, col4, col5 = st.columns([4, 3, 2, 2, 2])
 
-        # -------- PESQUISA --------
-        with col1:
-            st.markdown(f"**{pesquisa['nome_pesquisa']}**")
-
-
-        # -------- ANEXO --------
-        arquivo = None
-
-        with col2:
-            # Caso a pesquisa exija upload
-            if pesquisa.get("upload_arquivo"):
-
-                # -----------------------------
-                # BENEFICIÁRIO → pode anexar
-                # -----------------------------
-                if (
-                    tipo_usuario == "beneficiario"
-                    and not verificada_db
-                    and status_atual_db == "modo_edicao"
-                ):
-                    arquivo = st.file_uploader(
-                        "Anexo",
-                        key=f"upload_{relatorio_numero}_{pesquisa['id']}"
-                    )
-
-                # -----------------------------
-                # NÃO BENEFICIÁRIO
-                # Mostra aviso SOMENTE se não houver anexo salvo
-                # -----------------------------
-                elif tipo_usuario != "beneficiario" and not url_anexo_db:
-                    st.write(":material/attach_file: Demanda anexo")
-
-            # -----------------------------
-            # Link do anexo (se existir)
-            # -----------------------------
-            if url_anexo_db:
-                st.markdown(f":material/attach_file: [Ver anexo]({url_anexo_db})")
+#         # -------- PESQUISA --------
+#         with col1:
+#             st.markdown(f"**{pesquisa['nome_pesquisa']}**")
 
 
+#         # -------- ANEXO --------
+#         arquivo = None
 
-        # -------- RESPONDIDA --------
-        with col3:
-            respondida_ui = st.checkbox(
-                "Respondida",
-                value=respondida_db,
-                disabled = (
-                    # Visitante nunca pode
-                    tipo_usuario == "visitante"
+#         with col2:
+#             # Caso a pesquisa exija upload
+#             if pesquisa.get("upload_arquivo"):
 
-                    # Beneficiário só pode no modo edição
-                    or (
-                        tipo_usuario == "beneficiario"
-                        and status_atual_db != "modo_edicao"
-                    )
+#                 # -----------------------------
+#                 # BENEFICIÁRIO → pode anexar
+#                 # -----------------------------
+#                 if (
+#                     tipo_usuario == "beneficiario"
+#                     and not verificada_db
+#                     and status_atual_db == "modo_edicao"
+#                 ):
+#                     arquivo = st.file_uploader(
+#                         "Anexo",
+#                         key=f"upload_{relatorio_numero}_{pesquisa['id']}"
+#                     )
 
-                    # Beneficiário não pode se já verificada
-                    or (
-                        tipo_usuario == "beneficiario"
-                        and verificada_db
-                    )
+#                 # -----------------------------
+#                 # NÃO BENEFICIÁRIO
+#                 # Mostra aviso SOMENTE se não houver anexo salvo
+#                 # -----------------------------
+#                 elif tipo_usuario != "beneficiario" and not url_anexo_db:
+#                     st.write(":material/attach_file: Demanda anexo")
 
-                    # Admin/equipe não podem no modo edição
-                    or (
-                        tipo_usuario in ["admin", "equipe"]
-                        and status_atual_db == "modo_edicao"
-                    )
-                ),
-                key=f"resp_{relatorio_numero}_{pesquisa['id']}"
-            )
-
-        # -------- VERIFICADA --------
-        with col4:
-            verificada_ui = st.checkbox(
-                "Verificada",
-                value=verificada_db,
-                disabled = (
-                    # Visitante nunca pode
-                    tipo_usuario == "visitante"
-
-                    # Beneficiário nunca pode verificar
-                    or tipo_usuario == "beneficiario"
-
-                    # Relatório em modo edição trava todos
-                    or status_atual_db == "modo_edicao"
-                ),
-                key=f"verif_{relatorio_numero}_{pesquisa['id']}"
-            )
-
-        # -------- DETECTA ALTERAÇÃO --------
-        linha_modificada = (
-            respondida_ui != respondida_db
-            or verificada_ui != verificada_db
-            or (
-                arquivo is not None
-                and not st.session_state.get(upload_salvo_key, False)
-            )
-        )
-
-        # -------- BOTÃO SALVAR --------
-        with col5:
-            if linha_modificada and pode_editar:
-
-                if st.button(
-                    "Salvar",
-                    type="primary",
-                    key=f"salvar_{relatorio_numero}_{pesquisa['id']}",
-                    icon=":material/save:",
-                ):
-
-
-                    with st.spinner("Salvando..."):
-
-                        # Conecta ao Drive SOMENTE aqui
-                        servico = obter_servico_drive()
-
-                        # Pasta do projeto
-                        pasta_projeto = obter_pasta_projeto(
-                            servico,
-                            projeto["codigo"],
-                            projeto["sigla"]
-                        )
-
-                        # Pasta Pesquisas (direto no projeto)
-                        pasta_pesquisas = obter_pasta_pesquisas(
-                            servico,
-                            pasta_projeto,
-                            projeto["codigo"]
-                        )
-
-                        url_anexo_final = url_anexo_db  # valor já salvo no banco (se existir)
-
-                        # ------------------------------
-                        # UPLOAD (somente se houver novo arquivo)
-                        # ------------------------------
-                        if (
-                            arquivo is not None
-                            and not st.session_state.get(upload_salvo_key, False)
-                        ):
-                            id_drive = enviar_arquivo_drive(
-                                servico,
-                                pasta_pesquisas,
-                                arquivo
-                            )
-
-                            url_anexo_final = gerar_link_drive(id_drive)
-
-                            # Marca upload como concluído
-                            st.session_state[upload_salvo_key] = True
-
-                        # ------------------------------
-                        # MONTA O OBJETO DA PESQUISA
-                        # ------------------------------
-                        pesquisa_obj = {
-                            "id_pesquisa": pesquisa["id"],
-                            "respondida": respondida_ui,
-                            "verificada": verificada_ui
-                        }
-
-                        if url_anexo_final:
-                            pesquisa_obj["url_anexo"] = url_anexo_final
-
-                        # ------------------------------
-                        # VERIFICA SE JÁ EXISTE NO PROJETO
-                        # ------------------------------
-                        existe = col_projetos.count_documents(
-                            {
-                                "codigo": codigo_projeto_atual,
-                                "pesquisas.id_pesquisa": pesquisa["id"]
-                            }
-                        ) > 0
-
-                        if existe:
-                            col_projetos.update_one(
-                                {
-                                    "codigo": codigo_projeto_atual,
-                                    "pesquisas.id_pesquisa": pesquisa["id"]
-                                },
-                                {
-                                    "$set": {
-                                        "pesquisas.$": pesquisa_obj
-                                    }
-                                }
-                            )
-                        else:
-                            col_projetos.update_one(
-                                {"codigo": codigo_projeto_atual},
-                                {
-                                    "$push": {
-                                        "pesquisas": pesquisa_obj
-                                    }
-                                }
-                            )
+#             # -----------------------------
+#             # Link do anexo (se existir)
+#             # -----------------------------
+#             if url_anexo_db:
+#                 st.markdown(f":material/attach_file: [Ver anexo]({url_anexo_db})")
 
 
 
-                    # Limpa estados temporários
-                    st.session_state.pop(upload_key, None)
-                    st.session_state.pop(upload_salvo_key, None)
+#         # -------- RESPONDIDA --------
+#         with col3:
+#             respondida_ui = st.checkbox(
+#                 "Respondida",
+#                 value=respondida_db,
+#                 disabled = (
+#                     # Visitante nunca pode
+#                     tipo_usuario == "visitante"
 
-                    st.success(":material/check: Salvo!")
-                    time.sleep(3)
-                    st.rerun()
+#                     # Beneficiário só pode no modo edição
+#                     or (
+#                         tipo_usuario == "beneficiario"
+#                         and status_atual_db != "modo_edicao"
+#                     )
 
-        st.divider()
+#                     # Beneficiário não pode se já verificada
+#                     or (
+#                         tipo_usuario == "beneficiario"
+#                         and verificada_db
+#                     )
+
+#                     # Admin/equipe não podem no modo edição
+#                     or (
+#                         tipo_usuario in ["admin", "equipe"]
+#                         and status_atual_db == "modo_edicao"
+#                     )
+#                 ),
+#                 key=f"resp_{relatorio_numero}_{pesquisa['id']}"
+#             )
+
+#         # -------- VERIFICADA --------
+#         with col4:
+#             verificada_ui = st.checkbox(
+#                 "Verificada",
+#                 value=verificada_db,
+#                 disabled = (
+#                     # Visitante nunca pode
+#                     tipo_usuario == "visitante"
+
+#                     # Beneficiário nunca pode verificar
+#                     or tipo_usuario == "beneficiario"
+
+#                     # Relatório em modo edição trava todos
+#                     or status_atual_db == "modo_edicao"
+#                 ),
+#                 key=f"verif_{relatorio_numero}_{pesquisa['id']}"
+#             )
+
+#         # -------- DETECTA ALTERAÇÃO --------
+#         linha_modificada = (
+#             respondida_ui != respondida_db
+#             or verificada_ui != verificada_db
+#             or (
+#                 arquivo is not None
+#                 and not st.session_state.get(upload_salvo_key, False)
+#             )
+#         )
+
+#         # -------- BOTÃO SALVAR --------
+#         with col5:
+#             if linha_modificada and pode_editar:
+
+#                 if st.button(
+#                     "Salvar",
+#                     type="primary",
+#                     key=f"salvar_{relatorio_numero}_{pesquisa['id']}",
+#                     icon=":material/save:",
+#                 ):
+
+
+#                     with st.spinner("Salvando..."):
+
+#                         # Conecta ao Drive SOMENTE aqui
+#                         servico = obter_servico_drive()
+
+#                         # Pasta do projeto
+#                         pasta_projeto = obter_pasta_projeto(
+#                             servico,
+#                             projeto["codigo"],
+#                             projeto["sigla"]
+#                         )
+
+#                         # Pasta Pesquisas (direto no projeto)
+#                         pasta_pesquisas = obter_pasta_pesquisas(
+#                             servico,
+#                             pasta_projeto,
+#                             projeto["codigo"]
+#                         )
+
+#                         url_anexo_final = url_anexo_db  # valor já salvo no banco (se existir)
+
+#                         # ------------------------------
+#                         # UPLOAD (somente se houver novo arquivo)
+#                         # ------------------------------
+#                         if (
+#                             arquivo is not None
+#                             and not st.session_state.get(upload_salvo_key, False)
+#                         ):
+#                             id_drive = enviar_arquivo_drive(
+#                                 servico,
+#                                 pasta_pesquisas,
+#                                 arquivo
+#                             )
+
+#                             url_anexo_final = gerar_link_drive(id_drive)
+
+#                             # Marca upload como concluído
+#                             st.session_state[upload_salvo_key] = True
+
+#                         # ------------------------------
+#                         # MONTA O OBJETO DA PESQUISA
+#                         # ------------------------------
+#                         pesquisa_obj = {
+#                             "id_pesquisa": pesquisa["id"],
+#                             "respondida": respondida_ui,
+#                             "verificada": verificada_ui
+#                         }
+
+#                         if url_anexo_final:
+#                             pesquisa_obj["url_anexo"] = url_anexo_final
+
+#                         # ------------------------------
+#                         # VERIFICA SE JÁ EXISTE NO PROJETO
+#                         # ------------------------------
+#                         existe = col_projetos.count_documents(
+#                             {
+#                                 "codigo": codigo_projeto_atual,
+#                                 "pesquisas.id_pesquisa": pesquisa["id"]
+#                             }
+#                         ) > 0
+
+#                         if existe:
+#                             col_projetos.update_one(
+#                                 {
+#                                     "codigo": codigo_projeto_atual,
+#                                     "pesquisas.id_pesquisa": pesquisa["id"]
+#                                 },
+#                                 {
+#                                     "$set": {
+#                                         "pesquisas.$": pesquisa_obj
+#                                     }
+#                                 }
+#                             )
+#                         else:
+#                             col_projetos.update_one(
+#                                 {"codigo": codigo_projeto_atual},
+#                                 {
+#                                     "$push": {
+#                                         "pesquisas": pesquisa_obj
+#                                     }
+#                                 }
+#                             )
+
+
+
+#                     # Limpa estados temporários
+#                     st.session_state.pop(upload_key, None)
+#                     st.session_state.pop(upload_salvo_key, None)
+
+#                     st.success(":material/check: Salvo!")
+#                     time.sleep(3)
+#                     st.rerun()
+
+#         st.divider()
 
 
 
