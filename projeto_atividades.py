@@ -2792,7 +2792,7 @@ with plano_trabalho:
             )
 
             salvar = st.button(
-                "Salvar componentes",
+                "Salvar Plano de Trabalho",
                 icon=":material/save:",
                 type="secondary"
             )
