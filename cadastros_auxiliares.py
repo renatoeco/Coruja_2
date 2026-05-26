@@ -1386,12 +1386,15 @@ with aba_indicadores:
                 # --------------------------------------------------
                 df_editado["indicador"] = (
                     df_editado["indicador"]
+                    .fillna("")
+                    .replace("None", "")
                     .astype(str)
                     .str.strip()
                 )
 
                 df_editado["_id"] = (
                     df_editado["_id"]
+                    .fillna("")
                     .astype(str)
                     .str.strip()
                 )
@@ -1420,24 +1423,6 @@ with aba_indicadores:
                         f"Existem indicadores duplicados: {', '.join(duplicados)}"
                     )
                     st.stop()
-
-                # --------------------------------------------------
-                # DESCOBRE MAIOR CÓDIGO EXISTENTE
-                # Exemplo esperado: IND001, IND002...
-                # --------------------------------------------------
-                maior_codigo = 0
-
-                for item in indicadores:
-                    codigo = str(item.get("_id", "")).strip()
-
-                    if codigo.startswith("IND"):
-                        numero = codigo.replace("IND", "")
-
-                        if numero.isdigit():
-                            maior_codigo = max(
-                                maior_codigo,
-                                int(numero)
-                            )
 
                 # --------------------------------------------------
                 # MAPA DE INDICADORES EXISTENTES POR _id
@@ -1469,7 +1454,6 @@ with aba_indicadores:
 
                     # Novo registro → gera novo código
                     else:
-                        maior_codigo += 1
 
                         estrutura_final.append(
                             {
