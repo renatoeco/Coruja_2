@@ -57,33 +57,32 @@ def coletar_fotos_projeto(projeto):
     componentes = plano.get("componentes", [])
 
     for componente in componentes:
-        for entrega in componente.get("entregas", []):
-            for atividade in entrega.get("atividades", []):
-                nome_atividade = atividade.get("atividade")
+        for atividade in componente.get("atividades", []):
+            nome_atividade = atividade.get("atividade")
 
-                for relato in atividade.get("relatos", []):
-                    id_relato = relato.get("id_relato")
-                    texto_relato = relato.get("relato")
-                    quando = relato.get("quando")
-                    onde = relato.get("onde")
+            for relato in atividade.get("relatos", []):
+                id_relato = relato.get("id_relato")
+                texto_relato = relato.get("relato")
+                quando = relato.get("quando")
+                onde = relato.get("onde")
 
-                    for foto in relato.get("fotos", []):
-                        fotos.append({
-                            # atividade
-                            "atividade": nome_atividade,
+                for foto in relato.get("fotos", []):
+                    fotos.append({
+                        # atividade
+                        "atividade": nome_atividade,
 
-                            # relato
-                            "id_relato": id_relato,
-                            "relato": texto_relato,
-                            "quando": quando,
-                            "onde": onde,
+                        # relato
+                        "id_relato": id_relato,
+                        "relato": texto_relato,
+                        "quando": quando,
+                        "onde": onde,
 
-                            # foto
-                            "nome_arquivo": foto.get("nome_arquivo"),
-                            "descricao": foto.get("descricao"),
-                            "fotografo": foto.get("fotografo"),
-                            "id_arquivo": foto.get("id_arquivo"),
-                        })
+                        # foto
+                        "nome_arquivo": foto.get("nome_arquivo"),
+                        "descricao": foto.get("descricao"),
+                        "fotografo": foto.get("fotografo"),
+                        "id_arquivo": foto.get("id_arquivo"),
+                    })
 
     return fotos
 
@@ -132,6 +131,14 @@ sidebar_projeto()
 ###########################################################################################################
 # GALERIA DE FOTOS
 ###########################################################################################################
+# ???????????
+
+# plano = projeto.get("plano_trabalho", {})
+# componentes = plano.get("componentes", [])
+
+# st.write(plano)
+# st.write(componentes)
+
 
 fotos = coletar_fotos_projeto(projeto)
 
