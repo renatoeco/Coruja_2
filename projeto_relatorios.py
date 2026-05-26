@@ -102,6 +102,13 @@ col_beneficios = db["beneficios"]
 
 col_publicos = db["publicos"]
 
+col_categorias_despesa = db["categorias_despesa"]
+
+categorias_map = {
+    str(cat["_id"]): cat["categoria"]
+    for cat in col_categorias_despesa.find({}, {"categoria": 1})
+}
+
 col_pessoas = db["pessoas"]
 
 lista_publicos = list(col_publicos.find({}, {"_id": 0, "publico": 1}))
@@ -239,8 +246,7 @@ def todos_relatos_aceitos(projeto, relatorio_numero):
     componentes = projeto.get("plano_trabalho", {}).get("componentes", [])
 
     for componente in componentes:
-        for entrega in componente.get("entregas", []):
-            for atividade in entrega.get("atividades", []):
+        for atividade in componente.get("atividades", []):
                 for relato in atividade.get("relatos", []):
                     if relato.get("relatorio_numero") == relatorio_numero:
                         relatos_encontrados.append(relato)
@@ -646,17 +652,32 @@ def dialog_lanc_financ(relatorio_numero, projeto, col_projetos):
     # ==================================================
     orcamento = projeto["financeiro"]["orcamento"]
 
-    opcoes = sorted([
-        f"{o['categoria']} | {o['nome_despesa']}"
-        for o in orcamento
-    ], key=lambda x: x.lower())
+    opcoes = []
+    mapa_opcoes = {}
+
+    for o in orcamento:
+        categoria_id = str(o["categoria"])
+        nome_categoria = categorias_map.get(categoria_id, "Categoria não encontrada")
+
+        label = f"{nome_categoria} | {o['nome_despesa']}"
+
+        opcoes.append(label)
+
+        # Guarda referência real para uso posterior
+        mapa_opcoes[label] = {
+            "categoria_id": categoria_id,
+            "nome_despesa": o["nome_despesa"]
+        }
+
+    opcoes = sorted(opcoes, key=lambda x: x.lower())
 
     escolha = st.selectbox(
         "Categoria / Despesa *",
         options=opcoes
     )
 
-    categoria, nome_despesa = escolha.split(" | ")
+    categoria = mapa_opcoes[escolha]["categoria_id"]
+    nome_despesa = mapa_opcoes[escolha]["nome_despesa"]
 
     # ==================================================
     # DADOS DO LANÇAMENTO
@@ -665,40 +686,18 @@ def dialog_lanc_financ(relatorio_numero, projeto, col_projetos):
     # Gera id sequencial
     id_despesa = gerar_id_lanc_despesa(projeto)
 
+    col1, col2 = st.columns(2)
 
-    data_despesa = st.date_input(
+
+    data_despesa = col1.date_input(
         "Data da despesa *",
         format="DD/MM/YYYY"
     )
 
-
-
-    # Linha de valores
-
-    col1, col2, col3 = st.columns(3)
-
-
-    with col1:
-
-        quantidade = st.number_input(
-            "Quantidade *",
-            min_value=0,
-            # value=1
-        )
-
     with col2:
 
-        valor_unitario = st.number_input(
-            "Valor unitário (reais) *",
-            min_value=0.0,
-            format="%.2f"
-        )
-
-
-    with col3:
-
         valor = st.number_input(
-            "Valor total (reais) *",
+            "Valor (reais) *",
             min_value=0.0,
             format="%.2f"
         )
@@ -716,10 +715,8 @@ def dialog_lanc_financ(relatorio_numero, projeto, col_projetos):
     # LABEL DINÂMICO DOS ANEXOS - se a despesa for do tipo taxa bancária, então o anexo não é obrigatório, não coloca * no label. 
     # ==================================================
 
-    categoria_lower = categoria.lower()
-
-    # Verifica se é taxa bancária
-    is_taxa_bancaria = "taxas bancárias" in categoria_lower
+    categoria_nome_lower = nome_categoria.lower()
+    is_taxa_bancaria = "taxas bancárias" in categoria_nome_lower
 
     # Define label dinamicamente
     label_anexos = "Anexos" if is_taxa_bancaria else "Anexos *"
@@ -759,33 +756,14 @@ def dialog_lanc_financ(relatorio_numero, projeto, col_projetos):
             # VALIDAÇÃO DE VALORES
             # ==================================================
 
-            if quantidade <= 0:
-                erros_campos.append("Quantidade")
-
-            if valor_unitario <= 0:
-                erros_campos.append("Valor unitário (reais)")
 
             if not valor or valor <= 0:
-                erros_campos.append("Valor total (reais)")
+                erros_campos.append("Valor (reais)")
 
 
             # ==================================================
-            # VALIDAÇÃO DE CONSISTÊNCIA (QUANTIDADE x VALOR UNITÁRIO)
+            # VALIDAÇÕES
             # ==================================================
-
-            # Só valida consistência se os três campos foram preenchidos corretamente
-            if quantidade > 0 and valor_unitario > 0 and valor > 0:
-
-                valor_calculado = quantidade * valor_unitario
-
-                # Corrige problema de float
-                valor_calculado = round(valor_calculado, 2)
-                valor_informado = round(valor, 2)
-
-                if valor_informado != valor_calculado:
-                    erro_consistencia = (
-                        f"Valor total deve ser igual a Quantidade × Valor unitário."
-                    )
 
             # Validação da descrição
             if not descricao or not descricao.strip():
@@ -850,8 +828,6 @@ def dialog_lanc_financ(relatorio_numero, projeto, col_projetos):
                     "descricao_despesa": descricao,
                     "fornecedor": fornecedor,
                     "cpf_cnpj": cpf_cnpj,
-                    "quantidade": quantidade,
-                    "valor_unitario": valor_unitario,
                     "valor_despesa": valor,
                     "status_despesa": "aberto",
                     "anexos": []
@@ -925,15 +901,14 @@ def dialog_lanc_financ(relatorio_numero, projeto, col_projetos):
 # ==========================================================
 def obter_atividade_mongo(projeto, id_atividade):
     """
-    Percorre plano_trabalho → componentes → entregas → atividades
+    Percorre plano_trabalho → componentes → atividades
     e retorna a atividade correspondente ao id informado.
     """
 
     componentes = projeto.get("plano_trabalho", {}).get("componentes", [])
 
     for componente in componentes:
-        for entrega in componente.get("entregas", []):
-            for atividade in entrega.get("atividades", []):
+        for atividade in componente.get("atividades", []):
                 if atividade.get("id") == id_atividade:
                     return atividade
 
@@ -1081,8 +1056,7 @@ def salvar_relato():
     maior_numero = 0
 
     for componente in projeto["plano_trabalho"]["componentes"]:
-        for entrega in componente["entregas"]:
-            for atividade in entrega["atividades"]:
+        for atividade in componente["atividades"]:
                 for relato in atividade.get("relatos", []):
                     id_existente = relato.get("id_relato", "")
                     if id_existente.startswith("relato_"):
@@ -1316,13 +1290,11 @@ def dialog_relatos():
     atividades = []
 
     for componente in projeto["plano_trabalho"]["componentes"]:
-        for entrega in componente["entregas"]:
-            for atividade in entrega["atividades"]:
+        for atividade in componente["atividades"]:
                 atividades.append({
                     "id": atividade["id"],
                     "atividade": atividade["atividade"],
                     "componente": componente["componente"],
-                    "entrega": entrega["entrega"],
                     "data_inicio": atividade.get("data_inicio"),
                     "data_fim": atividade.get("data_fim"),
                     "relatos": atividade.get("relatos", [])
@@ -1771,23 +1743,20 @@ def atualizar_status_relatorio(idx, relatorio_numero, projeto_codigo):
     # ------------------------------------------------------------------
     for componente in componentes:
 
-        # Recupera entregas de forma segura
-        entregas = componente.get("entregas", [])
+        # Recupera atividades de forma segura
+        atividades = componente.get("atividades", [])
 
-        # Se não houver entregas, continua
-        if not entregas:
+        # Se não houver atividades, continua
+        if not atividades:
             continue
 
         # ------------------------------------------------------------------
-        # Percorre entregas
+        # Percorre atividades
         # ------------------------------------------------------------------
-        for entrega in entregas:
-
-            # Recupera atividades de forma segura
-            atividades = entrega.get("atividades", [])
+        for atividade in atividades:
 
             # --------------------------------------------------------------
-            # Se a entrega não tiver atividades, apenas ignora
+            # Se não tiver atividades, apenas ignora
             # --------------------------------------------------------------
             if not atividades:
                 continue
@@ -1795,7 +1764,7 @@ def atualizar_status_relatorio(idx, relatorio_numero, projeto_codigo):
             # --------------------------------------------------------------
             # Percorre atividades
             # --------------------------------------------------------------
-            for atividade in atividades:
+            else:
 
                 # Recupera relatos de forma segura
                 relatos = atividade.get("relatos", [])
@@ -1850,15 +1819,13 @@ def extrair_atividades(projeto):
     componentes = plano.get("componentes", [])
 
     for componente in componentes:
-        for entrega in componente.get("entregas", []):
-            for atividade in entrega.get("atividades", []):
+        for atividade in componente.get("atividades", []):
                 atividades.append({
                     "id": atividade.get("id"),
                     "nome": atividade.get("atividade"),
                     "data_inicio": atividade.get("data_inicio"),
                     "data_fim": atividade.get("data_fim"),
                     "componente": componente.get("componente"),
-                    "entrega": entrega.get("entrega"),
                 })
 
     return atividades
@@ -2124,7 +2091,8 @@ if st.session_state.get(status_key) != status_atual_ui:
 if tipo_usuario in ["equipe", "admin"]:
     with st.container(horizontal=True, horizontal_alignment="center"):
         st.segmented_control(
-            label="",
+            label="Status do relatório",
+            label_visibility="collapsed",
             options=["Modo edição", "Em análise", "Aprovado"],
             key=f"status_relatorio_{idx}",
             disabled=aguardando,
@@ -2234,344 +2202,168 @@ if step_selecionado == "Atividades":
     # ------------------------------------------------------------------
     for componente in projeto["plano_trabalho"]["componentes"]:
 
-        # Recupera entregas do componente de forma segura
-        entregas = componente.get("entregas", [])
+        # Recupera atividades do componente de forma segura
+        atividades = componente.get("atividades", [])
 
-        # Caso o componente não tenha entregas, apenas continua
-        if not entregas:
+        # Caso o componente não tenha atividades, apenas continua
+        if not atividades:
             continue
 
         # ------------------------------------------------------------------
-        # Percorre entregas
+        # Percorre atividades
         # ------------------------------------------------------------------
-        for entrega in entregas:
+        for atividade in atividades:
 
-            # Recupera atividades de forma segura
-            atividades = entrega.get("atividades", [])
+            # ----------------------------------------------------------
+            # Filtra relatos do relatório atual
+            # ----------------------------------------------------------
+            relatos = [
+                r for r in atividade.get("relatos", [])
+                if r.get("relatorio_numero") == relatorio_numero
+            ]
 
-            # --------------------------------------------------------------
-            # Caso não existam atividades, mostra aviso e continua
-            # --------------------------------------------------------------
-            if not atividades:
+            # Se não há relatos para essa atividade, pula
+            if not relatos:
                 continue
 
-            # --------------------------------------------------------------
-            # Percorre atividades normalmente
-            # --------------------------------------------------------------
-            for atividade in atividades:
+            tem_relato = True
 
-                # ----------------------------------------------------------
-                # Filtra relatos do relatório atual
-                # ----------------------------------------------------------
-                relatos = [
-                    r for r in atividade.get("relatos", [])
-                    if r.get("relatorio_numero") == relatorio_numero
-                ]
-
-                # Se não há relatos para essa atividade, pula
-                if not relatos:
-                    continue
-
-                tem_relato = True
-
-                st.write("")
-                st.markdown(f"#### {atividade['atividade']}")
+            st.write("")
+            st.markdown(f"#### {atividade['atividade']}")
 
 
 
 
-                for relato in relatos:
+            for relato in relatos:
 
-                    id_relato = relato["id_relato"]
-                    editando = st.session_state["relato_editando_id"] == id_relato
+                id_relato = relato["id_relato"]
+                editando = st.session_state["relato_editando_id"] == id_relato
 
-                    # --------------------------------------------------
-                    # GARANTE QUE WIDGETS DE VISUALIZAÇÃO NÃO EXISTAM EM EDIÇÃO
-                    # --------------------------------------------------
-                    if editando:
-                        # remove qualquer state de devolutiva para evitar conflito
-                        st.session_state.pop(f"devolutiva_{id_relato}", None)
-                        st.session_state.pop(f"status_relato_ui_{id_relato}", None)
-
-
-                    with st.container(border=True):
-
-                        # ==================================================
-                        # MODO VISUALIZAÇÃO DO RELATO
-                        # ==================================================
-                        if not editando:
-
-                            # --------------------------------------------------
-                            # Lógica de status visual (depende de devolutiva)
-                            # --------------------------------------------------
-                            status_relato_db = relato.get("status_relato", "em_analise")
-                            tem_devolutiva = bool(relato.get("devolutiva"))
-
-                            # Regras visuais:
-                            # - aberto + devolutiva → Pendente (vermelho)
-                            # - aberto sem devolutiva → Aberto (amarelo)
-                            # - em_analise → Em análise (azul)
-                            # - aceito → Aceito (verde)
-
-                            if status_relato_db == "aberto" and tem_devolutiva:
-                                badge = {
-                                    "label": "Pendente",
-                                    "bg": "#F8D7DA",
-                                    "color": "#721C24"
-                                }
-                            elif status_relato_db == "aberto":
-                                badge = {
-                                    "label": "Aberto",
-                                    "bg": "#FFF3CD",
-                                    "color": "#856404"
-                                }
-                            elif status_relato_db == "aceito":
-                                badge = {
-                                    "label": "Aceito",
-                                    "bg": "#D4EDDA",
-                                    "color": "#155724"
-                                }
-                            else:
-                                badge = {
-                                    "label": "Em análise",
-                                    "bg": "#D1ECF1",
-                                    "color": "#0C5460"
-                                }
-
-                            # --------------------------------------------------
-                            # BADGE VISUAL
-                            # --------------------------------------------------
-                            
-                            col1, col2 = st.columns([9, 1])
-                            
-                            col2.markdown(
-                                f"""
-                                <div style="margin-bottom:6px;">
-                                    <span style="
-                                        background:{badge['bg']};
-                                        color:{badge['color']};
-                                        padding:4px 10px;
-                                        border-radius:20px;
-                                        font-size:12px;
-                                        font-weight:600;
-                                    ">
-                                        {badge['label']}
-                                    </span>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                                )
+                # --------------------------------------------------
+                # GARANTE QUE WIDGETS DE VISUALIZAÇÃO NÃO EXISTAM EM EDIÇÃO
+                # --------------------------------------------------
+                if editando:
+                    # remove qualquer state de devolutiva para evitar conflito
+                    st.session_state.pop(f"devolutiva_{id_relato}", None)
+                    st.session_state.pop(f"status_relato_ui_{id_relato}", None)
 
 
-                            # --------------------------------------------------
-                            # CONTEÚDO DO RELATO
-                            # --------------------------------------------------
-                            st.write(f"**{id_relato.upper()}:** {relato.get("relato")}")
+                with st.container(border=True):
 
-                            col1, col2 = st.columns([2, 3])
+                    # ==================================================
+                    # MODO VISUALIZAÇÃO DO RELATO
+                    # ==================================================
+                    if not editando:
 
-                            col1.write(f"**Data de início:** {relato.get('data_inicio')}")
-                            col2.write(f"**Data de fim:** {relato.get('data_fim')}")
+                        # --------------------------------------------------
+                        # Lógica de status visual (depende de devolutiva)
+                        # --------------------------------------------------
+                        status_relato_db = relato.get("status_relato", "em_analise")
+                        tem_devolutiva = bool(relato.get("devolutiva"))
 
-                            if relato.get("porc_ativ_relato") is not None:
-                                st.write(f"**Progresso da atividade informado:** {relato.get('porc_ativ_relato')}%")
+                        # Regras visuais:
+                        # - aberto + devolutiva → Pendente (vermelho)
+                        # - aberto sem devolutiva → Aberto (amarelo)
+                        # - em_analise → Em análise (azul)
+                        # - aceito → Aceito (verde)
 
-                            # col1.write(f"**Quando:** {relato.get('quando')}")
-                            # col2.write(f"**Onde:** {relato.get('onde')}")
-
-                            # --------------------------------------------------
-                            # ANEXOS (links do Drive)
-                            # --------------------------------------------------
-                            if relato.get("anexos"):
-                                with col1:
-                                    c1, c2 = st.columns([1, 5])
-                                    c1.write("**Anexos:**")
-                                    for a in relato["anexos"]:
-                                        if a.get("id_arquivo"):
-                                            link = gerar_link_drive(a["id_arquivo"])
-                                            c2.markdown(
-                                                f"[{a['nome_arquivo']}]({link})",
-                                                unsafe_allow_html=True
-                                            )
-
-                            # --------------------------------------------------
-                            # FOTOGRAFIAS (links + metadados)
-                            # --------------------------------------------------
-                            if relato.get("fotos"):
-                                with col2:
-                                    c1, c2 = st.columns([1, 5])
-                                    c1.write("**Fotografias:**")
-                                    for f in relato["fotos"]:
-                                        if f.get("id_arquivo"):
-                                            link = gerar_link_drive(f["id_arquivo"])
-                                            linha = f"[{f['nome_arquivo']}]({link})"
-                                            if f.get("descricao"):
-                                                linha += f" | {f['descricao']}"
-                                            if f.get("fotografo"):
-                                                linha += f" | {f['fotografo']}"
-                                            c2.markdown(linha, unsafe_allow_html=True)
-
-
-
-
-
-
-
-
-
-                            # ==========================
-                            # STATUS DO RELATO (ADMIN/EQUIPE)
-                            # ==========================
-
-                            STATUS_RELATO_LABEL = {
-                                "em_analise": "Em análise",
-                                "aberto": "Devolver",
-                                "aceito": "Aceito"
+                        if status_relato_db == "aberto" and tem_devolutiva:
+                            badge = {
+                                "label": "Pendente",
+                                "bg": "#F8D7DA",
+                                "color": "#721C24"
+                            }
+                        elif status_relato_db == "aberto":
+                            badge = {
+                                "label": "Aberto",
+                                "bg": "#FFF3CD",
+                                "color": "#856404"
+                            }
+                        elif status_relato_db == "aceito":
+                            badge = {
+                                "label": "Aceito",
+                                "bg": "#D4EDDA",
+                                "color": "#155724"
+                            }
+                        else:
+                            badge = {
+                                "label": "Em análise",
+                                "bg": "#D1ECF1",
+                                "color": "#0C5460"
                             }
 
-                            STATUS_RELATO_LABEL_INV = {v: k for k, v in STATUS_RELATO_LABEL.items()}
-
-                            usuario_admin = tipo_usuario == "admin"
-                            usuario_equipe = tipo_usuario == "equipe"
-
-                            if (usuario_admin or usuario_equipe) and status_atual_db == "em_analise":
-
-                                status_relato_db = relato.get("status_relato", "em_analise")
-                                status_relato_label = STATUS_RELATO_LABEL.get(status_relato_db, "Em análise")
-
-                                status_key = f"status_relato_ui_{id_relato}"
-                                devolutiva_key = f"devolutiva_{id_relato}"
-
-                                if status_key not in st.session_state:
-                                    st.session_state[status_key] = status_relato_label
-
-                                # --------------------------------------------------
-                                # CONTROLE DE STATUS
-                                # --------------------------------------------------
-                                with st.container(horizontal=True, horizontal_alignment="right"):
-                                    novo_status_label = st.segmented_control(
-                                        label="",
-                                        options=["Em análise", "Devolver", "Aceito"],
-                                        key=status_key
-                                    )
-
-                                novo_status_db = STATUS_RELATO_LABEL_INV.get(novo_status_label)
-
-                                # --------------------------------------------------
-                                # TEXTO DE AUDITORIA (status_aprovacao)
-                                # --------------------------------------------------
-                                status_aprovacao = relato.get("status_aprovacao")
-                                if status_aprovacao:
-
-                                    st.markdown(
-                                        f"""
-                                        <div style="
-                                            text-align: right;
-                                            color: #6c757d;
-                                            font-size: 0.85rem;
-                                            margin-top: 4px;
-                                        ">
-                                            {status_aprovacao}
-                                        </div>
-                                        """,
-                                        unsafe_allow_html=True
-                                    )
-                                    st.write('')
+                        # --------------------------------------------------
+                        # BADGE VISUAL
+                        # --------------------------------------------------
+                        
+                        col1, col2 = st.columns([9, 1])
+                        
+                        col2.markdown(
+                            f"""
+                            <div style="margin-bottom:6px;">
+                                <span style="
+                                    background:{badge['bg']};
+                                    color:{badge['color']};
+                                    padding:4px 10px;
+                                    border-radius:20px;
+                                    font-size:12px;
+                                    font-weight:600;
+                                ">
+                                    {badge['label']}
+                                </span>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                            )
 
 
-                                    # with st.container(horizontal=True, horizontal_alignment="right"):
-                                    #     st.caption(status_aprovacao)
+                        # --------------------------------------------------
+                        # CONTEÚDO DO RELATO
+                        # --------------------------------------------------
+                        st.write(f"**{id_relato.upper()}:** {relato.get("relato")}")
 
-                                # ==================================================
-                                # CASO DEVOLVER
-                                # ==================================================
-                                if novo_status_label == "Devolver":
+                        col1, col2 = st.columns([2, 3])
 
-                                    if devolutiva_key not in st.session_state:
-                                        st.session_state[devolutiva_key] = relato.get("devolutiva", "")
+                        col1.write(f"**Data de início:** {relato.get('data_inicio')}")
+                        col2.write(f"**Data de fim:** {relato.get('data_fim')}")
 
-                                    st.text_area(
-                                        "Devolutiva:",
-                                        key=devolutiva_key,
-                                        placeholder="Explique o que precisa ser ajustado neste relato..."
-                                    )
+                        if relato.get("porc_ativ_relato") is not None:
+                            st.write(f"**Progresso da atividade informado:** {relato.get('porc_ativ_relato')}%")
 
-                                    tem_devolutiva = bool(st.session_state.get(devolutiva_key, "").strip())
-                                    label_botao = "Atualizar" if tem_devolutiva else "Salvar devolutiva"
+                        # col1.write(f"**Quando:** {relato.get('quando')}")
+                        # col2.write(f"**Onde:** {relato.get('onde')}")
 
-                                    with st.container(horizontal=True):
+                        # --------------------------------------------------
+                        # ANEXOS (links do Drive)
+                        # --------------------------------------------------
+                        if relato.get("anexos"):
+                            with col1:
+                                c1, c2 = st.columns([1, 5])
+                                c1.write("**Anexos:**")
+                                for a in relato["anexos"]:
+                                    if a.get("id_arquivo"):
+                                        link = gerar_link_drive(a["id_arquivo"])
+                                        c2.markdown(
+                                            f"[{a['nome_arquivo']}]({link})",
+                                            unsafe_allow_html=True
+                                        )
 
-                                        if st.button(
-                                            label_botao,
-                                            key=f"btn_salvar_devolutiva_{id_relato}",
-                                            type="primary",
-                                            icon=":material/save:"
-                                        ):
-
-                                            nome = st.session_state.get("nome", "Usuário")
-                                            data = data_hoje_br()
-
-                                            relato["status_relato"] = "aberto"
-                                            relato["devolutiva"] = st.session_state.get(devolutiva_key, "")
-                                            relato["status_aprovacao"] = f"Devolvido por {nome} em {data}"
-
-                                            col_projetos.update_one(
-                                                {"codigo": projeto["codigo"]},
-                                                {
-                                                    "$set": {
-                                                        "plano_trabalho.componentes": projeto["plano_trabalho"]["componentes"]
-                                                    }
-                                                }
-                                            )
-
-                                            st.session_state.pop(status_key, None)
-                                            st.session_state.pop(devolutiva_key, None)
-
-                                            st.success("Devolutiva salva.", icon=":material/check:")
-                                            time.sleep(3)
-                                            st.rerun()
-
-                                # ==================================================
-                                # CASO EM ANÁLISE OU ACEITO
-                                # ==================================================
-                                elif novo_status_db != status_relato_db:
-
-                                    nome = st.session_state.get("nome", "Usuário")
-                                    data = data_hoje_br()
-
-                                    relato["status_relato"] = novo_status_db
-
-                                    if novo_status_db == "aceito":
-                                        relato.pop("devolutiva", None)
-                                        relato["status_aprovacao"] = f"Verificado por {nome} em {data}"
-
-                                        # Atualiza progresso da atividade com base no relato aprovado
-                                        if "porc_ativ_relato" in relato:
-
-                                            atividade_id = atividade["id"]
-                                            porcentagem_relato = int(relato["porc_ativ_relato"])
-
-                                            atividade_mongo = obter_atividade_mongo(projeto, atividade_id)
-
-                                            if atividade_mongo:
-                                                atividade_mongo["porcentagem_atv"] = porcentagem_relato
-
-
-
-                                    elif novo_status_db == "em_analise":
-                                        relato.pop("status_aprovacao", None)
-
-                                    col_projetos.update_one(
-                                        {"codigo": projeto["codigo"]},
-                                        {
-                                            "$set": {
-                                                "plano_trabalho.componentes": projeto["plano_trabalho"]["componentes"]
-                                            }
-                                        }
-                                    )
-
-                                    st.session_state.pop(status_key, None)
-                                    st.rerun()
+                        # --------------------------------------------------
+                        # FOTOGRAFIAS (links + metadados)
+                        # --------------------------------------------------
+                        if relato.get("fotos"):
+                            with col2:
+                                c1, c2 = st.columns([1, 5])
+                                c1.write("**Fotografias:**")
+                                for f in relato["fotos"]:
+                                    if f.get("id_arquivo"):
+                                        link = gerar_link_drive(f["id_arquivo"])
+                                        linha = f"[{f['nome_arquivo']}]({link})"
+                                        if f.get("descricao"):
+                                            linha += f" | {f['descricao']}"
+                                        if f.get("fotografo"):
+                                            linha += f" | {f['fotografo']}"
+                                        c2.markdown(linha, unsafe_allow_html=True)
 
 
 
@@ -2579,463 +2371,626 @@ if step_selecionado == "Atividades":
 
 
 
-                            # ==================================================
-                            # MOSTRA DEVOLUTIVA SE EXISTIR (em_analise ou aberto)
-                            # ==================================================
 
-                            status_relato_db = relato.get("status_relato")
-                            devolutiva = relato.get("devolutiva")
 
-                            mostrar_devolutiva = False
+                        # ==========================
+                        # STATUS DO RELATO (ADMIN/EQUIPE)
+                        # ==========================
+
+                        STATUS_RELATO_LABEL = {
+                            "em_analise": "Em análise",
+                            "aberto": "Devolver",
+                            "aceito": "Aceito"
+                        }
+
+                        STATUS_RELATO_LABEL_INV = {v: k for k, v in STATUS_RELATO_LABEL.items()}
+
+                        usuario_admin = tipo_usuario == "admin"
+                        usuario_equipe = tipo_usuario == "equipe"
+
+                        if (usuario_admin or usuario_equipe) and status_atual_db == "em_analise":
+
+                            status_relato_db = relato.get("status_relato", "em_analise")
+                            status_relato_label = STATUS_RELATO_LABEL.get(status_relato_db, "Em análise")
+
+                            status_key = f"status_relato_ui_{id_relato}"
+                            devolutiva_key = f"devolutiva_{id_relato}"
+
+                            if status_key not in st.session_state:
+                                st.session_state[status_key] = status_relato_label
 
                             # --------------------------------------------------
-                            # REGRA 1: relatório em modo edição
+                            # CONTROLE DE STATUS
                             # --------------------------------------------------
-                            if status_atual_db == "modo_edicao":
-                                mostrar_devolutiva = bool(devolutiva)
+                            with st.container(horizontal=True, horizontal_alignment="right"):
+                                novo_status_label = st.segmented_control(
+                                    label="Status do relato",
+                                    label_visibility="collapsed",
+                                    options=["Em análise", "Devolver", "Aceito"],
+                                    key=status_key
+                                )
+
+                            novo_status_db = STATUS_RELATO_LABEL_INV.get(novo_status_label)
 
                             # --------------------------------------------------
-                            # REGRA 2: relatório em análise
+                            # TEXTO DE AUDITORIA (status_aprovacao)
                             # --------------------------------------------------
-                            elif status_atual_db == "em_analise":
-                                # se for admin/equipe E relato está devolvido → não mostra
-                                if (
-                                    tipo_usuario in ["admin", "equipe"]
-                                    and status_relato_db == "aberto"
-                                ):
-                                    mostrar_devolutiva = False
-                                else:
-                                    mostrar_devolutiva = bool(devolutiva)
-
-                            if mostrar_devolutiva:
-
-                                texto = devolutiva.replace("\n", "\n> ")
+                            status_aprovacao = relato.get("status_aprovacao")
+                            if status_aprovacao:
 
                                 st.markdown(
                                     f"""
-                                <blockquote style="
-                                    color: #000000;
-                                    opacity: 0.9;
-                                    border-left: 4px solid #F8D7DA;
-                                    padding-left: 12px;
-                                    margin-left: 0;
-                                ">
-                                <strong>Ajuste necessário:</strong><br>
-                                {texto.replace('\n', '<br>')}
-                                </blockquote>
-                                """,
+                                    <div style="
+                                        text-align: right;
+                                        color: #6c757d;
+                                        font-size: 0.85rem;
+                                        margin-top: 4px;
+                                    ">
+                                        {status_aprovacao}
+                                    </div>
+                                    """,
                                     unsafe_allow_html=True
                                 )
+                                st.write('')
 
 
-                            # --------------------------------------------------
-                            # BOTÃO EDITAR (somente se o relato estiver aberto)
-                            # --------------------------------------------------
-                            if (
-                                pode_editar_relatorio
-                                and relato.get("status_relato") == "aberto"
-                            ):
-                                with st.container(horizontal=True, horizontal_alignment="right"):
-                                    if st.button(
-                                        "Editar",
-                                        key=f"btn_edit_{id_relato}",
-                                        icon=":material/edit:",
-                                        type="tertiary"
-                                    ):
-                                        st.session_state["relato_editando_id"] = id_relato
-                                        st.rerun()
+                                # with st.container(horizontal=True, horizontal_alignment="right"):
+                                #     st.caption(status_aprovacao)
 
+                            # ==================================================
+                            # CASO DEVOLVER
+                            # ==================================================
+                            if novo_status_label == "Devolver":
 
+                                if devolutiva_key not in st.session_state:
+                                    st.session_state[devolutiva_key] = relato.get("devolutiva", "")
 
-                        # ==================================================
-                        # MODO EDIÇÃO INLINE DO RELATO DA ATIVIDADE
-                        # ==================================================
-                        else:
-                            st.markdown(f"**Editando {id_relato.upper()}**")
-
-
-
-                            # -----------------------------
-                            # PORCENTAGEM DA ATIVIDADE (RELATO)
-                            # -----------------------------
-
-                            # opções de 0 a 100 de 10 em 10
-                            porcentagens = list(range(0, 101, 10))
-
-                            # valor atual salvo (se existir)
-                            porc_atual = 0
-
-                            if atividade and atividade.get("id"):
-                                atividade_mongo = obter_atividade_mongo(
-                                    projeto,
-                                    atividade["id"]
+                                st.text_area(
+                                    "Devolutiva:",
+                                    key=devolutiva_key,
+                                    placeholder="Explique o que precisa ser ajustado neste relato..."
                                 )
 
-                                if atividade_mongo:
-                                    porc_atual = atividade_mongo.get("porcentagem_atv", 0)
+                                tem_devolutiva = bool(st.session_state.get(devolutiva_key, "").strip())
+                                label_botao = "Atualizar" if tem_devolutiva else "Salvar devolutiva"
 
-                            # garante consistência com opções
-                            if porc_atual not in porcentagens:
-                                porc_atual = 0
+                                with st.container(horizontal=True):
 
-                            # sincroniza session_state ao trocar atividade
+                                    if st.button(
+                                        label_botao,
+                                        key=f"btn_salvar_devolutiva_{id_relato}",
+                                        type="primary",
+                                        icon=":material/save:"
+                                    ):
+
+                                        nome = st.session_state.get("nome", "Usuário")
+                                        data = data_hoje_br()
+
+                                        relato["status_relato"] = "aberto"
+                                        relato["devolutiva"] = st.session_state.get(devolutiva_key, "")
+                                        relato["status_aprovacao"] = f"Devolvido por {nome} em {data}"
+
+                                        col_projetos.update_one(
+                                            {"codigo": projeto["codigo"]},
+                                            {
+                                                "$set": {
+                                                    "plano_trabalho.componentes": projeto["plano_trabalho"]["componentes"]
+                                                }
+                                            }
+                                        )
+
+                                        st.session_state.pop(status_key, None)
+                                        st.session_state.pop(devolutiva_key, None)
+
+                                        st.success("Devolutiva salva.", icon=":material/check:")
+                                        time.sleep(3)
+                                        st.rerun()
+
+                            # ==================================================
+                            # CASO EM ANÁLISE OU ACEITO
+                            # ==================================================
+                            elif novo_status_db != status_relato_db:
+
+                                nome = st.session_state.get("nome", "Usuário")
+                                data = data_hoje_br()
+
+                                relato["status_relato"] = novo_status_db
+
+                                if novo_status_db == "aceito":
+                                    relato.pop("devolutiva", None)
+                                    relato["status_aprovacao"] = f"Verificado por {nome} em {data}"
+
+                                    # Atualiza progresso da atividade com base no relato aprovado
+                                    if "porc_ativ_relato" in relato:
+
+                                        atividade_id = atividade["id"]
+                                        porcentagem_relato = int(relato["porc_ativ_relato"])
+
+                                        atividade_mongo = obter_atividade_mongo(projeto, atividade_id)
+
+                                        if atividade_mongo:
+                                            atividade_mongo["porcentagem_atv"] = porcentagem_relato
+
+
+
+                                elif novo_status_db == "em_analise":
+                                    relato.pop("status_aprovacao", None)
+
+                                col_projetos.update_one(
+                                    {"codigo": projeto["codigo"]},
+                                    {
+                                        "$set": {
+                                            "plano_trabalho.componentes": projeto["plano_trabalho"]["componentes"]
+                                        }
+                                    }
+                                )
+
+                                st.session_state.pop(status_key, None)
+                                st.rerun()
+
+
+
+
+
+
+
+                        # ==================================================
+                        # MOSTRA DEVOLUTIVA SE EXISTIR (em_analise ou aberto)
+                        # ==================================================
+
+                        status_relato_db = relato.get("status_relato")
+                        devolutiva = relato.get("devolutiva")
+
+                        mostrar_devolutiva = False
+
+                        # --------------------------------------------------
+                        # REGRA 1: relatório em modo edição
+                        # --------------------------------------------------
+                        if status_atual_db == "modo_edicao":
+                            mostrar_devolutiva = bool(devolutiva)
+
+                        # --------------------------------------------------
+                        # REGRA 2: relatório em análise
+                        # --------------------------------------------------
+                        elif status_atual_db == "em_analise":
+                            # se for admin/equipe E relato está devolvido → não mostra
                             if (
-                                "campo_porcentagem_atividade_relato" not in st.session_state
-                                or st.session_state.get("atividade_porcentagem_relato_ref") != atividade.get("id")
+                                tipo_usuario in ["admin", "equipe"]
+                                and status_relato_db == "aberto"
                             ):
-                                st.session_state["campo_porcentagem_atividade_relato"] = porc_atual
-                                st.session_state["atividade_porcentagem_relato_ref"] = atividade.get("id")
+                                mostrar_devolutiva = False
+                            else:
+                                mostrar_devolutiva = bool(devolutiva)
 
+                        if mostrar_devolutiva:
 
-                            # selectbox
-                            porc_ativ_relato = st.selectbox(
-                                "Atualize a porcentagem de execução da atividade *",
-                                options=porcentagens,
-                                format_func=lambda x: f"{x}%",
-                                key="campo_porcentagem_atividade_relato",
-                                width=300
+                            texto = devolutiva.replace("\n", "\n> ")
+
+                            st.markdown(
+                                f"""
+                            <blockquote style="
+                                color: #000000;
+                                opacity: 0.9;
+                                border-left: 4px solid #F8D7DA;
+                                padding-left: 12px;
+                                margin-left: 0;
+                            ">
+                            <strong>Ajuste necessário:</strong><br>
+                            {texto.replace('\n', '<br>')}
+                            </blockquote>
+                            """,
+                                unsafe_allow_html=True
                             )
 
 
-
-
-
-                            # --------------------------------------------------
-                            # CAMPOS DE TEXTO
-                            # --------------------------------------------------
-                            relato_texto = st.text_area(
-                                "Relato *",
-                                value=relato.get("relato", ""),
-                                key=f"edit_relato_{id_relato}"
-                            )
-
-
-                            # --------------------------------------------------
-                            # CAMPOS DE DATA NA EDIÇÃO DO RELATO
-                            # --------------------------------------------------
-                            # Converte as datas armazenadas como string
-                            # (dd/mm/yyyy) para objeto datetime.date
-                            # necessário para o st.date_input.
-
-
-                            data_inicio_str = relato.get("data_inicio")
-                            data_fim_str = relato.get("data_fim")
-
-                            # Conversão segura para datetime.date
-                            data_inicio_valor = None
-                            data_fim_valor = None
-
-                            if data_inicio_str:
-                                try:
-                                    data_inicio_valor = datetime.datetime.strptime(data_inicio_str, "%d/%m/%Y").date()
-                                except Exception:
-                                    pass
-
-                            if data_fim_str:
-                                try:
-                                    data_fim_valor = datetime.datetime.strptime(data_fim_str, "%d/%m/%Y").date()
-                                except Exception:
-                                    pass
-
-
-                            # Interface de edição das datas
-                            col1, col2 = st.columns(2)
-
-                            data_inicio = col1.date_input(
-                                "Data de início *",
-                                value=data_inicio_valor,
-                                key=f"edit_data_inicio_{id_relato}",
-                                format="DD/MM/YYYY"
-                            )
-
-                            data_fim = col2.date_input(
-                                "Data de fim *",
-                                value=data_fim_valor,
-                                key=f"edit_data_fim_{id_relato}",
-                                format="DD/MM/YYYY"
-                            )
-
-
-                            st.divider()
-
-                            # --------------------------------------------------
-                            # ANEXOS EXISTENTES (REMOVER)
-                            # --------------------------------------------------
-                            anexos_remover = []
-                            anexos_existentes = relato.get("anexos", [])
-
-                            if anexos_existentes:
-                                st.markdown("**Anexos:**")
-
-                                for i, a in enumerate(anexos_existentes):
-                                    nome = a.get("nome_arquivo", "arquivo")
-
-                                    if st.checkbox(
-                                        f"**Remover:** {nome}",
-                                        key=f"rm_anexo_{id_relato}_{i}"
-                                    ):
-                                        anexos_remover.append(a)
-
-                            # --------------------------------------------------
-                            # NOVOS ANEXOS
-                            # --------------------------------------------------
-                            st.write('')
-                            novos_anexos = st.file_uploader(
-                                "Adicionar novos anexos",
-                                type=["pdf", "docx", "xlsx", "csv", "jpg", "jpeg", "png"],
-                                accept_multiple_files=True,
-                                key=f"novos_anexos_{id_relato}"
-                            )
-
-                            st.divider()
-
-                            # --------------------------------------------------
-                            # FOTOS EXISTENTES (REMOVER)
-                            # --------------------------------------------------
-                            fotos_remover = []
-                            fotos_existentes = relato.get("fotos", [])
-
-                            if fotos_existentes:
-                                st.markdown("**Fotografias:**")
-
-                                for i, f in enumerate(fotos_existentes):
-                                    nome = f.get("nome_arquivo", "foto")
-                                    descricao = f.get("descricao", "")
-                                    fotografo = f.get("fotografo", "")
-
-                                    label = nome
-                                    if descricao:
-                                        label += f" | {descricao}"
-                                    if fotografo:
-                                        label += f" | {fotografo}"
-
-                                    if st.checkbox(
-                                        f"**Remover:** {label}",
-                                        key=f"rm_foto_{id_relato}_{i}"
-                                    ):
-                                        fotos_remover.append(f)
-
-
-                            # --------------------------------------------------
-                            # NOVAS FOTOS
-                            # --------------------------------------------------
-                            st.write('')
-                            st.write("**Adicionar novas fotografias**")
-
-                            fotos_novas_key = f"fotos_novas_{id_relato}"
-                            if fotos_novas_key not in st.session_state:
-                                st.session_state[fotos_novas_key] = []
-
-                            if st.button(
-                                "Adicionar fotografia",
-                                key=f"btn_add_foto_{id_relato}",
-                                icon=":material/add_a_photo:"
-                            ):
-                                st.session_state[fotos_novas_key].append({
-                                    "arquivo": None,
-                                    "descricao": "",
-                                    "fotografo": ""
-                                })
-
-                            for i, foto in enumerate(st.session_state[fotos_novas_key]):
-                                with st.container(border=True):
-
-                                    foto["arquivo"] = st.file_uploader(
-                                        "Arquivo da foto",
-                                        type=["jpg", "jpeg", "png"],
-                                        key=f"foto_edit_file_{id_relato}_{i}"
-                                    )
-
-                                    foto["descricao"] = st.text_input(
-                                        "Descrição",
-                                        key=f"foto_edit_desc_{id_relato}_{i}"
-                                    )
-
-                                    foto["fotografo"] = st.text_input(
-                                        "Fotógrafo(a)",
-                                        key=f"foto_edit_autor_{id_relato}_{i}"
-                                    )
-
-                            st.divider()
-
-                            # --------------------------------------------------
-                            # AÇÕES
-                            # --------------------------------------------------
-                            # col_save, col_cancel = st.columns([1, 1])
-
-                            with st.container(horizontal=True, horizontal_alignment="left"):
-
-
+                        # --------------------------------------------------
+                        # BOTÃO EDITAR (somente se o relato estiver aberto)
+                        # --------------------------------------------------
+                        if (
+                            pode_editar_relatorio
+                            and relato.get("status_relato") == "aberto"
+                        ):
+                            with st.container(horizontal=True, horizontal_alignment="right"):
                                 if st.button(
-                                    "Cancelar",
-                                    key=f"btn_cancel_{id_relato}"
+                                    "Editar",
+                                    key=f"btn_edit_{id_relato}",
+                                    icon=":material/edit:",
+                                    type="tertiary"
                                 ):
-                                    st.session_state["relato_editando_id"] = None
-                                    st.session_state.pop(fotos_novas_key, None)
+                                    st.session_state["relato_editando_id"] = id_relato
                                     st.rerun()
 
 
 
-                                if st.button(
-                                    "Salvar alterações",
-                                    key=f"btn_save_{id_relato}",
-                                    type="primary",
-                                    icon=":material/save:"
+                    # ==================================================
+                    # MODO EDIÇÃO INLINE DO RELATO DA ATIVIDADE
+                    # ==================================================
+                    else:
+                        st.markdown(f"**Editando {id_relato.upper()}**")
+
+
+
+                        # -----------------------------
+                        # PORCENTAGEM DA ATIVIDADE (RELATO)
+                        # -----------------------------
+
+                        # opções de 0 a 100 de 10 em 10
+                        porcentagens = list(range(0, 101, 10))
+
+                        # valor atual salvo (se existir)
+                        porc_atual = 0
+
+                        if atividade and atividade.get("id"):
+                            atividade_mongo = obter_atividade_mongo(
+                                projeto,
+                                atividade["id"]
+                            )
+
+                            if atividade_mongo:
+                                porc_atual = atividade_mongo.get("porcentagem_atv", 0)
+
+                        # garante consistência com opções
+                        if porc_atual not in porcentagens:
+                            porc_atual = 0
+
+                        # sincroniza session_state ao trocar atividade
+                        if (
+                            "campo_porcentagem_atividade_relato" not in st.session_state
+                            or st.session_state.get("atividade_porcentagem_relato_ref") != atividade.get("id")
+                        ):
+                            st.session_state["campo_porcentagem_atividade_relato"] = porc_atual
+                            st.session_state["atividade_porcentagem_relato_ref"] = atividade.get("id")
+
+
+                        # selectbox
+                        porc_ativ_relato = st.selectbox(
+                            "Atualize a porcentagem de execução da atividade *",
+                            options=porcentagens,
+                            format_func=lambda x: f"{x}%",
+                            key="campo_porcentagem_atividade_relato",
+                            width=300
+                        )
+
+
+
+
+
+                        # --------------------------------------------------
+                        # CAMPOS DE TEXTO
+                        # --------------------------------------------------
+                        relato_texto = st.text_area(
+                            "Relato *",
+                            value=relato.get("relato", ""),
+                            key=f"edit_relato_{id_relato}"
+                        )
+
+
+                        # --------------------------------------------------
+                        # CAMPOS DE DATA NA EDIÇÃO DO RELATO
+                        # --------------------------------------------------
+                        # Converte as datas armazenadas como string
+                        # (dd/mm/yyyy) para objeto datetime.date
+                        # necessário para o st.date_input.
+
+
+                        data_inicio_str = relato.get("data_inicio")
+                        data_fim_str = relato.get("data_fim")
+
+                        # Conversão segura para datetime.date
+                        data_inicio_valor = None
+                        data_fim_valor = None
+
+                        if data_inicio_str:
+                            try:
+                                data_inicio_valor = datetime.datetime.strptime(data_inicio_str, "%d/%m/%Y").date()
+                            except Exception:
+                                pass
+
+                        if data_fim_str:
+                            try:
+                                data_fim_valor = datetime.datetime.strptime(data_fim_str, "%d/%m/%Y").date()
+                            except Exception:
+                                pass
+
+
+                        # Interface de edição das datas
+                        col1, col2 = st.columns(2)
+
+                        data_inicio = col1.date_input(
+                            "Data de início *",
+                            value=data_inicio_valor,
+                            key=f"edit_data_inicio_{id_relato}",
+                            format="DD/MM/YYYY"
+                        )
+
+                        data_fim = col2.date_input(
+                            "Data de fim *",
+                            value=data_fim_valor,
+                            key=f"edit_data_fim_{id_relato}",
+                            format="DD/MM/YYYY"
+                        )
+
+
+                        st.divider()
+
+                        # --------------------------------------------------
+                        # ANEXOS EXISTENTES (REMOVER)
+                        # --------------------------------------------------
+                        anexos_remover = []
+                        anexos_existentes = relato.get("anexos", [])
+
+                        if anexos_existentes:
+                            st.markdown("**Anexos:**")
+
+                            for i, a in enumerate(anexos_existentes):
+                                nome = a.get("nome_arquivo", "arquivo")
+
+                                if st.checkbox(
+                                    f"**Remover:** {nome}",
+                                    key=f"rm_anexo_{id_relato}_{i}"
                                 ):
+                                    anexos_remover.append(a)
+
+                        # --------------------------------------------------
+                        # NOVOS ANEXOS
+                        # --------------------------------------------------
+                        st.write('')
+                        novos_anexos = st.file_uploader(
+                            "Adicionar novos anexos",
+                            type=["pdf", "docx", "xlsx", "csv", "jpg", "jpeg", "png"],
+                            accept_multiple_files=True,
+                            key=f"novos_anexos_{id_relato}"
+                        )
+
+                        st.divider()
+
+                        # --------------------------------------------------
+                        # FOTOS EXISTENTES (REMOVER)
+                        # --------------------------------------------------
+                        fotos_remover = []
+                        fotos_existentes = relato.get("fotos", [])
+
+                        if fotos_existentes:
+                            st.markdown("**Fotografias:**")
+
+                            for i, f in enumerate(fotos_existentes):
+                                nome = f.get("nome_arquivo", "foto")
+                                descricao = f.get("descricao", "")
+                                fotografo = f.get("fotografo", "")
+
+                                label = nome
+                                if descricao:
+                                    label += f" | {descricao}"
+                                if fotografo:
+                                    label += f" | {fotografo}"
+
+                                if st.checkbox(
+                                    f"**Remover:** {label}",
+                                    key=f"rm_foto_{id_relato}_{i}"
+                                ):
+                                    fotos_remover.append(f)
+
+
+                        # --------------------------------------------------
+                        # NOVAS FOTOS
+                        # --------------------------------------------------
+                        st.write('')
+                        st.write("**Adicionar novas fotografias**")
+
+                        fotos_novas_key = f"fotos_novas_{id_relato}"
+                        if fotos_novas_key not in st.session_state:
+                            st.session_state[fotos_novas_key] = []
+
+                        if st.button(
+                            "Adicionar fotografia",
+                            key=f"btn_add_foto_{id_relato}",
+                            icon=":material/add_a_photo:"
+                        ):
+                            st.session_state[fotos_novas_key].append({
+                                "arquivo": None,
+                                "descricao": "",
+                                "fotografo": ""
+                            })
+
+                        for i, foto in enumerate(st.session_state[fotos_novas_key]):
+                            with st.container(border=True):
+
+                                foto["arquivo"] = st.file_uploader(
+                                    "Arquivo da foto",
+                                    type=["jpg", "jpeg", "png"],
+                                    key=f"foto_edit_file_{id_relato}_{i}"
+                                )
+
+                                foto["descricao"] = st.text_input(
+                                    "Descrição",
+                                    key=f"foto_edit_desc_{id_relato}_{i}"
+                                )
+
+                                foto["fotografo"] = st.text_input(
+                                    "Fotógrafo(a)",
+                                    key=f"foto_edit_autor_{id_relato}_{i}"
+                                )
+
+                        st.divider()
+
+                        # --------------------------------------------------
+                        # AÇÕES
+                        # --------------------------------------------------
+                        # col_save, col_cancel = st.columns([1, 1])
+
+                        with st.container(horizontal=True, horizontal_alignment="left"):
+
+
+                            if st.button(
+                                "Cancelar",
+                                key=f"btn_cancel_{id_relato}"
+                            ):
+                                st.session_state["relato_editando_id"] = None
+                                st.session_state.pop(fotos_novas_key, None)
+                                st.rerun()
+
+
+
+                            if st.button(
+                                "Salvar alterações",
+                                key=f"btn_save_{id_relato}",
+                                type="primary",
+                                icon=":material/save:"
+                            ):
+
+                                # ==================================================
+                                # VALIDAÇÃO
+                                # ==================================================
+                                erros = []
+
+                                # Relato obrigatório
+                                if not relato_texto or not relato_texto.strip():
+                                    erros.append("Relato")
+
+                                # Datas obrigatórias
+                                if not data_inicio:
+                                    erros.append("Data de início")
+
+                                if not data_fim:
+                                    erros.append("Data de fim")
+
+
+                                # Exibe erros
+                                if erros:
+                                    campos = ", ".join(erros)
+                                    st.warning(f"Preencha os seguintes campos obrigatórios: {campos}")
+                                    st.stop()
+
+                                # ==================================================
+                                # SALVAMENTO
+                                # ==================================================
+                                with st.spinner("Salvando alterações. Aguarde..."):
+
+                                    # -----------------------------
+                                    # TEXTO E DATAS
+                                    # -----------------------------
+                                    relato["relato"] = relato_texto
+
+                                    relato["data_inicio"] = (
+                                        data_inicio.strftime("%d/%m/%Y") if data_inicio else None
+                                    )
+
+                                    relato["data_fim"] = (
+                                        data_fim.strftime("%d/%m/%Y") if data_fim else None
+                                    )
+
+                                    # -----------------------------
+                                    # PORCENTAGEM DO RELATO
+                                    # -----------------------------
+                                    relato["porc_ativ_relato"] = int(porc_ativ_relato)
 
                                     # ==================================================
-                                    # VALIDAÇÃO
+                                    # REMOVE ITENS MARCADOS
                                     # ==================================================
-                                    erros = []
-
-                                    # Relato obrigatório
-                                    if not relato_texto or not relato_texto.strip():
-                                        erros.append("Relato")
-
-                                    # Datas obrigatórias
-                                    if not data_inicio:
-                                        erros.append("Data de início")
-
-                                    if not data_fim:
-                                        erros.append("Data de fim")
-
-
-                                    # Exibe erros
-                                    if erros:
-                                        campos = ", ".join(erros)
-                                        st.warning(f"Preencha os seguintes campos obrigatórios: {campos}")
-                                        st.stop()
-
-                                    # ==================================================
-                                    # SALVAMENTO
-                                    # ==================================================
-                                    with st.spinner("Salvando alterações. Aguarde..."):
-
-                                        # -----------------------------
-                                        # TEXTO E DATAS
-                                        # -----------------------------
-                                        relato["relato"] = relato_texto
-
-                                        relato["data_inicio"] = (
-                                            data_inicio.strftime("%d/%m/%Y") if data_inicio else None
-                                        )
-
-                                        relato["data_fim"] = (
-                                            data_fim.strftime("%d/%m/%Y") if data_fim else None
-                                        )
-
-                                        # -----------------------------
-                                        # PORCENTAGEM DO RELATO
-                                        # -----------------------------
-                                        relato["porc_ativ_relato"] = int(porc_ativ_relato)
-
-                                        # ==================================================
-                                        # REMOVE ITENS MARCADOS
-                                        # ==================================================
-                                        if anexos_remover:
-                                            relato["anexos"] = [
-                                                a for a in relato.get("anexos", [])
-                                                if a not in anexos_remover
-                                            ]
-
-                                        if fotos_remover:
-                                            relato["fotos"] = [
-                                                f for f in relato.get("fotos", [])
-                                                if f not in fotos_remover
-                                            ]
-
-                                        # ==================================================
-                                        # DRIVE
-                                        # ==================================================
-                                        servico = obter_servico_drive()
-
-                                        pasta_projeto_id = obter_pasta_projeto(
-                                            servico,
-                                            projeto["codigo"],
-                                            projeto["sigla"]
-                                        )
-
-                                        pasta_relatos_id = obter_ou_criar_pasta(
-                                            servico,
-                                            "Relatos_atividades",
-                                            pasta_projeto_id
-                                        )
-
-                                        pasta_relato_id = obter_ou_criar_pasta(
-                                            servico,
-                                            id_relato,
-                                            pasta_relatos_id
-                                        )
-
-                                        # -----------------------------
-                                        # ANEXOS
-                                        # -----------------------------
-                                        if novos_anexos:
-                                            pasta_anexos_id = obter_ou_criar_pasta(
-                                                servico,
-                                                "anexos",
-                                                pasta_relato_id
-                                            )
-
-                                            relato.setdefault("anexos", [])
-
-                                            for arq in novos_anexos:
-                                                id_drive = enviar_arquivo_drive(servico, pasta_anexos_id, arq)
-                                                if id_drive:
-                                                    relato["anexos"].append({
-                                                        "nome_arquivo": arq.name,
-                                                        "id_arquivo": id_drive
-                                                    })
-
-                                        # -----------------------------
-                                        # FOTOS
-                                        # -----------------------------
-                                        fotos_validas = [
-                                            f for f in st.session_state[fotos_novas_key]
-                                            if f.get("arquivo") is not None
+                                    if anexos_remover:
+                                        relato["anexos"] = [
+                                            a for a in relato.get("anexos", [])
+                                            if a not in anexos_remover
                                         ]
 
-                                        if fotos_validas:
-                                            pasta_fotos_id = obter_ou_criar_pasta(
-                                                servico,
-                                                "fotos",
-                                                pasta_relato_id
-                                            )
+                                    if fotos_remover:
+                                        relato["fotos"] = [
+                                            f for f in relato.get("fotos", [])
+                                            if f not in fotos_remover
+                                        ]
 
-                                            relato.setdefault("fotos", [])
+                                    # ==================================================
+                                    # DRIVE
+                                    # ==================================================
+                                    servico = obter_servico_drive()
 
-                                            for foto in fotos_validas:
-                                                arq = foto["arquivo"]
-                                                id_drive = enviar_arquivo_drive(servico, pasta_fotos_id, arq)
-                                                if id_drive:
-                                                    relato["fotos"].append({
-                                                        "nome_arquivo": arq.name,
-                                                        "descricao": foto.get("descricao", ""),
-                                                        "fotografo": foto.get("fotografo", ""),
-                                                        "id_arquivo": id_drive
-                                                    })
+                                    pasta_projeto_id = obter_pasta_projeto(
+                                        servico,
+                                        projeto["codigo"],
+                                        projeto["sigla"]
+                                    )
 
-                                        # ==================================================
-                                        # SALVA NO MONGO
-                                        # ==================================================
-                                        col_projetos.update_one(
-                                            {"codigo": projeto["codigo"]},
-                                            {"$set": {
-                                                "plano_trabalho.componentes": projeto["plano_trabalho"]["componentes"]
-                                            }}
+                                    pasta_relatos_id = obter_ou_criar_pasta(
+                                        servico,
+                                        "Relatos_atividades",
+                                        pasta_projeto_id
+                                    )
+
+                                    pasta_relato_id = obter_ou_criar_pasta(
+                                        servico,
+                                        id_relato,
+                                        pasta_relatos_id
+                                    )
+
+                                    # -----------------------------
+                                    # ANEXOS
+                                    # -----------------------------
+                                    if novos_anexos:
+                                        pasta_anexos_id = obter_ou_criar_pasta(
+                                            servico,
+                                            "anexos",
+                                            pasta_relato_id
                                         )
 
-                                        # Limpa estado
-                                        st.session_state["relato_editando_id"] = None
-                                        st.session_state.pop(fotos_novas_key, None)
+                                        relato.setdefault("anexos", [])
 
-                                        st.success("Relato atualizado com sucesso!", icon=":material/check:")
-                                        time.sleep(3)
-                                        st.rerun()
+                                        for arq in novos_anexos:
+                                            id_drive = enviar_arquivo_drive(servico, pasta_anexos_id, arq)
+                                            if id_drive:
+                                                relato["anexos"].append({
+                                                    "nome_arquivo": arq.name,
+                                                    "id_arquivo": id_drive
+                                                })
+
+                                    # -----------------------------
+                                    # FOTOS
+                                    # -----------------------------
+                                    fotos_validas = [
+                                        f for f in st.session_state[fotos_novas_key]
+                                        if f.get("arquivo") is not None
+                                    ]
+
+                                    if fotos_validas:
+                                        pasta_fotos_id = obter_ou_criar_pasta(
+                                            servico,
+                                            "fotos",
+                                            pasta_relato_id
+                                        )
+
+                                        relato.setdefault("fotos", [])
+
+                                        for foto in fotos_validas:
+                                            arq = foto["arquivo"]
+                                            id_drive = enviar_arquivo_drive(servico, pasta_fotos_id, arq)
+                                            if id_drive:
+                                                relato["fotos"].append({
+                                                    "nome_arquivo": arq.name,
+                                                    "descricao": foto.get("descricao", ""),
+                                                    "fotografo": foto.get("fotografo", ""),
+                                                    "id_arquivo": id_drive
+                                                })
+
+                                    # ==================================================
+                                    # SALVA NO MONGO
+                                    # ==================================================
+                                    col_projetos.update_one(
+                                        {"codigo": projeto["codigo"]},
+                                        {"$set": {
+                                            "plano_trabalho.componentes": projeto["plano_trabalho"]["componentes"]
+                                        }}
+                                    )
+
+                                    # Limpa estado
+                                    st.session_state["relato_editando_id"] = None
+                                    st.session_state.pop(fotos_novas_key, None)
+
+                                    st.success("Relato atualizado com sucesso!", icon=":material/check:")
+                                    time.sleep(3)
+                                    st.rerun()
 
 
 
-                    st.write('')
+                st.write('')
 
 
     if not tem_relato:
@@ -3099,7 +3054,7 @@ if step_selecionado == "Despesas":
 
         if pode_registrar:
                     if st.button(
-                        "+ Registrar despesa",
+                        "Registrar despesa",
                         type="primary",
                         icon=":material/add:",
                         width=260
@@ -3121,9 +3076,15 @@ if step_selecionado == "Despesas":
     grupo = defaultdict(lambda: defaultdict(list))
 
     for despesa in projeto.get("financeiro", {}).get("orcamento", []):
+        categoria_id = str(despesa.get("categoria"))
+        nome_categoria = categorias_map.get(categoria_id, "Categoria não encontrada")
+
         for lanc in despesa.get("lancamentos", []):
             if lanc.get("relatorio_numero") == relatorio_numero:
-                grupo[despesa["categoria"]][despesa["nome_despesa"]].append(lanc)
+                grupo[nome_categoria][despesa["nome_despesa"]].append({
+                    "lancamento": lanc,
+                    "categoria_id": categoria_id
+                })
 
     # --------------------------------------------------
     # SE NÃO HÁ DESPESAS
@@ -3135,15 +3096,17 @@ if step_selecionado == "Despesas":
     # ==================================================
     # RENDERIZAÇÃO DAS DESPESAS
     # ==================================================
-    for categoria, despesas in grupo.items():
+    for nome_categoria, despesas in grupo.items():
 
-        st.markdown(f"##### {categoria}")
+        st.markdown(f"##### {nome_categoria}")
 
         for nome_despesa, lancamentos in despesas.items():
 
             st.markdown(f"###### {nome_despesa}")
 
-            for lanc in lancamentos:
+            for item in lancamentos:
+                lanc = item["lancamento"]
+                categoria_id = item["categoria_id"]
 
                 id_despesa = lanc["id_lanc_despesa"]
 
@@ -3346,7 +3309,7 @@ if step_selecionado == "Despesas":
                         # --------------------------------------------------
                         # CAMPOS PRINCIPAIS
                         # --------------------------------------------------
-                        col1, col2, col3, col4 = st.columns(4)
+                        col1, col2 = st.columns(2)
 
 
 
@@ -3362,23 +3325,6 @@ if step_selecionado == "Despesas":
 
 
                         with col2:
-                            quantidade = st.number_input(
-                                "Quantidade *",
-                                min_value=0,
-                                value=int(lanc.get("quantidade", 0)),
-                                key=f"edit_qtd_{id_despesa}"
-                            )
-
-                        with col3:
-                            valor_unitario = st.number_input(
-                                "Valor unitário (R$) *",
-                                min_value=0.0,
-                                value=float(lanc.get("valor_unitario", 0)),
-                                format="%.2f",
-                                key=f"edit_vunit_{id_despesa}"
-                            )
-
-                        with col4:
                             valor = st.number_input(
                                 "Valor total (R$) *",
                                 min_value=0.0,
@@ -3489,12 +3435,6 @@ if step_selecionado == "Despesas":
                                     if not data:
                                         erros_campos.append("Data da despesa")
 
-                                    if quantidade <= 0:
-                                        erros_campos.append("Quantidade")
-
-                                    if valor_unitario <= 0:
-                                        erros_campos.append("Valor unitário (R$)")
-
                                     if not valor or valor <= 0:
                                         erros_campos.append("Valor total (R$)")
 
@@ -3507,21 +3447,6 @@ if step_selecionado == "Despesas":
                                     if not cpf_cnpj or not cpf_cnpj.strip():
                                         erros_campos.append("CPF / CNPJ")
 
-                                    # -------------------------------
-                                    # CONSISTÊNCIA (CÁLCULO)
-                                    # -------------------------------
-
-                                    if quantidade > 0 and valor_unitario > 0 and valor > 0:
-
-                                        valor_calculado = round(quantidade * valor_unitario, 2)
-                                        valor_informado = round(valor, 2)
-
-                                        if valor_calculado != valor_informado:
-                                            erro_consistencia = (
-                                                f"Valor total deve ser igual a Quantidade × Valor unitário"
-                                            )
-
-
 
                                     # ==================================================
                                     # VALIDAÇÃO DE ANEXOS (COM REMOÇÃO + NOVOS)
@@ -3530,8 +3455,8 @@ if step_selecionado == "Despesas":
                                     # Regra:
                                     # - Se NÃO for taxa bancária → precisa ter pelo menos 1 anexo no final
 
-                                    categoria_lower = categoria.lower()
-                                    is_taxa_bancaria = "taxas bancárias" in categoria_lower
+                                    categoria_nome_lower = nome_categoria.lower()
+                                    is_taxa_bancaria = "taxas bancárias" in categoria_nome_lower
 
                                     if not is_taxa_bancaria:
 
@@ -3575,8 +3500,6 @@ if step_selecionado == "Despesas":
                                             "descricao_despesa": descricao,
                                             "fornecedor": fornecedor,
                                             "cpf_cnpj": cpf_cnpj,
-                                            "quantidade": quantidade,
-                                            "valor_unitario": valor_unitario,
                                             "valor_despesa": valor
                                         })
 
@@ -3677,7 +3600,7 @@ if step_selecionado == "Despesas":
 
                                                         # Remove o lançamento da estrutura
                                                         for d in projeto["financeiro"]["orcamento"]:
-                                                            if d["categoria"] == categoria and d["nome_despesa"] == nome_despesa:
+                                                            if str(d["categoria"]) == categoria_id and d["nome_despesa"] == nome_despesa:
                                                                 d["lancamentos"] = [
                                                                     l for l in d.get("lancamentos", [])
                                                                     if l.get("id_lanc_despesa") != id_despesa
@@ -3749,7 +3672,8 @@ if step_selecionado == "Despesas":
                         # --------------------------------------------------
                         with st.container(horizontal=True, horizontal_alignment="right"):
                             novo_status_label = st.segmented_control(
-                                label="",
+                                label="novo_status",
+                                label_visibility="collapsed",
                                 options=["Em análise", "Devolver", "Aceito"],
                                 key=status_key
                             )
@@ -3869,25 +3793,9 @@ if step_selecionado == "Despesas":
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 # ==================================================
 # ---------- RESULTADOS ----------
 # ==================================================
-
-
-
-
 
 
 
@@ -3904,31 +3812,31 @@ if step_selecionado == "Resultados":
     # Recupera os componentes do plano de trabalho
     componentes = projeto.get("plano_trabalho", {}).get("componentes", [])
 
-    # Lista auxiliar para armazenar todas as entregas,
+    # Lista auxiliar para armazenar todas as atividades,
     # independentemente do componente
-    entregas = []
+    atividades = []
 
-    # Percorre os componentes e coleta todas as entregas
+    # Percorre os componentes e coleta todas as atividades
     for componente in componentes:
-        for entrega in componente.get("entregas", []):
-            entregas.append(entrega)
+        for atividade in componente.get("atividades", []):
+            atividades.append(atividade)
 
-    # Caso não existam entregas
-    if not entregas:
-        st.info("Este projeto não possui entregas com indicadores.")
+    # Caso não existam atividades
+    if not atividades:
+        st.info("Este projeto não possui atividades.")
     else:
-        # Loop por entrega
-        for idx_ent, entrega in enumerate(entregas):
+        # Loop por atividade
+        for idx_ent, atividade in enumerate(atividades):
 
-            # Título da entrega
-            st.markdown(f"##### {entrega.get('entrega')}")
+            # Título da atividade
+            st.markdown(f"##### {atividade.get('atividade')}")
 
-            # Lista de indicadores do projeto dentro da entrega
-            indicadores = entrega.get("indicadores_projeto", [])
+            # Lista de indicadores do projeto dentro da atividade
+            indicadores = atividade.get("indicadores_projeto", [])
 
-            # Caso a entrega não tenha indicadores
+            # Caso a atividade não tenha indicadores
             if not indicadores:
-                st.caption("Esta entrega não possui indicadores de projeto.")
+                st.caption("Esta atividade não possui indicadores de projeto.")
                 continue
 
             # Loop por indicador
@@ -3967,21 +3875,21 @@ if step_selecionado == "Resultados":
                     key_resultado = (
                         f"resultado_"
                         f"{relatorio_numero}_"
-                        f"{entrega.get('id')}_"
+                        f"{atividade.get('id')}_"
                         f"{idx_ind}"
                     )
 
                     key_obs = (
                         f"obs_"
                         f"{relatorio_numero}_"
-                        f"{entrega.get('id')}_"
+                        f"{atividade.get('id')}_"
                         f"{idx_ind}"
                     )
 
                     key_save = (
                         f"save_"
                         f"{relatorio_numero}_"
-                        f"{entrega.get('id')}_"
+                        f"{atividade.get('id')}_"
                         f"{idx_ind}"
                     )
 
@@ -4122,14 +4030,14 @@ if step_selecionado == "Resultados":
                             },
                             {
                                 "$set": {
-                                    "plano_trabalho.componentes.$[c].entregas.$[e].indicadores_projeto.$[i].resultado_atual": resultado_float,
-                                    "plano_trabalho.componentes.$[c].entregas.$[e].indicadores_projeto.$[i].observacoes_coleta": observacoes_salvar,
-                                    "plano_trabalho.componentes.$[c].entregas.$[e].indicadores_projeto.$[i].data_coleta": data_coleta
+                                    "plano_trabalho.componentes.$[c].atividades.$[e].indicadores_projeto.$[i].resultado_atual": resultado_float,
+                                    "plano_trabalho.componentes.$[c].atividades.$[e].indicadores_projeto.$[i].observacoes_coleta": observacoes_salvar,
+                                    "plano_trabalho.componentes.$[c].atividades.$[e].indicadores_projeto.$[i].data_coleta": data_coleta
                                 }
                             },
                             array_filters=[
-                                {"c.entregas.id": entrega.get("id")},
-                                {"e.id": entrega.get("id")},
+                                {"c.atividades.id": atividade.get("id")},
+                                {"e.id": atividade.get("id")},
                                 {"i.indicador_projeto": indicador.get("indicador_projeto")}
                             ]
                         )
@@ -5619,55 +5527,41 @@ if step_selecionado == "Enviar":
                 # ------------------------------------------------------
                 for componente in componentes:
 
-                    # Recupera entregas de forma segura
-                    entregas = componente.get("entregas", [])
+                    # Recupera atividades de forma segura
+                    atividades = componente.get("atividades", [])
 
-                    # Se não houver entregas, pula o componente
-                    if not entregas:
+                    # Se não houver atividades, pula o componente
+                    if not atividades:
                         continue
 
                     # --------------------------------------------------
-                    # Percorre entregas
+                    # Percorre atividades
                     # --------------------------------------------------
-                    for entrega in entregas:
+                    for atividade in atividades:
 
-                        # Recupera atividades de forma segura
-                        atividades = entrega.get("atividades", [])
 
-                        # --------------------------------------------------
-                        # Se não houver atividades, apenas continua
-                        # (não quebra o código)
-                        # --------------------------------------------------
-                        if not atividades:
+                        # Recupera relatos de forma segura
+                        relatos = atividade.get("relatos", [])
+
+                        # Se não houver relatos, continua
+                        if not relatos:
                             continue
 
                         # --------------------------------------------------
-                        # Percorre atividades
+                        # Percorre relatos
                         # --------------------------------------------------
-                        for atividade in atividades:
+                        for relato in relatos:
 
-                            # Recupera relatos de forma segura
-                            relatos = atividade.get("relatos", [])
-
-                            # Se não houver relatos, continua
-                            if not relatos:
-                                continue
-
-                            # --------------------------------------------------
-                            # Percorre relatos
-                            # --------------------------------------------------
-                            for relato in relatos:
-
-                                # ----------------------------------------------
-                                # Apenas relatos do relatório atual
-                                # e que ainda estejam abertos
-                                # ----------------------------------------------
-                                if (
-                                    relato.get("relatorio_numero") == relatorio_numero
-                                    and relato.get("status_relato") == "aberto"
-                                ):
-                                    relato["status_relato"] = "em_analise"
-                                    houve_alteracao = True
+                            # ----------------------------------------------
+                            # Apenas relatos do relatório atual
+                            # e que ainda estejam abertos
+                            # ----------------------------------------------
+                            if (
+                                relato.get("relatorio_numero") == relatorio_numero
+                                and relato.get("status_relato") == "aberto"
+                            ):
+                                relato["status_relato"] = "em_analise"
+                                houve_alteracao = True
 
 
 
