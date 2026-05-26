@@ -3059,9 +3059,9 @@ with indicadores:
             st.caption("Nenhum indicador associado a este projeto.")
         else:
 
-            # Mapeia codigo_indicador para nome do indicador
+            # Mapeia _id do indicador para nome do indicador
             mapa_indicadores = {
-                ind["codigo_indicador"]: ind["indicador"]
+                ind["_id"]: ind["indicador"]
                 for ind in indicadores_edital
             }
 
@@ -3154,7 +3154,7 @@ with indicadores:
 
             for ind in sorted(indicadores_edital, key=lambda x: x["indicador"]):
 
-                id_indicador = ind["codigo_indicador"]
+                id_indicador = ind["_id"]
                 nome_indicador = ind["indicador"]
 
                 dados_atual = st.session_state.valores_indicadores.get(

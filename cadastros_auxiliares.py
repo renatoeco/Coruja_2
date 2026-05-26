@@ -1276,7 +1276,7 @@ with aba_indicadores:
 
         indicadores = sorted(
             edital_doc.get("indicadores", []),
-            key=lambda x: x.get("codigo_indicador", "")
+            key=lambda x: x.get("_id", "")
         )
 
         df_indicadores = pd.DataFrame(indicadores)
@@ -1299,12 +1299,11 @@ with aba_indicadores:
             else:
 
                 df_visualizacao = (
-                    df_indicadores[["codigo_indicador", "indicador"]]
+                    df_indicadores[["indicador"]]
                     .rename(columns={
-                        "codigo_indicador": "Código",
                         "indicador": "Indicador"
                     })
-                    .sort_values("Código")
+                    .sort_values("Indicador")
                     .reset_index(drop=True)
                 )
 
@@ -1313,9 +1312,6 @@ with aba_indicadores:
                     hide_index=True,
                     height="content",
                     column_config={
-                        "Código": st.column_config.Column(
-                            width=1  
-                        ),
                         "Indicador": st.column_config.Column(
                             width=1000
                         )
@@ -1432,7 +1428,7 @@ with aba_indicadores:
                 maior_codigo = 0
 
                 for item in indicadores:
-                    codigo = str(item.get("codigo_indicador", "")).strip()
+                    codigo = str(item.get("_id", "")).strip()
 
                     if codigo.startswith("IND"):
                         numero = codigo.replace("IND", "")
@@ -1467,7 +1463,6 @@ with aba_indicadores:
                         estrutura_final.append(
                             {
                                 "_id": mapa_existentes[id_linha]["_id"],
-                                "codigo_indicador": mapa_existentes[id_linha]["codigo_indicador"],
                                 "indicador": texto_indicador
                             }
                         )
@@ -1479,7 +1474,6 @@ with aba_indicadores:
                         estrutura_final.append(
                             {
                                 "_id": str(ObjectId()),
-                                "codigo_indicador": f"IND{maior_codigo:03d}",
                                 "indicador": texto_indicador
                             }
                         )
@@ -1487,7 +1481,7 @@ with aba_indicadores:
                 # Ordena por código
                 estrutura_final = sorted(
                     estrutura_final,
-                    key=lambda x: x["codigo_indicador"]
+                    key=lambda x: x["indicador"]
                 )
 
                 # --------------------------------------------------
