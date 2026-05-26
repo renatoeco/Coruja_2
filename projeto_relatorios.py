@@ -1954,32 +1954,13 @@ st.write('')
 # CONFIGURAÇÃO DOS STEPS DO RELATÓRIO
 ###########################################################################################################
 
-# if tipo_usuario in ["admin", "equipe"]:
-#     steps_relatorio = [
-#         "Atividades",
-#         "Despesas",
-#         "Resultados",
-#         "Beneficiários",
-#         "Pesquisas",
-#         "Formulário",
-#         "Avaliação"
-#     ]
-# else:
-#     steps_relatorio = [
-#         "Atividades",
-#         "Despesas",
-#         "Resultados",
-#         "Beneficiários",
-#         "Pesquisas",
-#         "Formulário",
-#         "Enviar"
-#     ]
+
 
 if tipo_usuario in ["admin", "equipe"]:
     steps_relatorio = [
         "Atividades",
         "Despesas",
-        "Resultados",
+        "Indicadores",
         "Beneficiários",
         "Formulário",
         "Avaliação"
@@ -1988,7 +1969,7 @@ else:
     steps_relatorio = [
         "Atividades",
         "Despesas",
-        "Resultados",
+        "Indicadores",
         "Beneficiários",
         "Formulário",
         "Enviar"
@@ -3056,7 +3037,7 @@ if step_selecionado == "Despesas":
     # ==================================================
     # BOTÃO: REGISTRAR DESPESA
     # ==================================================
-    with st.container(horizontal=True, horizontal_alignment="right"):
+    with st.container(horizontal=True, horizontal_alignment="distribute"):
        
 
         saldo_parcela = calcular_saldo_parcela()
@@ -3811,6 +3792,8 @@ if step_selecionado == "Despesas":
                             mostrar_devolutiva = bool(devolutiva)
 
 
+            st.write('')
+
 
 # ==================================================
 # ---------- RESULTADOS ----------
@@ -3818,7 +3801,7 @@ if step_selecionado == "Despesas":
 
 
 
-if step_selecionado == "Resultados":
+if step_selecionado == "Indicadores":
 
     # Espaçamento visual
     st.write("")
@@ -3828,250 +3811,250 @@ if step_selecionado == "Resultados":
     st.markdown("#### Indicadores de projeto")
     st.write("")
 
-    # Recupera os componentes do plano de trabalho
-    componentes = projeto.get("plano_trabalho", {}).get("componentes", [])
+    # # Recupera os componentes do plano de trabalho
+    # componentes = projeto.get("plano_trabalho", {}).get("componentes", [])
 
-    # Lista auxiliar para armazenar todas as atividades,
-    # independentemente do componente
-    atividades = []
+    # # Lista auxiliar para armazenar todas as atividades,
+    # # independentemente do componente
+    # atividades = []
 
-    # Percorre os componentes e coleta todas as atividades
-    for componente in componentes:
-        for atividade in componente.get("atividades", []):
-            atividades.append(atividade)
+    # # Percorre os componentes e coleta todas as atividades
+    # for componente in componentes:
+    #     for atividade in componente.get("atividades", []):
+    #         atividades.append(atividade)
 
-    # Caso não existam atividades
-    if not atividades:
-        st.info("Este projeto não possui atividades.")
-    else:
-        # Loop por atividade
-        for idx_ent, atividade in enumerate(atividades):
+    # # Caso não existam atividades
+    # if not atividades:
+    #     st.info("Este projeto não possui atividades.")
+    # else:
+    #     # Loop por atividade
+    #     for idx_ent, atividade in enumerate(atividades):
 
-            # Título da atividade
-            st.markdown(f"##### {atividade.get('atividade')}")
+    #         # Título da atividade
+    #         st.markdown(f"##### {atividade.get('atividade')}")
 
-            # Lista de indicadores do projeto dentro da atividade
-            indicadores = atividade.get("indicadores_projeto", [])
+    #         # Lista de indicadores do projeto dentro da atividade
+    #         indicadores = atividade.get("indicadores_projeto", [])
 
-            # Caso a atividade não tenha indicadores
-            if not indicadores:
-                st.caption("Esta atividade não possui indicadores de projeto.")
-                continue
+    #         # Caso a atividade não tenha indicadores
+    #         if not indicadores:
+    #             st.caption("Esta atividade não possui indicadores de projeto.")
+    #             continue
 
-            # Loop por indicador
-            for idx_ind, indicador in enumerate(indicadores):
+    #         # Loop por indicador
+    #         for idx_ind, indicador in enumerate(indicadores):
 
-                # Container visual para cada indicador
-                with st.container(border=True):
+    #             # Container visual para cada indicador
+    #             with st.container(border=True):
 
-                    # Nome do indicador
-                    st.markdown(
-                        f"**Indicador:** {indicador.get('indicador_projeto')}"
-                    )
+    #                 # Nome do indicador
+    #                 st.markdown(
+    #                     f"**Indicador:** {indicador.get('indicador_projeto')}"
+    #                 )
 
-                    # Unidade de medida
-                    st.markdown(
-                        f"**Unidade de medida:** {indicador.get('unidade_medida')}"
-                    )
+    #                 # Unidade de medida
+    #                 st.markdown(
+    #                     f"**Unidade de medida:** {indicador.get('unidade_medida')}"
+    #                 )
 
-                    # Layout em colunas
-                    col1, col2, col3, col4 = st.columns([1, 1, 1, 3])
+    #                 # Layout em colunas
+    #                 col1, col2, col3, col4 = st.columns([1, 1, 1, 3])
 
-                    # Linha base (somente leitura)
-                    col1.markdown(
-                        f"**Início do projeto:** {indicador.get('linha_base')}"
-                    )
+    #                 # Linha base (somente leitura)
+    #                 col1.markdown(
+    #                     f"**Início do projeto:** {indicador.get('linha_base')}"
+    #                 )
 
-                    # Meta (somente leitura)
-                    col2.markdown(
-                        f"**Meta:** {indicador.get('meta')}"
-                    )
+    #                 # Meta (somente leitura)
+    #                 col2.markdown(
+    #                     f"**Meta:** {indicador.get('meta')}"
+    #                 )
 
-                    # ======================================================
-                    # KEYS ISOLADAS
-                    # ======================================================
+    #                 # ======================================================
+    #                 # KEYS ISOLADAS
+    #                 # ======================================================
 
-                    key_resultado = (
-                        f"resultado_"
-                        f"{relatorio_numero}_"
-                        f"{atividade.get('id')}_"
-                        f"{idx_ind}"
-                    )
+    #                 key_resultado = (
+    #                     f"resultado_"
+    #                     f"{relatorio_numero}_"
+    #                     f"{atividade.get('id')}_"
+    #                     f"{idx_ind}"
+    #                 )
 
-                    key_obs = (
-                        f"obs_"
-                        f"{relatorio_numero}_"
-                        f"{atividade.get('id')}_"
-                        f"{idx_ind}"
-                    )
+    #                 key_obs = (
+    #                     f"obs_"
+    #                     f"{relatorio_numero}_"
+    #                     f"{atividade.get('id')}_"
+    #                     f"{idx_ind}"
+    #                 )
 
-                    key_save = (
-                        f"save_"
-                        f"{relatorio_numero}_"
-                        f"{atividade.get('id')}_"
-                        f"{idx_ind}"
-                    )
+    #                 key_save = (
+    #                     f"save_"
+    #                     f"{relatorio_numero}_"
+    #                     f"{atividade.get('id')}_"
+    #                     f"{idx_ind}"
+    #                 )
 
-                    # ======================================================
-                    # PRÉ-CARGA DO ESTADO (somente uma vez)
-                    # ======================================================
+    #                 # ======================================================
+    #                 # PRÉ-CARGA DO ESTADO (somente uma vez)
+    #                 # ======================================================
 
-                    # Resultado atual (float do banco → string pt-BR)
-                    if key_resultado not in st.session_state:
-                        valor_resultado = indicador.get("resultado_atual")
+    #                 # Resultado atual (float do banco → string pt-BR)
+    #                 if key_resultado not in st.session_state:
+    #                     valor_resultado = indicador.get("resultado_atual")
 
-                        if valor_resultado is None:
-                            st.session_state[key_resultado] = ""
-                        else:
-                            st.session_state[key_resultado] = (
-                                formatar_numero_br_dinamico(valor_resultado)
-                            )
+    #                     if valor_resultado is None:
+    #                         st.session_state[key_resultado] = ""
+    #                     else:
+    #                         st.session_state[key_resultado] = (
+    #                             formatar_numero_br_dinamico(valor_resultado)
+    #                         )
 
-                    # Observações
-                    if key_obs not in st.session_state:
-                        valor_observacoes = indicador.get("observacoes_coleta")
-                        if valor_observacoes is None or valor_observacoes == "None":
-                            valor_observacoes = ""
-                        st.session_state[key_obs] = valor_observacoes
+    #                 # Observações
+    #                 if key_obs not in st.session_state:
+    #                     valor_observacoes = indicador.get("observacoes_coleta")
+    #                     if valor_observacoes is None or valor_observacoes == "None":
+    #                         valor_observacoes = ""
+    #                     st.session_state[key_obs] = valor_observacoes
 
-                    # ======================================================
-                    # RENDERIZAÇÃO CONDICIONAL
-                    # ======================================================
+    #                 # ======================================================
+    #                 # RENDERIZAÇÃO CONDICIONAL
+    #                 # ======================================================
 
-                    if pode_editar_relatorio:
-                        # Campo editável: resultado atual (texto, formato BR)
-                        resultado_atual_str = col3.text_input(
-                            "Resultado atual",
-                            key=key_resultado,
-                            # placeholder="Ex: 1.234,56"
-                        )
+    #                 if pode_editar_relatorio:
+    #                     # Campo editável: resultado atual (texto, formato BR)
+    #                     resultado_atual_str = col3.text_input(
+    #                         "Resultado atual",
+    #                         key=key_resultado,
+    #                         # placeholder="Ex: 1.234,56"
+    #                     )
 
-                        # Campo editável: observações
-                        observacoes = col4.text_input(
-                            "Observações",
-                            key=key_obs
-                        )
-                    else:
-                        # Apenas exibição
-                        col3.write(
-                            f"**Resultado atual:** "
-                            f"{formatar_numero_br_dinamico(indicador.get('resultado_atual'))}"
-                        )
+    #                     # Campo editável: observações
+    #                     observacoes = col4.text_input(
+    #                         "Observações",
+    #                         key=key_obs
+    #                     )
+    #                 else:
+    #                     # Apenas exibição
+    #                     col3.write(
+    #                         f"**Resultado atual:** "
+    #                         f"{formatar_numero_br_dinamico(indicador.get('resultado_atual'))}"
+    #                     )
 
-                        valor_obs = st.session_state[key_obs]
-                        if not valor_obs:
-                            valor_obs = "-"
+    #                     valor_obs = st.session_state[key_obs]
+    #                     if not valor_obs:
+    #                         valor_obs = "-"
 
-                        col4.write(
-                            f"**Observações:** {valor_obs}"
-                        )
+    #                     col4.write(
+    #                         f"**Observações:** {valor_obs}"
+    #                     )
 
-                        resultado_atual_str = st.session_state[key_resultado]
-                        observacoes = st.session_state[key_obs]
+    #                     resultado_atual_str = st.session_state[key_resultado]
+    #                     observacoes = st.session_state[key_obs]
 
-                    # ======================================================
-                    # BOTÃO SALVAR (sempre aparece quando pode editar)
-                    # ======================================================
+    #                 # ======================================================
+    #                 # BOTÃO SALVAR (sempre aparece quando pode editar)
+    #                 # ======================================================
 
-                    if pode_editar_relatorio:
-                        with st.container(horizontal=True, horizontal_alignment="right"):
-                            salvar = st.button(
-                                "Salvar",
-                                key=key_save,
-                                icon=":material/save:",
-                                width=200,
-                                type="primary"
-                            )
-                    else:
-                        salvar = False
+    #                 if pode_editar_relatorio:
+    #                     with st.container(horizontal=True, horizontal_alignment="right"):
+    #                         salvar = st.button(
+    #                             "Salvar",
+    #                             key=key_save,
+    #                             icon=":material/save:",
+    #                             width=200,
+    #                             type="primary"
+    #                         )
+    #                 else:
+    #                     salvar = False
 
-                    # ======================================================
-                    # Mostra data da última coleta, se existir
-                    # ======================================================
-
-
-
-                    data_coleta = indicador.get("data_coleta")
-
-                    if data_coleta:
-
-                        with st.container(horizontal=True, horizontal_alignment="right"):
-
-                            if isinstance(data_coleta, datetime.datetime):
-
-                                # 🔥 CORREÇÃO IMPORTANTE
-                                if data_coleta.tzinfo is None:
-                                    data_coleta = data_coleta.replace(
-                                        tzinfo=datetime.timezone.utc
-                                    )
-
-                                data_local = data_coleta.astimezone(
-                                    ZoneInfo("America/Sao_Paulo")
-                                )
-
-                                data_str = data_local.strftime("%d/%m/%Y %H:%M")
-
-                            else:
-                                data_str = str(data_coleta)
-
-                            st.caption(f"Último registro em {data_str}")
+    #                 # ======================================================
+    #                 # Mostra data da última coleta, se existir
+    #                 # ======================================================
 
 
 
-                    # ======================================================
-                    # AÇÃO DE SALVAMENTO
-                    # ======================================================
+    #                 data_coleta = indicador.get("data_coleta")
 
-                    if salvar:
-                        # Converte string pt-BR para float
-                        resultado_float = parse_numero_br(resultado_atual_str)
+    #                 if data_coleta:
 
-                        if resultado_float is None:
-                            st.error(
-                                "Resultado atual inválido. "
-                                "Use o formato brasileiro, por exemplo: 1.234,56"
-                            )
-                            st.stop()
+    #                     with st.container(horizontal=True, horizontal_alignment="right"):
+
+    #                         if isinstance(data_coleta, datetime.datetime):
+
+    #                             # 🔥 CORREÇÃO IMPORTANTE
+    #                             if data_coleta.tzinfo is None:
+    #                                 data_coleta = data_coleta.replace(
+    #                                     tzinfo=datetime.timezone.utc
+    #                                 )
+
+    #                             data_local = data_coleta.astimezone(
+    #                                 ZoneInfo("America/Sao_Paulo")
+    #                             )
+
+    #                             data_str = data_local.strftime("%d/%m/%Y %H:%M")
+
+    #                         else:
+    #                             data_str = str(data_coleta)
+
+    #                         st.caption(f"Último registro em {data_str}")
 
 
 
-                        data_coleta = datetime.datetime.now(datetime.timezone.utc)
-                        # data_coleta = datetime.datetime.now()
+    #                 # ======================================================
+    #                 # AÇÃO DE SALVAMENTO
+    #                 # ======================================================
 
-                        observacoes_salvar = observacoes
-                        if observacoes_salvar is None or observacoes_salvar == "None":
-                            observacoes_salvar = ""
+    #                 if salvar:
+    #                     # Converte string pt-BR para float
+    #                     resultado_float = parse_numero_br(resultado_atual_str)
 
-                        # Atualiza no MongoDB
-                        col_projetos.update_one(
-                            {
-                                "codigo": projeto_codigo
-                            },
-                            {
-                                "$set": {
-                                    "plano_trabalho.componentes.$[c].atividades.$[e].indicadores_projeto.$[i].resultado_atual": resultado_float,
-                                    "plano_trabalho.componentes.$[c].atividades.$[e].indicadores_projeto.$[i].observacoes_coleta": observacoes_salvar,
-                                    "plano_trabalho.componentes.$[c].atividades.$[e].indicadores_projeto.$[i].data_coleta": data_coleta
-                                }
-                            },
-                            array_filters=[
-                                {"c.atividades.id": atividade.get("id")},
-                                {"e.id": atividade.get("id")},
-                                {"i.indicador_projeto": indicador.get("indicador_projeto")}
-                            ]
-                        )
+    #                     if resultado_float is None:
+    #                         st.error(
+    #                             "Resultado atual inválido. "
+    #                             "Use o formato brasileiro, por exemplo: 1.234,56"
+    #                         )
+    #                         st.stop()
 
-                        # Atualiza o objeto em memória
-                        indicador["resultado_atual"] = resultado_float
-                        indicador["observacoes_coleta"] = observacoes_salvar
-                        indicador["data_coleta"] = data_coleta
 
-                        st.success("Indicador salvo com sucesso.", icon=":material/check:")
-                        time.sleep(3)
-                        st.rerun()
 
-                # Espaçamento entre indicadores
-                st.write("")
+    #                     data_coleta = datetime.datetime.now(datetime.timezone.utc)
+    #                     # data_coleta = datetime.datetime.now()
+
+    #                     observacoes_salvar = observacoes
+    #                     if observacoes_salvar is None or observacoes_salvar == "None":
+    #                         observacoes_salvar = ""
+
+    #                     # Atualiza no MongoDB
+    #                     col_projetos.update_one(
+    #                         {
+    #                             "codigo": projeto_codigo
+    #                         },
+    #                         {
+    #                             "$set": {
+    #                                 "plano_trabalho.componentes.$[c].atividades.$[e].indicadores_projeto.$[i].resultado_atual": resultado_float,
+    #                                 "plano_trabalho.componentes.$[c].atividades.$[e].indicadores_projeto.$[i].observacoes_coleta": observacoes_salvar,
+    #                                 "plano_trabalho.componentes.$[c].atividades.$[e].indicadores_projeto.$[i].data_coleta": data_coleta
+    #                             }
+    #                         },
+    #                         array_filters=[
+    #                             {"c.atividades.id": atividade.get("id")},
+    #                             {"e.id": atividade.get("id")},
+    #                             {"i.indicador_projeto": indicador.get("indicador_projeto")}
+    #                         ]
+    #                     )
+
+    #                     # Atualiza o objeto em memória
+    #                     indicador["resultado_atual"] = resultado_float
+    #                     indicador["observacoes_coleta"] = observacoes_salvar
+    #                     indicador["data_coleta"] = data_coleta
+
+    #                     st.success("Indicador salvo com sucesso.", icon=":material/check:")
+    #                     time.sleep(3)
+    #                     st.rerun()
+
+    #             # Espaçamento entre indicadores
+    #             st.write("")
 
 
 
@@ -4717,6 +4700,27 @@ if step_selecionado == "Beneficiários":
 
 
         # st.divider()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -6234,461 +6238,6 @@ if step_selecionado == "Avaliação":
 
 
 
-
-
-
-
-
-
-
-
-# # ---------- AVALIAÇÃO ----------
-# if step_selecionado == "Avaliação":
-
-#     st.write("")
-#     st.write("")
-
-#     relatos_ok = todos_relatos_aceitos(projeto, relatorio_numero)
-#     despesas_ok = todas_despesas_aceitas(projeto, relatorio_numero)
-
-#     relatorio_db = next(
-#         r for r in projeto["relatorios"]
-#         if r["numero"] == relatorio_numero
-#     )
-
-#     col1, col2, col3 = st.columns(3, gap="large")
-
-#     # Checklist
-#     with col1:
-#         st.write("**Checklist**")
-
-#         st.checkbox(
-#             "Relatos de atividades (auto)",
-#             value=relatos_ok,
-#             disabled=True,
-#             key=f"chk_relatos_{relatorio_numero}"
-#         )
-
-#         st.checkbox(
-#             "Registros de despesas (auto)",
-#             value=despesas_ok,
-#             disabled=True,
-#             key=f"chk_despesas_{relatorio_numero}"
-#         )
-
-
-
-
-#         # -----------------------------
-#         # RESULTADOS
-#         # -----------------------------
-#         res_key = f"chk_res_{relatorio_numero}"
-
-#         st.checkbox(
-#             "Resultados",
-#             value="res_verif_por" in relatorio_db,
-#             key=res_key,
-#             on_change=atualizar_verificacao_relatorio,
-#             args=(
-#                 projeto_codigo,
-#                 relatorio_numero,
-#                 "res_verif_por",
-#                 res_key
-#             )
-#         )
-
-#         if relatorio_db.get("res_verif_por"):
-#             st.caption(relatorio_db["res_verif_por"])
-
-
-
-
-
-
-
-
-#         # -----------------------------
-#         # BENEFICIÁRIOS
-#         # -----------------------------
-#         benef_key = f"chk_benef_{relatorio_numero}"
-#         st.checkbox(
-#             "Beneficiários e Benefícios",
-#             value="benef_verif_por" in relatorio_db,
-#             key=benef_key,
-#             on_change=atualizar_verificacao_relatorio,
-#             args=(
-#                 projeto_codigo,
-#                 relatorio_numero,
-#                 "benef_verif_por",
-#                 benef_key
-#             )
-#         )
-
-#         if relatorio_db.get("benef_verif_por"):
-#             st.caption(relatorio_db["benef_verif_por"])
-
-#         # -----------------------------
-#         # PESQUISAS
-#         # -----------------------------
-#         pesq_key = f"chk_pesq_{relatorio_numero}"
-#         st.checkbox(
-#             "Pesquisas",
-#             value="pesq_verif_por" in relatorio_db,
-#             key=pesq_key,
-#             on_change=atualizar_verificacao_relatorio,
-#             args=(
-#                 projeto_codigo,
-#                 relatorio_numero,
-#                 "pesq_verif_por",
-#                 pesq_key
-#             )
-#         )
-
-#         if relatorio_db.get("pesq_verif_por"):
-#             st.caption(relatorio_db["pesq_verif_por"])
-
-#         # -----------------------------
-#         # FORMULÁRIO
-#         # -----------------------------
-#         form_key = f"chk_form_{relatorio_numero}"
-#         st.checkbox(
-#             "Formulário",
-#             value="form_verif_por" in relatorio_db,
-#             key=form_key,
-#             on_change=atualizar_verificacao_relatorio,
-#             args=(
-#                 projeto_codigo,
-#                 relatorio_numero,
-#                 "form_verif_por",
-#                 form_key
-#             )
-#         )
-
-#         if relatorio_db.get("form_verif_por"):
-#             st.caption(relatorio_db["form_verif_por"])
-
-
-
-#     # Anotações
-#     with col2:
-
-#         st.write("**Anotações**")
-
-#         # --------------------------------------------------
-#         # DIALOG DE NOVA ANOTAÇÃO
-#         # --------------------------------------------------
-#         @st.dialog("Nova anotação")
-#         def dialog_nova_anotacao():
-#             texto = st.text_area(
-#                 "Anotação",
-#                 placeholder="Digite sua anotação sobre este relatório..."
-#             )
-
-#             if st.button("Salvar anotação", type="primary", icon=":material/save:"):
-#                 if not texto.strip():
-#                     st.warning("A anotação não pode estar vazia.")
-#                     return
-
-#                 nova = {
-#                     "texto_anotacao": texto.strip(),
-#                     "data_anotacao": datetime.datetime.now().strftime("%d/%m/%Y"),
-#                     "autor_anotacao": st.session_state.get("nome", "Usuário")
-#                 }
-
-#                 col_projetos.update_one(
-#                     {
-#                         "codigo": projeto_codigo,
-#                         "relatorios.numero": relatorio_numero
-#                     },
-#                     {
-#                         "$push": {
-#                             "relatorios.$.anotacoes_avaliacao": nova
-#                         }
-#                     }
-#                 )
-
-#                 st.success("Anotação salva com sucesso.", icon=":material/check:")
-#                 time.sleep(3)
-#                 st.rerun()
-
-#         # --------------------------------------------------
-#         # BOTÃO NOVA ANOTAÇÃO
-#         # --------------------------------------------------
-#         if st.button(
-#             "+ Nova anotação",
-#             type="secondary",
-#             icon=":material/add:"
-#         ):
-#             dialog_nova_anotacao()
-
-
-
-
-
-
-
-#         # --------------------------------------------------
-#         # RENDERIZAÇÃO DAS ANOTAÇÕES (POPOVER COM AÇÕES)
-#         # --------------------------------------------------
-
-#         if "anotacao_editando" not in st.session_state:
-#             st.session_state["anotacao_editando"] = None
-
-#         if "anotacao_apagando" not in st.session_state:
-#             st.session_state["anotacao_apagando"] = None
-
-#         anotacoes = relatorio_db.get("anotacoes_avaliacao", [])
-
-#         if not anotacoes:
-#             st.caption("Nenhuma anotação registrada.")
-#         else:
-#             for i, a in enumerate(reversed(anotacoes)):
-
-#                 idx_real = len(anotacoes) - 1 - i
-#                 autor = a.get("autor_anotacao")
-#                 data = a.get("data_anotacao")
-#                 texto = a.get("texto_anotacao")
-
-#                 with st.container(border=True):
-
-#                     # Cabeçalho
-#                     col_h1, col_h2 = st.columns([9, 1])
-#                     col_h1.markdown(f"**{autor}** · {data}")
-
-#                     # --------------------------------------------------
-#                     # POPOVER DE AÇÕES (somente autor)
-#                     # --------------------------------------------------
-#                     if st.session_state.get("nome") == autor:
-
-#                         with col_h2.popover("⋮", type="tertiary"):
-
-#                             if st.button(
-#                                 "Editar anotação",
-#                                 key=f"btn_edit_anot_{relatorio_numero}_{idx_real}",
-#                                 icon=":material/edit:",
-#                                 type="tertiary"
-#                             ):
-#                                 st.session_state["anotacao_editando"] = idx_real
-#                                 st.session_state["anotacao_apagando"] = None
-#                                 st.rerun()
-
-#                             if st.button(
-#                                 "Apagar anotação",
-#                                 key=f"btn_del_anot_{relatorio_numero}_{idx_real}",
-#                                 icon=":material/delete:",
-#                                 type="tertiary"
-#                             ):
-#                                 st.session_state["anotacao_apagando"] = idx_real
-#                                 st.session_state["anotacao_editando"] = None
-#                                 st.rerun()
-
-#                     # --------------------------------------------------
-#                     # CONFIRMAÇÃO DE EXCLUSÃO
-#                     # --------------------------------------------------
-#                     if st.session_state["anotacao_apagando"] == idx_real:
-
-#                         st.warning("Tem certeza que deseja apagar esta anotação? Esta ação não pode ser desfeita.", icon=":material/warning:")
-
-#                         with st.container(horizontal=True):
-
-#                             if st.button(
-#                                 "Sim, apagar anotação",
-#                                 key=f"btn_confirm_del_{relatorio_numero}_{idx_real}",
-#                                 type="primary",
-#                                 icon=":material/delete:"
-#                             ):
-#                                 del projeto["relatorios"][idx]["anotacoes_avaliacao"][idx_real]
-
-#                                 col_projetos.update_one(
-#                                     {"codigo": projeto_codigo},
-#                                     {"$set": {"relatorios": projeto["relatorios"]}}
-#                                 )
-
-#                                 st.success("Anotação apagada.", icon=":material/check:")
-#                                 time.sleep(3)
-
-#                                 st.session_state["anotacao_apagando"] = None
-#                                 st.rerun()
-
-#                             if st.button(
-#                                 "Cancelar",
-#                                 key=f"btn_cancel_del_{relatorio_numero}_{idx_real}"
-#                             ):
-#                                 st.session_state["anotacao_apagando"] = None
-#                                 st.rerun()
-
-#                     # --------------------------------------------------
-#                     # MODO EDIÇÃO
-#                     # --------------------------------------------------
-#                     elif st.session_state["anotacao_editando"] == idx_real:
-
-#                         text_key = f"text_anot_{relatorio_numero}_{idx_real}"
-
-#                         if text_key not in st.session_state:
-#                             st.session_state[text_key] = texto
-
-#                         novo_texto = st.text_area(
-#                             "Editar anotação",
-#                             key=text_key
-#                         )
-
-#                         with st.container(horizontal=True):
-
-#                             if st.button(
-#                                 "Atualizar",
-#                                 key=f"btn_upd_{relatorio_numero}_{idx_real}",
-#                                 type="primary",
-#                                 icon=":material/save:"
-#                             ):
-#                                 projeto["relatorios"][idx]["anotacoes_avaliacao"][idx_real]["texto_anotacao"] = novo_texto
-
-#                                 col_projetos.update_one(
-#                                     {"codigo": projeto_codigo},
-#                                     {"$set": {"relatorios": projeto["relatorios"]}}
-#                                 )
-
-#                                 st.success("Anotação atualizada.")
-#                                 time.sleep(3)
-
-#                                 st.session_state["anotacao_editando"] = None
-#                                 st.session_state.pop(text_key, None)
-#                                 st.rerun()
-
-#                             if st.button(
-#                                 "Cancelar",
-#                                 key=f"btn_cancel_edit_{relatorio_numero}_{idx_real}"
-#                             ):
-#                                 st.session_state["anotacao_editando"] = None
-#                                 st.session_state.pop(text_key, None)
-#                                 st.rerun()
-
-#                     # --------------------------------------------------
-#                     # MODO VISUALIZAÇÃO
-#                     # --------------------------------------------------
-#                     else:
-#                         st.markdown(
-#                             texto.replace("\n", "<br>"),
-#                             unsafe_allow_html=True
-#                         )
-                        
-
-
-
-
-#     # ==================================================
-#     # COLUNA 3 — APROVAÇÃO DO RELATÓRIO
-#     # ==================================================
-#     with col3:
-
-#         st.write("**Aprovação**")
-#         st.write("")
-
-#         # --------------------------------------------------
-#         # REGRA: só pode aprovar se TODO checklist estiver OK
-#         # --------------------------------------------------
-#         pode_aprovar = all([
-#             relatos_ok,
-#             despesas_ok,
-#             "res_verif_por" in relatorio_db,
-#             "benef_verif_por" in relatorio_db,
-#             "pesq_verif_por" in relatorio_db,
-#             "form_verif_por" in relatorio_db
-#         ])
-
-
-
-#         # --------------------------------------------------
-#         # BOTÃO DE APROVAÇÃO
-#         # --------------------------------------------------
-#         if st.button(
-#             "Aprovar e enviar e-mail",
-#             type="primary",
-#             icon=":material/check_circle:",
-#             disabled=not pode_aprovar
-#         ):
-
-#             with st.spinner("Aprovando relatório..."):
-
-#                 # Data atual (dd/mm/yyyy)
-#                 data_hoje = datetime.datetime.now().strftime("%d/%m/%Y")
-
-#                 # Nome do aprovador
-#                 nome_aprovador = st.session_state.get("nome", "Usuário")
-
-#                 # --------------------------------------------------
-#                 # ATUALIZA RELATÓRIO EM MEMÓRIA
-#                 # --------------------------------------------------
-#                 projeto["relatorios"][idx]["status_relatorio"] = "aprovado"
-#                 projeto["relatorios"][idx]["data_aprovacao"] = data_hoje
-#                 projeto["relatorios"][idx]["aprovado_por"] = nome_aprovador
-
-#                 # --------------------------------------------------
-#                 # PERSISTE NO BANCO DE DADOS
-#                 # --------------------------------------------------
-#                 col_projetos.update_one(
-#                     {"codigo": projeto_codigo},
-#                     {"$set": {"relatorios": projeto["relatorios"]}}
-#                 )
-
-#                 # --------------------------------------------------
-#                 # ENVIO DE E-MAIL PARA TODOS OS CONTATOS
-#                 # --------------------------------------------------
-#                 contatos_notificados = []
-
-#                 for contato in projeto.get("contatos", []):
-
-#                     email = contato.get("email")
-#                     nome_contato = contato.get("nome", "Olá")
-
-#                     if not email:
-#                         continue
-
-#                     corpo_html = gerar_email_relatorio_aprovado(
-#                         nome_do_contato=nome_contato,
-#                         relatorio_numero=relatorio_numero,
-#                         projeto=projeto,
-#                         organizacao=projeto.get("organizacao", ""),
-#                         logo_url=logo_cepf
-#                     )
-
-#                     enviar_email(
-#                         corpo_html=corpo_html,
-#                         destinatarios=[email],
-#                         assunto=f"Relatório {relatorio_numero} aprovado!"
-#                     )
-
-#                     # Guarda nome para feedback final
-#                     contatos_notificados.append(nome_contato)
-
-#             # --------------------------------------------------
-#             # FEEDBACK VISUAL E RECARREGAMENTO
-#             # --------------------------------------------------
-#             if contatos_notificados:
-#                 nomes = ", ".join(contatos_notificados)
-#                 st.success(
-#                     f"Relatório aprovado e e-mails enviados com sucesso para {nomes}.",
-#                     icon=":material/check:"
-#                 )
-#             else:
-#                 st.success(
-#                     "Relatório aprovado, mas não havia contatos com e-mail para notificação.",
-#                     icon=":material/check:"
-#                 )
-
-#             time.sleep(5)
-#             st.rerun()
-
-#         # --------------------------------------------------
-#         # INFORMAÇÃO DE APROVAÇÃO (APÓS APROVAR)
-#         # --------------------------------------------------
-#         if relatorio_db.get("status_relatorio") == "aprovado":
-
-#             data_aprov = relatorio_db.get("data_aprovacao")
-#             nome_aprov = relatorio_db.get("aprovado_por", "")
-
-#             if data_aprov:
-#                 st.caption(f"Aprovado em {data_aprov} por {nome_aprov}")
-#                 st.caption("Os contatos do projeto foram notificados por e-mail.")
 
 
 
