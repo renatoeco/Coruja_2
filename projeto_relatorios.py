@@ -6128,7 +6128,7 @@ if step_selecionado == "Avaliação":
         # BOTÃO NOVA ANOTAÇÃO
         # --------------------------------------------------
         if st.button(
-            "+ Nova anotação",
+            "Nova anotação",
             type="secondary",
             icon=":material/add:"
         ):
