@@ -3826,78 +3826,6 @@ if step_selecionado == "Indicadores":
     indicadores = projeto.get("indicadores", [])
 
     # --------------------------------------------------
-    # MIGRAÇÃO AUTOMÁTICA DA ESTRUTURA ANTIGA
-    # --------------------------------------------------
-    precisa_migrar = False
-
-    for indicador in indicadores:
-
-        if "lancamentos" not in indicador:
-            indicador["lancamentos"] = []
-
-        tem_estrutura_antiga = any(
-            campo in indicador
-            for campo in [
-                "resultado_final",
-                "observacoes",
-                "data_coleta"
-            ]
-        )
-
-        if tem_estrutura_antiga:
-
-            resultado_antigo = indicador.get("resultado_final")
-            observacoes_antigas = indicador.get("observacoes")
-
-            if observacoes_antigas in [None, "None"]:
-                observacoes_antigas = ""
-            data_antiga = indicador.get("data_coleta")
-
-            # Só cria lançamento se realmente existia dado preenchido
-            if (
-                resultado_antigo is not None
-                or observacoes_antigas not in [None, "", "None"]
-            ):
-                indicador["lancamentos"].append({
-                    "id_lanc_indicador": str(bson.ObjectId()),
-                    "relatorio_numero": relatorio_numero,
-                    "resultado_atual": resultado_antigo or 0,
-                    "observacoes": observacoes_antigas or "",
-                    "status_indicador": "aberto",
-                    "devolutiva": "",
-                    "status_aprovacao": "",
-                    "data_coleta": (
-                        data_antiga
-                        if data_antiga
-                        else datetime.datetime.now(datetime.timezone.utc)
-                    )
-                })
-
-            indicador.pop("resultado_final", None)
-            indicador.pop("observacoes", None)
-            indicador.pop("data_coleta", None)
-
-            precisa_migrar = True
-
-    if precisa_migrar:
-        col_projetos.update_one(
-            {"codigo": projeto["codigo"]},
-            {
-                "$set": {
-                    "indicadores": indicadores
-                }
-            }
-        )
-
-        st.success(
-            "Estrutura dos indicadores atualizada automaticamente.",
-            icon=":material/check:"
-        )
-
-        time.sleep(2)
-        st.rerun()
-
-    # --------------------------------------------------
     # SEM INDICADORES
     # --------------------------------------------------
     if not indicadores:
@@ -4319,26 +4247,6 @@ if step_selecionado == "Indicadores":
                         """,
                         unsafe_allow_html=True
                     )
-
-                # ----------------------------------------------
-                # BOTÃO EDITAR
-                # ----------------------------------------------
-                # if pode_editar_indicador:
-
-                #     with st.container(
-                #         horizontal=True,
-                #         horizontal_alignment="right"
-                #     ):
-                #         if st.button(
-                #             "Editar",
-                #             key=f"btn_edit_ind_{id_indicador}",
-                #             icon=":material/edit:",
-                #             type="tertiary"
-                #         ):
-                #             st.session_state[
-                #                 "indicador_editando_id"
-                #             ] = id_indicador
-                #             st.rerun()
         
             # ==================================================
             # EDIÇÃO INLINE
