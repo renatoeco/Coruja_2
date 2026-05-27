@@ -3069,25 +3069,60 @@ with indicadores:
             dados_tabela = []
 
             for item in indicadores_projeto:
+
+                lancamentos = item.get("lancamentos", [])
+
+                ultimo_lancamento = None
+
+                if lancamentos:
+                    ultimo_lancamento = sorted(
+                        lancamentos,
+                        key=lambda x: x.get("relatorio_numero", 0)
+                    )[-1]
+
                 dados_tabela.append({
                     "Indicadores": mapa_indicadores.get(
                         item.get("id_indicador"),
                         "Indicador não encontrado"
                     ),
+
                     "Início do projeto (marco zero)": item.get(
-                        "marco_zero", ""
-                    ),
-                    "Contribuição esperada (meta)": item.get("valor"),
-                    "Descrição da contribuição": item.get(
-                        "descricao_contribuicao", ""
+                        "marco_zero",
+                        ""
                     ),
 
-                    "Resultado final (alcançado)": item.get(
-                        "resultado_final", ""
+                    "Contribuição esperada (meta)": item.get(
+                        "valor",
+                        ""
+                    ),
+
+                    "Descrição da contribuição": item.get(
+                        "descricao_contribuicao",
+                        ""
+                    ),
+
+                    "Resultado final (alcançado)": (
+                        ultimo_lancamento.get("resultado_atual", "")
+                        if ultimo_lancamento
+                        else ""
+                    ),
+
+                    "Observações": (
+                        ultimo_lancamento.get("observacoes", "")
+                        if ultimo_lancamento
+                        else ""
                     )
                 })
 
             df_visualizacao = pd.DataFrame(dados_tabela)
+
+            # Ordena alfabeticamente pelo nome do indicador
+            df_visualizacao = df_visualizacao.sort_values(
+                by="Indicadores",
+                ascending=True,
+                na_position="last"
+            ).reset_index(drop=True)
+
             ui.table(df_visualizacao)
 
     #######################################################################################################
@@ -3127,11 +3162,31 @@ with indicadores:
             estado = {}
 
             for item in indicadores_salvos:
+                lancamentos = item.get("lancamentos", [])
+
+                ultimo_lancamento = None
+
+                if lancamentos:
+                    ultimo_lancamento = sorted(
+                        lancamentos,
+                        key=lambda x: x.get("relatorio_numero", 0)
+                    )[-1]
+
                 estado[item["id_indicador"]] = {
                     "valor": item.get("valor", 0),
                     "descricao": item.get("descricao_contribuicao", ""),
-                    "marco_zero": item.get("marco_zero", ""),
-                    "resultado_final": item.get("resultado_final", "")
+                    "marco_zero": item.get("marco_zero", 0),
+                    "resultado_final": (
+                        ultimo_lancamento.get("resultado_atual", 0)
+                        if ultimo_lancamento
+                        else 0
+                    ),
+                    "observacoes": (
+                        ultimo_lancamento.get("observacoes", "")
+                        if ultimo_lancamento
+                        else ""
+                    ),
+                    "lancamentos": lancamentos
                 }
 
             st.session_state.valores_indicadores = estado
@@ -3160,10 +3215,12 @@ with indicadores:
                 dados_atual = st.session_state.valores_indicadores.get(
                     id_indicador,
                     {
-                        "valor": "",
+                        "valor": 0,
                         "descricao": "",
-                        "marco_zero": "",
-                        "resultado_final": ""
+                        "marco_zero": 0,
+                        "resultado_final": 0,
+                        "observacoes": "",
+                        "lancamentos": []
                     }
                 )
 
@@ -3187,32 +3244,15 @@ with indicadores:
                 # ==================================================
                 with st.container(border=True):
 
-                    # Cabeçalhos da tabela dentro do container
-                    col_h1, col_h2, col_h3, col_h4 = st.columns([2, 2, 4, 2])
-
-                    with col_h1:
-                        st.markdown("**Início do projeto**")
-
-                    with col_h2:
-                        st.markdown("**Contribuição esperada**")
-
-                    with col_h3:
-                        st.markdown("**Descrição da contribuição**")
-
-                    with col_h4:
-                        st.markdown("**Resultado final**")
-
-                    st.write("")
-
                     # Inputs
-                    col_marco_zero, col_valor, col_desc, col_res_final = st.columns([2, 2, 4, 2])
+                    col_marco_zero, col_valor, col_desc, col_res_final, col_obs = st.columns([2, 2, 4, 2, 3])
 
                     with col_marco_zero:
                         marco_zero = st.number_input(
-                            "Marco zero",
-                            step=1,
-                            value=(
-                                dados_atual.get("marco_zero")
+                            "**Marco zero**",
+                            step=1.0,
+                            value=float(
+                                dados_atual.get("marco_zero", 0)
                                 if isinstance(
                                     dados_atual.get("marco_zero"),
                                     (int, float)
@@ -3220,15 +3260,14 @@ with indicadores:
                                 else 0
                             ),
                             key=f"marco_zero_{id_indicador}",
-                            label_visibility="collapsed"
                         )
 
                     with col_valor:
                         valor = st.number_input(
-                            "Valor",
-                            step=1,
-                            value=(
-                                dados_atual.get("valor")
+                            "**Contribuição esperada**",
+                            step=1.0,
+                            value=float(
+                                dados_atual.get("valor", 0)
                                 if isinstance(
                                     dados_atual.get("valor"),
                                     (int, float)
@@ -3236,24 +3275,22 @@ with indicadores:
                                 else 0
                             ),
                             key=f"num_{id_indicador}",
-                            label_visibility="collapsed"
                         )
 
                     with col_desc:
                         descricao = st.text_area(
-                            "Descrição",
+                            "**Descrição**",
                             value=dados_atual.get("descricao", ""),
                             key=f"desc_{id_indicador}",
                             height=100,
-                            label_visibility="collapsed"
                         )
 
                     with col_res_final:
                         resultado_final = st.number_input(
-                            "Resultado final",
-                            step=1,
-                            value=(
-                                dados_atual.get("resultado_final")
+                            "**Resultado final**",
+                            step=1.0,
+                            value=float(
+                                dados_atual.get("resultado_final", 0)
                                 if isinstance(
                                     dados_atual.get("resultado_final"),
                                     (int, float)
@@ -3261,7 +3298,14 @@ with indicadores:
                                 else 0
                             ),
                             key=f"res_fin_{id_indicador}",
-                            label_visibility="collapsed"
+                        )
+
+                    with col_obs:
+                        observacoes = st.text_area(
+                            "**Observações**",
+                            value=dados_atual.get("observacoes", ""),
+                            key=f"obs_{id_indicador}",
+                            height=100,
                         )
 
                     # Atualiza estado
@@ -3269,7 +3313,9 @@ with indicadores:
                         "valor": valor,
                         "descricao": descricao,
                         "marco_zero": marco_zero,
-                        "resultado_final": resultado_final
+                        "resultado_final": resultado_final,
+                        "observacoes": observacoes,
+                        "lancamentos": dados_atual.get("lancamentos", [])
                     }
 
                     st.write("")
@@ -3285,35 +3331,53 @@ with indicadores:
                     if salvar_indicador:
 
                         if valor <= 0:
-                            st.error("O valor deve ser maior que zero.")
+                            st.error("O valor deve ser maior que zero")
 
                         else:
+
+                            projeto = col_projetos.find_one(
+                                {"codigo": codigo_projeto_atual}
+                            )
+
+                            indicadores_existentes = projeto.get("indicadores", [])
+
+                            indicador_existente = next(
+                                (
+                                    i for i in indicadores_existentes
+                                    if i["id_indicador"] == id_indicador
+                                ),
+                                None
+                            )
+
+                            # Preserva lançamentos existentes
+                            lancamentos = indicador_existente.get("lancamentos", []) if indicador_existente else []
+
+                            # Atualiza o lançamento mais recente
+                            if lancamentos:
+                                lancamentos_ordenados = sorted(
+                                    lancamentos,
+                                    key=lambda x: x.get("relatorio_numero", 0)
+                                )
+
+                                ultimo = lancamentos_ordenados[-1]
+
+                                ultimo["resultado_atual"] = resultado_final
+                                ultimo["observacoes"] = observacoes
 
                             indicador_para_salvar = {
                                 "id_indicador": id_indicador,
                                 "marco_zero": marco_zero,
                                 "valor": valor,
                                 "descricao_contribuicao": descricao.strip(),
-                                "resultado_final": resultado_final
+                                "lancamentos": lancamentos
                             }
-
-                            projeto = col_projetos.find_one(
-                                {"codigo": codigo_projeto_atual}
-                            )
-
-                            indicadores_existentes = projeto.get(
-                                "indicadores",
-                                []
-                            )
 
                             indicadores_filtrados = [
                                 i for i in indicadores_existentes
                                 if i["id_indicador"] != id_indicador
                             ]
 
-                            indicadores_filtrados.append(
-                                indicador_para_salvar
-                            )
+                            indicadores_filtrados.append(indicador_para_salvar)
 
                             resultado = col_projetos.update_one(
                                 {"codigo": codigo_projeto_atual},
