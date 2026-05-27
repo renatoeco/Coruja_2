@@ -1338,13 +1338,13 @@ def dialog_relatos():
             data_inicio_atv = atividade_mongo.get("data_inicio")
             data_fim_atv = atividade_mongo.get("data_fim")
 
-    # mostra período programado da atividade
-    if data_inicio_atv and data_fim_atv:
-        st.write(
-            f"Programada para começar em **{data_inicio_atv}** e terminar em **{data_fim_atv}**."
-        )
+    # # mostra período programado da atividade
+    # if data_inicio_atv and data_fim_atv:
+    #     st.write(
+    #         f"Programada para começar em **{data_inicio_atv}** e terminar em **{data_fim_atv}**."
+    #     )
 
-        st.write('')
+        # st.write('')
 
 
 
