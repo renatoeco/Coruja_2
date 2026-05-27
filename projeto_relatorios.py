@@ -4062,7 +4062,7 @@ if step_selecionado == "Indicadores":
 
                 with st.container(
                     horizontal=True,
-                    horizontal_alignment="right"
+                    horizontal_alignment="left"
                 ):
                     if st.button(
                         "Salvar",
