@@ -228,9 +228,6 @@ def atualizar_verificacao_relatorio(projeto_codigo, relatorio_numero, campo, che
         )
 
 
-
-
-
 def todos_relatos_aceitos(projeto, relatorio_numero):
     """
     Retorna True se TODOS os relatos do relatório informado
@@ -260,7 +257,6 @@ def todos_relatos_aceitos(projeto, relatorio_numero):
     return all(r.get("status_relato") == "aceito" for r in relatos_encontrados)
 
 
-
 def todas_despesas_aceitas(projeto, relatorio_numero):
     """
     Retorna True se TODOS os lançamentos de despesas do relatório
@@ -285,6 +281,33 @@ def todas_despesas_aceitas(projeto, relatorio_numero):
     return all(l.get("status_despesa") == "aceito" for l in lancamentos)
 
 
+def todos_indicadores_aceitos(projeto, relatorio_numero):
+    """
+    Retorna True se TODOS os lançamentos de indicadores do relatório
+    estiverem com status_indicador == 'aceito'.
+
+    Se existir ao menos um indicador não aceito, retorna False.
+    Se não existir nenhum indicador lançado nesse relatório, retorna False.
+    """
+
+    lancamentos = []
+
+    indicadores = projeto.get("indicadores", [])
+
+    for indicador in indicadores:
+        for lanc in indicador.get("lancamentos", []):
+            if lanc.get("relatorio_numero") == relatorio_numero:
+                lancamentos.append(lanc)
+
+    # Se não existe nenhum indicador lançado, não aprova
+    if not lancamentos:
+        return False
+
+    # Todos precisam estar aceitos
+    return all(
+        l.get("status_indicador") == "aceito"
+        for l in lancamentos
+    )
 
 
 def gerar_email_relatorio_aprovado(
@@ -3931,12 +3954,17 @@ if step_selecionado == "Indicadores":
             # ==================================================
             # STATUS / BADGE
             # ==================================================
-            status_indicador_db = lanc.get(
-                "status_indicador",
-                "em_analise"
+            status_indicador_db = (
+                lanc.get("status_indicador", "em_analise")
+                if lanc is not None
+                else "aberto"
             )
 
-            tem_devolutiva = bool(lanc.get("devolutiva"))
+            tem_devolutiva = (
+                bool(lanc.get("devolutiva"))
+                if lanc is not None
+                else False
+            )
 
             badge = badge_status(
                 status_indicador_db,
@@ -4009,8 +4037,6 @@ if step_selecionado == "Indicadores":
             # ==================================================
             if criar_novo:
 
-                st.markdown("##### Registrar resultado")
-
                 key_resultado_novo = (
                     f"novo_resultado_{id_indicador}_{relatorio_numero}"
                 )
@@ -4018,13 +4044,18 @@ if step_selecionado == "Indicadores":
                 key_obs_novo = (
                     f"novo_obs_{id_indicador}_{relatorio_numero}"
                 )
+                
+                col1, col2 = st.columns([1,3])
 
-                resultado_novo = st.text_input(
-                    "Resultado atual *",
+                resultado_novo = col1.number_input(
+                    "Resultado atual",
+                    min_value=0.0,
+                    value=0.0,
+                    step=1.0,
                     key=key_resultado_novo
                 )
 
-                observacoes_novo = st.text_area(
+                observacoes_novo = col2.text_area(
                     "Observações",
                     key=key_obs_novo
                 )
@@ -4040,14 +4071,7 @@ if step_selecionado == "Indicadores":
                         icon=":material/save:"
                     ):
 
-                        resultado_float = parse_numero_br(resultado_novo)
-
-                        if resultado_float is None:
-                            st.warning(
-                                "Resultado atual inválido. "
-                                "Use o formato brasileiro, ex: 1.234,56"
-                            )
-                            st.stop()
+                        resultado_float = float(resultado_novo)
 
                         novo_lanc = {
                             "id_lanc_indicador": str(bson.ObjectId()),
@@ -4270,7 +4294,7 @@ if step_selecionado == "Indicadores":
                 col1, col2 = st.columns([1,3])
 
                 resultado_edit = col1.number_input(
-                    "Resultado atual *",
+                    "Resultado atual",
                     min_value=0.0,
                     value=resultado_padrao,
                     step=1.0,
@@ -4493,13 +4517,6 @@ if step_selecionado == "Indicadores":
                     salvar_indicadores()
 
                     st.session_state.pop(status_key, None)
-
-                    st.success(
-                        "Status atualizado.",
-                        icon=":material/check:"
-                    )
-
-                    time.sleep(2)
                     st.rerun()
 
         st.write("")
@@ -4710,6 +4727,9 @@ if step_selecionado == "Beneficiários":
             if salvar_matriz:
 
                 # Atualiza apenas a chave 'beneficiarios_quant' no relatório correto
+                nome_usuario = st.session_state.get("nome", "Usuário")
+                data_verificacao = datetime.datetime.now().strftime("%d/%m/%Y")
+
                 col_projetos.update_one(
                     {
                         "codigo": projeto["codigo"],
@@ -4718,7 +4738,10 @@ if step_selecionado == "Beneficiários":
                     {
                         "$set": {
                             "relatorios.$.beneficiarios_quant":
-                                st.session_state[key_benef_quant]
+                                st.session_state[key_benef_quant],
+
+                            "relatorios.$.benef_verif_por":
+                                f"{nome_usuario} em {data_verificacao}"
                         }
                     }
                 )
@@ -5828,6 +5851,9 @@ if step_selecionado == "Formulário":
                 # ---------------------------------------------------------
                 # Salva no Mongo
                 # ---------------------------------------------------------
+                nome_usuario = st.session_state.get("nome", "Usuário")
+                data_verificacao = datetime.datetime.now().strftime("%d/%m/%Y")
+
                 col_projetos.update_one(
                     {
                         "codigo": projeto["codigo"],
@@ -5836,7 +5862,10 @@ if step_selecionado == "Formulário":
                     {
                         "$set": {
                             "relatorios.$.respostas_formulario":
-                                st.session_state.respostas_formulario
+                                st.session_state.respostas_formulario,
+
+                            "relatorios.$.form_verif_por":
+                                f"{nome_usuario} em {data_verificacao}"
                         }
                     }
                 )
@@ -6073,6 +6102,7 @@ if step_selecionado == "Avaliação":
 
     relatos_ok = todos_relatos_aceitos(projeto, relatorio_numero)
     despesas_ok = todas_despesas_aceitas(projeto, relatorio_numero)
+    indicadores_ok = todos_indicadores_aceitos(projeto, relatorio_numero)
 
     relatorio_db = next(
         r for r in projeto["relatorios"]
@@ -6318,16 +6348,15 @@ if step_selecionado == "Avaliação":
             placeholder="Escreva uma mensagem de devolutiva...",
             disabled=not pode_encaminhar
         )
-
+        
         # --------------------------------------------------
         # REGRA: CHECKLIST PARA APROVAÇÃO
         # --------------------------------------------------
         pode_aprovar = all([
             relatos_ok,
             despesas_ok,
-            "res_verif_por" in relatorio_db,
+            indicadores_ok,
             "benef_verif_por" in relatorio_db,
-            "pesq_verif_por" in relatorio_db,
             "form_verif_por" in relatorio_db
         ])
 
