@@ -244,79 +244,79 @@ def calcular_status_atividade(atividade):
 
 
 
-def gerar_recibo_docx(
-    caminho_arquivo,
-    valor_parcela,
-    numero_parcela,
-    nome_projeto,
-    data_assinatura_contrato,
-    contatos,
-    nome_organizacao,
-    cnpj_organizacao
-):
-    """
-    Gera um arquivo DOCX de recibo com texto padrão do projeto.
-    """
+# def gerar_recibo_docx(
+#     caminho_arquivo,
+#     valor_parcela,
+#     numero_parcela,
+#     nome_projeto,
+#     data_assinatura_contrato,
+#     contatos,
+#     nome_organizacao,
+#     cnpj_organizacao
+# ):
+#     """
+#     Gera um arquivo DOCX de recibo com texto padrão do projeto.
+#     """
 
-    doc = Document()
+#     doc = Document()
 
-    # ============================
-    # TÍTULO
-    # ============================
-    titulo = doc.add_paragraph("Recibo")
-    titulo.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    titulo.runs[0].bold = True
-    titulo.runs[0].font.size = Pt(14)
+#     # ============================
+#     # TÍTULO
+#     # ============================
+#     titulo = doc.add_paragraph("Recibo")
+#     titulo.alignment = WD_ALIGN_PARAGRAPH.CENTER
+#     titulo.runs[0].bold = True
+#     titulo.runs[0].font.size = Pt(14)
 
-    doc.add_paragraph("")
+#     doc.add_paragraph("")
 
-    # ============================
-    # TEXTO PRINCIPAL
-    # ============================
-    valor_fmt = f"R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    valor_extenso = valor_por_extenso(valor_parcela)
-    ordinal = numero_ordinal_pt(numero_parcela)
+#     # ============================
+#     # TEXTO PRINCIPAL
+#     # ============================
+#     valor_fmt = f"R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+#     valor_extenso = valor_por_extenso(valor_parcela)
+#     ordinal = numero_ordinal_pt(numero_parcela)
 
-    data_assinatura = data_extenso_pt(data_assinatura_contrato)
-    data_hoje = data_extenso_pt(datetime.today())
+#     data_assinatura = data_extenso_pt(data_assinatura_contrato)
+#     data_hoje = data_extenso_pt(datetime.today())
 
-    texto = (
-        f"Recebi do Instituto Internacional de Educação do Brasil (IEB), "
-        f"a quantia de {valor_fmt} ({valor_extenso}), referente à {ordinal} "
-        f"parcela de Recursos destinados a apoiar o projeto titulado {nome_projeto}, "
-        f"sob o Mecanismo de Pequenos Apoios, conforme o contrato de subvenção nº "
-        f"IEB/CEPF/33-2025, assinado em {data_assinatura}, no âmbito do Fundo de "
-        f"Parceria para Ecossistemas Críticos - CEPF Cerrado.\n\n"
-        f"Brasília-DF, {data_hoje}"
-    )
+#     texto = (
+#         f"Recebi do Instituto Internacional de Educação do Brasil (IEB), "
+#         f"a quantia de {valor_fmt} ({valor_extenso}), referente à {ordinal} "
+#         f"parcela de Recursos destinados a apoiar o projeto titulado {nome_projeto}, "
+#         f"sob o Mecanismo de Pequenos Apoios, conforme o contrato de subvenção nº "
+#         f"IEB/CEPF/33-2025, assinado em {data_assinatura}, no âmbito do Fundo de "
+#         f"Parceria para Ecossistemas Críticos - CEPF Cerrado.\n\n"
+#         f"Brasília-DF, {data_hoje}"
+#     )
 
-    p = doc.add_paragraph(texto)
-    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+#     p = doc.add_paragraph(texto)
+#     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
 
-    doc.add_paragraph("\n")
+#     doc.add_paragraph("\n")
 
-    # ============================
-    # ASSINATURAS
-    # ============================
-    for contato in contatos:
+#     # ============================
+#     # ASSINATURAS
+#     # ============================
+#     for contato in contatos:
 
-        doc.add_paragraph("\n\n")
+#         doc.add_paragraph("\n\n")
 
-        linha = doc.add_paragraph("_" * 50)
-        linha.alignment = WD_ALIGN_PARAGRAPH.CENTER
+#         linha = doc.add_paragraph("_" * 50)
+#         linha.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-        nome_org = doc.add_paragraph(nome_organizacao)
-        nome_org.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        nome_org.runs[0].bold = True
+#         nome_org = doc.add_paragraph(nome_organizacao)
+#         nome_org.alignment = WD_ALIGN_PARAGRAPH.CENTER
+#         nome_org.runs[0].bold = True
 
-        doc.add_paragraph(f"CNPJ {cnpj_organizacao}").alignment = WD_ALIGN_PARAGRAPH.CENTER
-        doc.add_paragraph(contato.get("nome", "")).alignment = WD_ALIGN_PARAGRAPH.CENTER
-        doc.add_paragraph(contato.get("funcao", "")).alignment = WD_ALIGN_PARAGRAPH.CENTER
+#         doc.add_paragraph(f"CNPJ {cnpj_organizacao}").alignment = WD_ALIGN_PARAGRAPH.CENTER
+#         doc.add_paragraph(contato.get("nome", "")).alignment = WD_ALIGN_PARAGRAPH.CENTER
+#         doc.add_paragraph(contato.get("funcao", "")).alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-    # ============================
-    # SALVAR
-    # ============================
-    doc.save(caminho_arquivo)
+#     # ============================
+#     # SALVAR
+#     # ============================
+#     doc.save(caminho_arquivo)
 
 
 
@@ -1101,11 +1101,11 @@ def sidebar_projeto():
     st.sidebar.caption("Projeto: " + st.session_state.get("projeto_atual", "-"))
 
 
-    st.sidebar.divider()
+    # st.sidebar.divider()
 
-    if tipo_usuario == 'beneficiario':
+    # if tipo_usuario == 'beneficiario':
 
-        st.sidebar.caption("Em caso de dúvidas, sugestões ou comentários, entre em contato com cepfcerrado@iieb.org.br")
+    #     st.sidebar.caption("Em caso de dúvidas, sugestões ou comentários, entre em contato com cepfcerrado@iieb.org.br")
 
 
 ###########################################################################################################
