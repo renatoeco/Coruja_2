@@ -298,104 +298,120 @@ def recuperar_senha_dialog():
 
 def login():
 
-    # st.image("images/logo_ISPN_horizontal_ass.png", width=300)
-    
-    # Exibe o logo
-    container_logo = st.container(horizontal=True, horizontal_alignment="center")
-    container_logo.image("images/logo_fundo_ecos.png", width=300)
-
-    st.write('')
-    st.write('')
-    st.write('')
     st.write('')
     st.write('')
 
-    # CSS para centralizar e estilizar
-    st.markdown(
-        """
-        <h2 style='text-align: center; color: slategray; font-size: 3rem'>
-            CORUJA 2
-        </h2>
-        <p style='text-align: center; color: slategray; font-size: 1.5rem'>em desenvolvimento ...</p>
-        """,
-        unsafe_allow_html=True
-    )
 
-    # Pula 7 linhas
-    for _ in range(7):
+    esq, centro, dir = st.columns([10,1,7])
+
+    with esq:
+
+        st.image("images/ilustracao_login.jpeg", )
+
+    with dir:
+        
+        # CSS para centralizar e estilizar
+        st.markdown(
+            """
+            <h2 style='text-align: center; color: slategray; font-size: 3.5rem'>
+                CORUJA 2
+            </h2>
+            <p style='text-align: center; color: slategray; font-size: 1.5rem'>
+                Plataforma de Gestão de Projetos do Fundo Ecos
+            </p>
+            """,
+            unsafe_allow_html=True
+        )        
+
+
+        st.write('')
         st.write('')
 
-    esq, centro, dir = st.columns([2, 1, 2])
+        # Colunas para centralizar o forumlário de login
+        esp1, meio, esp2 = st.columns([1,3,1])
 
-    with centro.form("login_form", border=False):
-        # Campo de e-mail
-        email_input = st.text_input("E-mail", width="stretch")
+        with meio.form("login_form", border=False):
+            # Campo de e-mail
+            email_input = st.text_input("E-mail", width=300)
 
-        # Campo de senha
-        password = st.text_input("Senha", type="password", width="stretch")
+            # Campo de senha
+            password = st.text_input("Senha", type="password", width=300)
 
-        if st.form_submit_button("Entrar", type="primary"):
-            # Busca apenas pelo e-mail
-            usuario_encontrado = col_pessoas.find_one({
-                "e_mail": {"$regex": f"^{email_input.strip()}$", "$options": "i"}
-            })
+            if st.form_submit_button("Entrar", type="primary"):
+                # Busca apenas pelo e-mail
+                usuario_encontrado = col_pessoas.find_one({
+                    "e_mail": {"$regex": f"^{email_input.strip()}$", "$options": "i"}
+                })
 
-            # Salva o email para possível recuperação de senha
-            st.session_state["email_para_recuperar"] = email_input.strip()
+                # Salva o email para possível recuperação de senha
+                st.session_state["email_para_recuperar"] = email_input.strip()
 
-            if usuario_encontrado:
-                senha_hash = usuario_encontrado.get("senha")
+                if usuario_encontrado:
+                    senha_hash = usuario_encontrado.get("senha")
 
-                # Forma segura: só aceita hashes válidos (bytes)
-                if isinstance(senha_hash, bytes) and bcrypt.checkpw(password.encode("utf-8"), senha_hash):
-                    if usuario_encontrado.get("status", "").lower() != "ativo":
-                        with st.container(width="stretch"):
-                            st.error("Usuário inativo. Entre em contato com o a equipe do CEPF.")
+                    # Forma segura: só aceita hashes válidos (bytes)
+                    if isinstance(senha_hash, bytes) and bcrypt.checkpw(password.encode("utf-8"), senha_hash):
+                        if usuario_encontrado.get("status", "").lower() != "ativo":
+                            with st.container(width="stretch"):
+                                st.error("Usuário inativo. Entre em contato com o a equipe do CEPF.")
 
-                        st.stop()
+                            st.stop()
 
-                    # tipo_usuario = usuario_encontrado.get("tipo_usuario", [])
-                    tipo_usuario = usuario_encontrado.get("tipo_usuario", "")
+                        # tipo_usuario = usuario_encontrado.get("tipo_usuario", [])
+                        tipo_usuario = usuario_encontrado.get("tipo_usuario", "")
 
 
-                    # Autentica
-                    st.session_state["logged_in"] = True
-                    st.session_state["tipo_usuario"] = tipo_usuario
-                    st.session_state["nome"] = usuario_encontrado.get("nome_completo")
-                    st.session_state["id_usuario"] = usuario_encontrado.get("_id")
-                    st.session_state["projetos"] = usuario_encontrado.get("projetos", [])
-                    st.rerun()
+                        # Autentica
+                        st.session_state["logged_in"] = True
+                        st.session_state["tipo_usuario"] = tipo_usuario
+                        st.session_state["nome"] = usuario_encontrado.get("nome_completo")
+                        st.session_state["id_usuario"] = usuario_encontrado.get("_id")
+                        st.session_state["projetos"] = usuario_encontrado.get("projetos", [])
+                        st.rerun()
+                    else:
+                        # Senha inválida ou não hashada corretamente
+                        st.error("E-mail ou senha inválidos!", width=300)
                 else:
-                    # Senha inválida ou não hashada corretamente
                     st.error("E-mail ou senha inválidos!", width=300)
-            else:
-                st.error("E-mail ou senha inválidos!", width=300)
+
+            st.write('')
+            st.write('')
+
+        with meio.container(horizontal=True, horizontal_alignment="left", gap="large"):
+
+            # Botão para recuperar senha
+            st.button(
+                "Esqueci a senha", 
+                key="forgot_password", 
+                type="tertiary", 
+                on_click=recuperar_senha_dialog
+            )
+
+            
+
+            # Botão de primeiro acesso
+            st.button(
+                "Primeiro acesso", 
+                key="primeiro_acesso", 
+                type="tertiary", 
+                on_click=primeiro_acesso_dialog
+            )
+
+
+    # logos no rodapé
 
     st.write('')
     st.write('')
-
-    with centro.container(horizontal=True, horizontal_alignment="left", gap="large"):
-
-        # Botão para recuperar senha
-        st.button(
-            "Esqueci a senha", 
-            key="forgot_password", 
-            type="tertiary", 
-            on_click=recuperar_senha_dialog
-        )
-
-        
-
-        # Botão de primeiro acesso
-        st.button(
-            "Primeiro acesso", 
-            key="primeiro_acesso", 
-            type="tertiary", 
-            on_click=primeiro_acesso_dialog
-        )
+    st.write('')
+    st.write('')
 
 
+    col1, centro, col2 = st.columns([2,3,2])
 
+    # Exibe o logo
+    container_logo = centro.container(horizontal=True, horizontal_alignment="distribute")
+    container_logo.image("images/logo_fundo_ecos.png", width=200)
+    container_logo.image("images/logo_ISPN_2021.png", width=300)
 
 ##############################################################################################################
 # EXECUÇÃO PRINCIPAL: VERIFICA LOGIN E NAVEGA ENTRE PÁGINAS
@@ -490,7 +506,7 @@ else:
         "ben_selec_projeto": [
                 st.Page("ben_selec_projeto.py", title="Selecione o projeto", icon=":material/assignment:"),
             ],
-       
+
 
         "visitante": {
             "PROJETOS": [
