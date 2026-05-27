@@ -420,7 +420,11 @@ if not editar_cadastro:
     else:
         st.write(f"**Ponto focal:** {valor}")
 
-    # st.write(f"**Padrinho/Madrinha:** {df_projeto['padrinho'].values[0]}")
+
+
+
+    col1, col2, col3 = st.columns(3)
+
 
     # ---------- Linhas Temáticas ----------
 
@@ -434,7 +438,7 @@ if not editar_cadastro:
 
     if direcoes:
 
-        with st.popover("**Linhas temáticas**", type="tertiary"):
+        with col1.popover("**Linhas temáticas**", type="tertiary"):
 
             for item in direcoes:
 
@@ -460,9 +464,40 @@ if not editar_cadastro:
             unsafe_allow_html=True
         )
 
-    publicos = df_projeto['publicos'].values[0]
+
+    # Beneficiários
+
+
+    # ---------- BENEFICIÁRIOS ----------
+
+
+    if "publicos" in df_projeto.columns:
+
+        publicos = df_projeto["publicos"].values[0]
+
+    else:
+        publicos = None
+
+
     if publicos:
-        st.write("**Beneficiários:**", " / ".join(publicos))
+
+        with col2.popover("**Beneficiários**", type="tertiary"):
+
+            for publico in publicos:
+
+                st.write(f"**{publico}**")
+
+    else:
+        st.markdown(
+            "**Beneficiários:** <span style='color:#c46a00; font-style:italic;'>não cadastrados</span>",
+            unsafe_allow_html=True
+        )
+
+
+
+    # publicos = df_projeto['publicos'].values[0]
+    # if publicos:
+    #     st.write("**Beneficiários:**", " / ".join(publicos))
 
     st.divider()
 
