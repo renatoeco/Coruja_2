@@ -3,6 +3,7 @@ import pandas as pd
 import streamlit_antd_components as sac
 import time
 import datetime
+import bson
 from collections import defaultdict
 import uuid
 
@@ -3796,284 +3797,804 @@ if step_selecionado == "Despesas":
 
 
 # ==================================================
-# ---------- RESULTADOS ----------
+# ---------- INDICADORES ----------
 # ==================================================
-
-
 
 if step_selecionado == "Indicadores":
 
-    # Espaçamento visual
     st.write("")
     st.write("")
 
-    # Título da seção
     st.markdown("#### Indicadores de projeto")
     st.write("")
 
-    # # Recupera os componentes do plano de trabalho
-    # componentes = projeto.get("plano_trabalho", {}).get("componentes", [])
-
-    # # Lista auxiliar para armazenar todas as atividades,
-    # # independentemente do componente
-    # atividades = []
-
-    # # Percorre os componentes e coleta todas as atividades
-    # for componente in componentes:
-    #     for atividade in componente.get("atividades", []):
-    #         atividades.append(atividade)
-
-    # # Caso não existam atividades
-    # if not atividades:
-    #     st.info("Este projeto não possui atividades.")
-    # else:
-    #     # Loop por atividade
-    #     for idx_ent, atividade in enumerate(atividades):
-
-    #         # Título da atividade
-    #         st.markdown(f"##### {atividade.get('atividade')}")
-
-    #         # Lista de indicadores do projeto dentro da atividade
-    #         indicadores = atividade.get("indicadores_projeto", [])
-
-    #         # Caso a atividade não tenha indicadores
-    #         if not indicadores:
-    #             st.caption("Esta atividade não possui indicadores de projeto.")
-    #             continue
-
-    #         # Loop por indicador
-    #         for idx_ind, indicador in enumerate(indicadores):
-
-    #             # Container visual para cada indicador
-    #             with st.container(border=True):
-
-    #                 # Nome do indicador
-    #                 st.markdown(
-    #                     f"**Indicador:** {indicador.get('indicador_projeto')}"
-    #                 )
-
-    #                 # Unidade de medida
-    #                 st.markdown(
-    #                     f"**Unidade de medida:** {indicador.get('unidade_medida')}"
-    #                 )
-
-    #                 # Layout em colunas
-    #                 col1, col2, col3, col4 = st.columns([1, 1, 1, 3])
-
-    #                 # Linha base (somente leitura)
-    #                 col1.markdown(
-    #                     f"**Início do projeto:** {indicador.get('linha_base')}"
-    #                 )
-
-    #                 # Meta (somente leitura)
-    #                 col2.markdown(
-    #                     f"**Meta:** {indicador.get('meta')}"
-    #                 )
-
-    #                 # ======================================================
-    #                 # KEYS ISOLADAS
-    #                 # ======================================================
-
-    #                 key_resultado = (
-    #                     f"resultado_"
-    #                     f"{relatorio_numero}_"
-    #                     f"{atividade.get('id')}_"
-    #                     f"{idx_ind}"
-    #                 )
-
-    #                 key_obs = (
-    #                     f"obs_"
-    #                     f"{relatorio_numero}_"
-    #                     f"{atividade.get('id')}_"
-    #                     f"{idx_ind}"
-    #                 )
-
-    #                 key_save = (
-    #                     f"save_"
-    #                     f"{relatorio_numero}_"
-    #                     f"{atividade.get('id')}_"
-    #                     f"{idx_ind}"
-    #                 )
-
-    #                 # ======================================================
-    #                 # PRÉ-CARGA DO ESTADO (somente uma vez)
-    #                 # ======================================================
-
-    #                 # Resultado atual (float do banco → string pt-BR)
-    #                 if key_resultado not in st.session_state:
-    #                     valor_resultado = indicador.get("resultado_atual")
-
-    #                     if valor_resultado is None:
-    #                         st.session_state[key_resultado] = ""
-    #                     else:
-    #                         st.session_state[key_resultado] = (
-    #                             formatar_numero_br_dinamico(valor_resultado)
-    #                         )
-
-    #                 # Observações
-    #                 if key_obs not in st.session_state:
-    #                     valor_observacoes = indicador.get("observacoes_coleta")
-    #                     if valor_observacoes is None or valor_observacoes == "None":
-    #                         valor_observacoes = ""
-    #                     st.session_state[key_obs] = valor_observacoes
-
-    #                 # ======================================================
-    #                 # RENDERIZAÇÃO CONDICIONAL
-    #                 # ======================================================
-
-    #                 if pode_editar_relatorio:
-    #                     # Campo editável: resultado atual (texto, formato BR)
-    #                     resultado_atual_str = col3.text_input(
-    #                         "Resultado atual",
-    #                         key=key_resultado,
-    #                         # placeholder="Ex: 1.234,56"
-    #                     )
-
-    #                     # Campo editável: observações
-    #                     observacoes = col4.text_input(
-    #                         "Observações",
-    #                         key=key_obs
-    #                     )
-    #                 else:
-    #                     # Apenas exibição
-    #                     col3.write(
-    #                         f"**Resultado atual:** "
-    #                         f"{formatar_numero_br_dinamico(indicador.get('resultado_atual'))}"
-    #                     )
-
-    #                     valor_obs = st.session_state[key_obs]
-    #                     if not valor_obs:
-    #                         valor_obs = "-"
-
-    #                     col4.write(
-    #                         f"**Observações:** {valor_obs}"
-    #                     )
-
-    #                     resultado_atual_str = st.session_state[key_resultado]
-    #                     observacoes = st.session_state[key_obs]
-
-    #                 # ======================================================
-    #                 # BOTÃO SALVAR (sempre aparece quando pode editar)
-    #                 # ======================================================
-
-    #                 if pode_editar_relatorio:
-    #                     with st.container(horizontal=True, horizontal_alignment="right"):
-    #                         salvar = st.button(
-    #                             "Salvar",
-    #                             key=key_save,
-    #                             icon=":material/save:",
-    #                             width=200,
-    #                             type="primary"
-    #                         )
-    #                 else:
-    #                     salvar = False
-
-    #                 # ======================================================
-    #                 # Mostra data da última coleta, se existir
-    #                 # ======================================================
-
-
-
-    #                 data_coleta = indicador.get("data_coleta")
-
-    #                 if data_coleta:
-
-    #                     with st.container(horizontal=True, horizontal_alignment="right"):
-
-    #                         if isinstance(data_coleta, datetime.datetime):
-
-    #                             # 🔥 CORREÇÃO IMPORTANTE
-    #                             if data_coleta.tzinfo is None:
-    #                                 data_coleta = data_coleta.replace(
-    #                                     tzinfo=datetime.timezone.utc
-    #                                 )
-
-    #                             data_local = data_coleta.astimezone(
-    #                                 ZoneInfo("America/Sao_Paulo")
-    #                             )
-
-    #                             data_str = data_local.strftime("%d/%m/%Y %H:%M")
-
-    #                         else:
-    #                             data_str = str(data_coleta)
-
-    #                         st.caption(f"Último registro em {data_str}")
-
-
-
-    #                 # ======================================================
-    #                 # AÇÃO DE SALVAMENTO
-    #                 # ======================================================
-
-    #                 if salvar:
-    #                     # Converte string pt-BR para float
-    #                     resultado_float = parse_numero_br(resultado_atual_str)
-
-    #                     if resultado_float is None:
-    #                         st.error(
-    #                             "Resultado atual inválido. "
-    #                             "Use o formato brasileiro, por exemplo: 1.234,56"
-    #                         )
-    #                         st.stop()
-
-
-
-    #                     data_coleta = datetime.datetime.now(datetime.timezone.utc)
-    #                     # data_coleta = datetime.datetime.now()
-
-    #                     observacoes_salvar = observacoes
-    #                     if observacoes_salvar is None or observacoes_salvar == "None":
-    #                         observacoes_salvar = ""
-
-    #                     # Atualiza no MongoDB
-    #                     col_projetos.update_one(
-    #                         {
-    #                             "codigo": projeto_codigo
-    #                         },
-    #                         {
-    #                             "$set": {
-    #                                 "plano_trabalho.componentes.$[c].atividades.$[e].indicadores_projeto.$[i].resultado_atual": resultado_float,
-    #                                 "plano_trabalho.componentes.$[c].atividades.$[e].indicadores_projeto.$[i].observacoes_coleta": observacoes_salvar,
-    #                                 "plano_trabalho.componentes.$[c].atividades.$[e].indicadores_projeto.$[i].data_coleta": data_coleta
-    #                             }
-    #                         },
-    #                         array_filters=[
-    #                             {"c.atividades.id": atividade.get("id")},
-    #                             {"e.id": atividade.get("id")},
-    #                             {"i.indicador_projeto": indicador.get("indicador_projeto")}
-    #                         ]
-    #                     )
-
-    #                     # Atualiza o objeto em memória
-    #                     indicador["resultado_atual"] = resultado_float
-    #                     indicador["observacoes_coleta"] = observacoes_salvar
-    #                     indicador["data_coleta"] = data_coleta
-
-    #                     st.success("Indicador salvo com sucesso.", icon=":material/check:")
-    #                     time.sleep(3)
-    #                     st.rerun()
-
-    #             # Espaçamento entre indicadores
-    #             st.write("")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    # --------------------------------------------------
+    # PERFIS
+    # --------------------------------------------------
+    usuario_admin = tipo_usuario == "admin"
+    usuario_equipe = tipo_usuario == "equipe"
+    usuario_beneficiario = tipo_usuario == "beneficiario"
+
+    # --------------------------------------------------
+    # MAPA DE INDICADORES DO EDITAL
+    # --------------------------------------------------
+    mapa_indicadores = {
+        item["_id"]: item["indicador"]
+        for item in edital.get("indicadores", [])
+    }
+
+    indicadores = projeto.get("indicadores", [])
+
+    # --------------------------------------------------
+    # MIGRAÇÃO AUTOMÁTICA DA ESTRUTURA ANTIGA
+    # --------------------------------------------------
+    precisa_migrar = False
+
+    for indicador in indicadores:
+
+        if "lancamentos" not in indicador:
+            indicador["lancamentos"] = []
+
+        tem_estrutura_antiga = any(
+            campo in indicador
+            for campo in [
+                "resultado_final",
+                "observacoes",
+                "data_coleta"
+            ]
+        )
+
+        if tem_estrutura_antiga:
+
+            resultado_antigo = indicador.get("resultado_final")
+            observacoes_antigas = indicador.get("observacoes")
+
+            if observacoes_antigas in [None, "None"]:
+                observacoes_antigas = ""
+            data_antiga = indicador.get("data_coleta")
+
+            # Só cria lançamento se realmente existia dado preenchido
+            if (
+                resultado_antigo is not None
+                or observacoes_antigas not in [None, "", "None"]
+            ):
+                indicador["lancamentos"].append({
+                    "id_lanc_indicador": str(bson.ObjectId()),
+                    "relatorio_numero": relatorio_numero,
+                    "resultado_atual": resultado_antigo or 0,
+                    "observacoes": observacoes_antigas or "",
+                    "status_indicador": "aberto",
+                    "devolutiva": "",
+                    "status_aprovacao": "",
+                    "data_coleta": (
+                        data_antiga
+                        if data_antiga
+                        else datetime.datetime.now(datetime.timezone.utc)
+                    )
+                })
+
+            indicador.pop("resultado_final", None)
+            indicador.pop("observacoes", None)
+            indicador.pop("data_coleta", None)
+
+            precisa_migrar = True
+
+    if precisa_migrar:
+        col_projetos.update_one(
+            {"codigo": projeto["codigo"]},
+            {
+                "$set": {
+                    "indicadores": indicadores
+                }
+            }
+        )
+
+        st.success(
+            "Estrutura dos indicadores atualizada automaticamente.",
+            icon=":material/check:"
+        )
+
+        time.sleep(2)
+        st.rerun()
+
+    # --------------------------------------------------
+    # SEM INDICADORES
+    # --------------------------------------------------
+    if not indicadores:
+        st.caption("Nenhum indicador cadastrado neste projeto.")
+        st.stop()
+
+    # --------------------------------------------------
+    # SESSION STATE DE EDIÇÃO
+    # --------------------------------------------------
+    if "indicador_editando_id" not in st.session_state:
+        st.session_state["indicador_editando_id"] = None
+
+    # --------------------------------------------------
+    # HELPERS
+    # --------------------------------------------------
+    def linha(label, valor):
+        c1, c2 = st.columns([1, 3])
+        c1.write(f"**{label}:**")
+        c2.write(valor if valor not in [None, ""] else "-")
+
+
+    def badge_status(status_db, tem_devolutiva):
+        if status_db == "aberto" and tem_devolutiva:
+            return {
+                "label": "Pendente",
+                "bg": "#F8D7DA",
+                "color": "#721C24"
+            }
+
+        elif status_db == "aberto":
+            return {
+                "label": "Aberto",
+                "bg": "#FFF3CD",
+                "color": "#856404"
+            }
+
+        elif status_db == "aceito":
+            return {
+                "label": "Aceito",
+                "bg": "#D4EDDA",
+                "color": "#155724"
+            }
+
+        else:
+            return {
+                "label": "Em análise",
+                "bg": "#D1ECF1",
+                "color": "#0C5460"
+            }
+
+
+    def salvar_indicadores():
+        col_projetos.update_one(
+            {"codigo": projeto["codigo"]},
+            {
+                "$set": {
+                    "indicadores": projeto["indicadores"]
+                }
+            }
+        )
+
+    # --------------------------------------------------
+    # LOOP
+    # --------------------------------------------------
+    for indicador in indicadores:
+
+        id_indicador = indicador.get("id_indicador")
+
+        nome_indicador = mapa_indicadores.get(
+            id_indicador,
+            "Indicador não encontrado"
+        )
+
+        # ----------------------------------------------
+        # UM LANÇAMENTO POR RELATÓRIO
+        # ----------------------------------------------
+        lanc = None
+
+        for item in indicador.get("lancamentos", []):
+            if item.get("relatorio_numero") == relatorio_numero:
+                lanc = item
+                break
+
+        # ----------------------------------------------
+        # CRIAÇÃO AUTOMÁTICA DO FORMULÁRIO
+        # (beneficiário em modo edição sem lançamento)
+        # ----------------------------------------------
+        criar_novo = (
+            usuario_beneficiario
+            and status_atual_db == "modo_edicao"
+            and lanc is None
+        )
+
+        # ----------------------------------------------
+        # CONTROLE DE EDIÇÃO INLINE
+        # ----------------------------------------------
+        editando = (
+            st.session_state["indicador_editando_id"] == id_indicador
+        )
+
+        with st.container(border=True):
+
+            # ==================================================
+            # STATUS / BADGE
+            # ==================================================
+            status_indicador_db = lanc.get(
+                "status_indicador",
+                "em_analise"
+            )
+
+            tem_devolutiva = bool(lanc.get("devolutiva"))
+
+            badge = badge_status(
+                status_indicador_db,
+                tem_devolutiva
+            )
+
+            if (
+                status_atual_db == "em_analise"
+                and status_indicador_db == "aberto"
+                and not tem_devolutiva
+                and (usuario_admin or usuario_equipe)
+            ):
+                badge = {
+                    "label": "Em análise",
+                    "bg": "#D1ECF1",
+                    "color": "#0C5460"
+                }
+
+            with st.container(
+                horizontal=True,
+                horizontal_alignment="right"
+            ):
+                st.markdown(
+                    f"""
+                    <div>
+                        <span style="
+                            background:{badge['bg']};
+                            color:{badge['color']};
+                            padding:4px 10px;
+                            border-radius:20px;
+                            font-size:12px;
+                            font-weight:600;
+                        ">
+                            {badge['label']}
+                        </span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+                
+            st.write("")
+
+            st.markdown(
+                f"**Indicador:** {nome_indicador}"
+            )
+
+            st.markdown(
+                f"**Descrição da contribuição:** "
+                f"{indicador.get('descricao_contribuicao', '-')}"
+            )
+
+            col_a, col_b, col_c = st.columns(3)
+
+            with col_a:
+                st.markdown(
+                    f"**Início do projeto:** "
+                    f"{formatar_numero_br_dinamico(
+                        indicador.get("marco_zero")
+                    )}"
+                )
+
+            with col_b:
+                st.markdown(
+                    f"**Meta:** "
+                    f"{formatar_numero_br_dinamico(indicador.get('valor'))}"
+                )
+                
+            # ==================================================
+            # CRIAÇÃO AUTOMÁTICA DE NOVO LANÇAMENTO
+            # ==================================================
+            if criar_novo:
+
+                st.markdown("##### Registrar resultado")
+
+                key_resultado_novo = (
+                    f"novo_resultado_{id_indicador}_{relatorio_numero}"
+                )
+
+                key_obs_novo = (
+                    f"novo_obs_{id_indicador}_{relatorio_numero}"
+                )
+
+                resultado_novo = st.text_input(
+                    "Resultado atual *",
+                    key=key_resultado_novo
+                )
+
+                observacoes_novo = st.text_area(
+                    "Observações",
+                    key=key_obs_novo
+                )
+
+                with st.container(
+                    horizontal=True,
+                    horizontal_alignment="right"
+                ):
+                    if st.button(
+                        "Salvar",
+                        key=f"btn_save_novo_ind_{id_indicador}",
+                        type="primary",
+                        icon=":material/save:"
+                    ):
+
+                        resultado_float = parse_numero_br(resultado_novo)
+
+                        if resultado_float is None:
+                            st.warning(
+                                "Resultado atual inválido. "
+                                "Use o formato brasileiro, ex: 1.234,56"
+                            )
+                            st.stop()
+
+                        novo_lanc = {
+                            "id_lanc_indicador": str(bson.ObjectId()),
+                            "relatorio_numero": relatorio_numero,
+                            "resultado_atual": resultado_float,
+                            "observacoes": observacoes_novo or "",
+                            "status_indicador": "aberto",
+                            "devolutiva": "",
+                            "status_aprovacao": "",
+                            "data_coleta": datetime.datetime.now(
+                                datetime.timezone.utc
+                            )
+                        }
+
+                        indicador.setdefault("lancamentos", []).append(
+                            novo_lanc
+                        )
+
+                        salvar_indicadores()
+
+                        st.success(
+                            "Indicador registrado com sucesso.",
+                            icon=":material/check:"
+                        )
+
+                        time.sleep(2)
+                        st.rerun()
+
+                st.write("")
+                continue
+
+            # ==================================================
+            # SEM LANÇAMENTO E SEM PERMISSÃO
+            # ==================================================
+            if lanc is None:
+                st.caption(
+                    "Nenhum lançamento registrado para este relatório."
+                )
+                st.write("")
+                continue
+
+        
+            # ==================================================
+            # PERMISSÕES
+            # ==================================================
+            pode_editar_indicador = (
+                usuario_beneficiario
+                and status_atual_db == "modo_edicao"
+                and status_indicador_db == "aberto"
+            )
+
+            pode_avaliar_indicador = (
+                (usuario_admin or usuario_equipe)
+                and status_atual_db == "em_analise"
+            )
+
+            # ==================================================
+            # VISUALIZAÇÃO
+            # ==================================================
+            if not editando:
+
+                with col_c:
+                    st.markdown(
+                        f"**Resultado atual:** "
+                        f"{formatar_numero_br_dinamico(lanc.get('resultado_atual'))}"
+                    )
+
+                obs = lanc.get("observacoes")
+
+                if obs not in [None, "", "None"]:
+                    st.markdown(
+                        f"**Observações:** "
+                        f"{obs}"
+                    )
+
+                # ----------------------------------------------
+                # DATA COLETA
+                # ----------------------------------------------
+                data_str = None
+                data_coleta = lanc.get("data_coleta")
+
+                if data_coleta:
+
+                    if isinstance(data_coleta, datetime.datetime):
+
+                        if data_coleta.tzinfo is None:
+                            data_coleta = data_coleta.replace(
+                                tzinfo=datetime.timezone.utc
+                            )
+
+                        data_local = data_coleta.astimezone(
+                            ZoneInfo("America/Sao_Paulo")
+                        )
+
+                        data_str = data_local.strftime(
+                            "%d/%m/%Y %H:%M"
+                        )
+
+                    else:
+                        data_str = str(data_coleta)
+
+
+                # ----------------------------------------------
+                # RODAPÉ (DATA + EDITAR)
+                # ----------------------------------------------
+                if data_str or pode_editar_indicador:
+                    
+                    with st.container(
+                        horizontal=True,
+                        horizontal_alignment="distribute",
+                        vertical_alignment="center"
+                    ):
+
+                        if data_str:
+                            st.caption(
+                                f"Último registro em {data_str}"
+                            )
+                        else:
+                            st.write("")
+
+                        if pode_editar_indicador:
+                            if st.button(
+                                "Editar",
+                                key=f"btn_edit_ind_{id_indicador}",
+                                icon=":material/edit:",
+                                type="tertiary"
+                            ):
+                                st.session_state[
+                                    "indicador_editando_id"
+                                ] = id_indicador
+                                st.rerun()
+
+                # ----------------------------------------------
+                # DEVOLUTIVA
+                # ----------------------------------------------
+                devolutiva = lanc.get("devolutiva")
+                mostrar_devolutiva = False
+
+                if status_indicador_db == "aceito":
+                    mostrar_devolutiva = False
+
+                elif status_atual_db == "modo_edicao":
+                    mostrar_devolutiva = bool(devolutiva)
+
+                elif status_atual_db == "em_analise":
+
+                    if (
+                        tipo_usuario in ["admin", "equipe"]
+                        and status_indicador_db == "aberto"
+                    ):
+                        mostrar_devolutiva = False
+                    else:
+                        mostrar_devolutiva = bool(devolutiva)
+
+                else:
+                    mostrar_devolutiva = bool(devolutiva)
+
+                if mostrar_devolutiva and devolutiva:
+
+                    texto = devolutiva.replace(
+                        "\n",
+                        "<br>"
+                    )
+
+                    st.markdown(
+                        f"""
+                        <blockquote style="
+                            color: #000000;
+                            opacity: 0.9;
+                            border-left: 4px solid #F8D7DA;
+                            padding-left: 12px;
+                            margin-left: 0;
+                        ">
+                        <strong>Ajuste necessário:</strong><br>
+                        {texto}
+                        </blockquote>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
+                # ----------------------------------------------
+                # AUDITORIA
+                # ----------------------------------------------
+                status_aprovacao = lanc.get("status_aprovacao")
+
+                if status_aprovacao:
+                    st.markdown(
+                        f"""
+                        <div style="
+                            text-align: right;
+                            color: rgba(0,0,0,0.55);
+                            font-size: 0.8rem;
+                            margin-top: 4px;
+                        ">
+                            {status_aprovacao}
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
+                # ----------------------------------------------
+                # BOTÃO EDITAR
+                # ----------------------------------------------
+                # if pode_editar_indicador:
+
+                #     with st.container(
+                #         horizontal=True,
+                #         horizontal_alignment="right"
+                #     ):
+                #         if st.button(
+                #             "Editar",
+                #             key=f"btn_edit_ind_{id_indicador}",
+                #             icon=":material/edit:",
+                #             type="tertiary"
+                #         ):
+                #             st.session_state[
+                #                 "indicador_editando_id"
+                #             ] = id_indicador
+                #             st.rerun()
+        
+            # ==================================================
+            # EDIÇÃO INLINE
+            # ==================================================
+            if editando:
+
+                #st.markdown("##### Editando lançamento")
+
+                key_edit_resultado = (
+                    f"edit_resultado_{id_indicador}_{relatorio_numero}"
+                )
+
+                key_edit_obs = (
+                    f"edit_obs_{id_indicador}_{relatorio_numero}"
+                )
+
+                resultado_padrao = float(
+                    lanc.get("resultado_atual", 0) or 0
+                )
+                
+                col1, col2 = st.columns([1,3])
+
+                resultado_edit = col1.number_input(
+                    "Resultado atual *",
+                    min_value=0.0,
+                    value=resultado_padrao,
+                    step=1.0,
+                    key=key_edit_resultado
+                )
+
+                observacoes_edit = col2.text_area(
+                    "Observações",
+                    value=lanc.get("observacoes", ""),
+                    key=key_edit_obs
+                )
+                
+                st.write("")
+
+                with st.container(horizontal=True):
+
+                    if st.button(
+                        "Cancelar",
+                        key=f"btn_cancel_ind_{id_indicador}"
+                    ):
+                        st.session_state[
+                            "indicador_editando_id"
+                        ] = None
+                        st.rerun()
+
+                    if st.button(
+                        "Salvar alterações",
+                        key=f"btn_save_edit_ind_{id_indicador}",
+                        type="primary",
+                        icon=":material/save:"
+                    ):
+
+                        resultado_float = float(resultado_edit)
+
+                        lanc["resultado_atual"] = resultado_float
+                        lanc["observacoes"] = observacoes_edit or ""
+                        lanc["data_coleta"] = datetime.datetime.now(
+                            datetime.timezone.utc
+                        )
+
+                        salvar_indicadores()
+
+                        st.session_state[
+                            "indicador_editando_id"
+                        ] = None
+
+                        st.success(
+                            "Indicador atualizado com sucesso.",
+                            icon=":material/check:"
+                        )
+
+                        time.sleep(2)
+                        st.rerun()
+
+            # ==================================================
+            # AVALIAÇÃO
+            # ==================================================
+            if pode_avaliar_indicador:
+
+                STATUS_IND_LABEL = {
+                    "em_analise": "Em análise",
+                    "aberto": "Devolver",
+                    "aceito": "Aceito"
+                }
+
+                STATUS_IND_LABEL_INV = {
+                    v: k for k, v in STATUS_IND_LABEL.items()
+                }
+
+                status_label = STATUS_IND_LABEL.get(
+                    status_indicador_db,
+                    "Em análise"
+                )
+
+                status_key = (
+                    f"status_indicador_ui_{id_indicador}"
+                )
+
+                devolutiva_key = (
+                    f"devolutiva_indicador_{id_indicador}"
+                )
+
+                # ----------------------------------------------
+                # aberto sem devolutiva = visualmente em análise
+                # ----------------------------------------------
+                if (
+                    status_indicador_db == "aberto"
+                    and not lanc.get("devolutiva")
+                ):
+                    status_label = "Em análise"
+
+                if status_key not in st.session_state:
+                    st.session_state[status_key] = status_label
+
+                # ----------------------------------------------
+                # segmented control
+                # ----------------------------------------------
+                with st.container(
+                    horizontal=True,
+                    horizontal_alignment="right"
+                ):
+                    novo_status_label = st.segmented_control(
+                        label="novo_status_indicador",
+                        label_visibility="collapsed",
+                        options=[
+                            "Em análise",
+                            "Devolver",
+                            "Aceito"
+                        ],
+                        key=status_key
+                    )
+
+                novo_status_db = STATUS_IND_LABEL_INV.get(
+                    novo_status_label
+                )
+
+                # ----------------------------------------------
+                # DEVOLVER
+                # ----------------------------------------------
+                if novo_status_label == "Devolver":
+
+                    if devolutiva_key not in st.session_state:
+                        st.session_state[devolutiva_key] = (
+                            lanc.get("devolutiva", "")
+                        )
+
+                    st.text_area(
+                        "**Devolutiva:**",
+                        key=devolutiva_key,
+                        placeholder=(
+                            "Explique o que precisa ser "
+                            "ajustado neste indicador..."
+                        )
+                    )
+
+                    tem_devolutiva = bool(
+                        st.session_state.get(
+                            devolutiva_key,
+                            ""
+                        ).strip()
+                    )
+
+                    label_botao = (
+                        "Atualizar"
+                        if tem_devolutiva
+                        else "Salvar devolutiva"
+                    )
+
+                    with st.container(horizontal=True):
+
+                        if st.button(
+                            label_botao,
+                            key=f"btn_save_dev_ind_{id_indicador}",
+                            type="primary",
+                            icon=":material/save:"
+                        ):
+
+                            nome = st.session_state.get(
+                                "nome",
+                                "Usuário"
+                            )
+
+                            data = data_hoje_br()
+
+                            lanc["status_indicador"] = "aberto"
+                            lanc["devolutiva"] = (
+                                st.session_state.get(
+                                    devolutiva_key,
+                                    ""
+                                )
+                            )
+
+                            lanc["status_aprovacao"] = (
+                                f"Devolvido por {nome} em {data}"
+                            )
+
+                            salvar_indicadores()
+
+                            st.session_state.pop(
+                                status_key,
+                                None
+                            )
+
+                            st.session_state.pop(
+                                devolutiva_key,
+                                None
+                            )
+
+                            st.success(
+                                "Devolutiva salva.",
+                                icon=":material/check:"
+                            )
+
+                            time.sleep(2)
+                            st.rerun()
+
+                # ----------------------------------------------
+                # EM ANÁLISE / ACEITO
+                # ----------------------------------------------
+                elif novo_status_db != status_indicador_db:
+
+                    nome = st.session_state.get(
+                        "nome",
+                        "Usuário"
+                    )
+
+                    data = data_hoje_br()
+
+                    lanc["status_indicador"] = novo_status_db
+
+                    if novo_status_db == "aceito":
+                        lanc.pop("devolutiva", None)
+                        lanc["status_aprovacao"] = (
+                            f"Verificado por {nome} em {data}"
+                        )
+
+                    elif novo_status_db == "em_analise":
+                        lanc.pop("status_aprovacao", None)
+
+                    salvar_indicadores()
+
+                    st.session_state.pop(status_key, None)
+
+                    st.success(
+                        "Status atualizado.",
+                        icon=":material/check:"
+                    )
+
+                    time.sleep(2)
+                    st.rerun()
+
+        st.write("")
 
 
 # ---------- BENEFÍCIOS ----------
