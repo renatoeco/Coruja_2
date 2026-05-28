@@ -454,7 +454,11 @@ def dialog_editar_localidades():
             return
 
         nomes_localidades = sorted(
-            [l["nome_localidade"] for l in localidades_cadastradas],
+            [
+                l.get("nome_localidade", "")
+                for l in localidades_cadastradas
+                if l.get("nome_localidade")
+            ],
             key=lambda x: x.lower()
         )
 
