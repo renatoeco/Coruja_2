@@ -1056,195 +1056,195 @@ def calcular_gasto(item):
 
 
 
-def gerar_recibo_docx(
-    caminho_arquivo,
-    valor_parcela,
-    numero_parcela,
-    nome_projeto,
-    data_assinatura_contrato,
-    contatos,
-    nome_organizacao,
-    cnpj_organizacao,
-    contrato_nome,
-    nome_investidor  # NOVO PARÂMETRO
-):
+# def gerar_recibo_docx(
+#     caminho_arquivo,
+#     valor_parcela,
+#     numero_parcela,
+#     nome_projeto,
+#     data_assinatura_contrato,
+#     contatos,
+#     nome_organizacao,
+#     cnpj_organizacao,
+#     contrato_nome,
+#     nome_investidor  # NOVO PARÂMETRO
+# ):
 
-    """
-    Gera um arquivo DOCX de recibo com texto padrão do projeto.
-    """
-
-
-    # ============================
-    # VALIDAÇÃO DE CAMPOS OBRIGATÓRIOS
-    # ============================
-
-    campos_obrigatorios = {
-        "Nome/número do contrato": contrato_nome,
-        "Data de assinatura do contrato": data_assinatura_contrato,
-        "Nome do projeto": nome_projeto,
-        "Valor da parcela": valor_parcela,
-        "Número da parcela": numero_parcela,
-        "Organização": nome_organizacao,
-        "CNPJ da organização": cnpj_organizacao,
-        "Contatos para assinatura": contatos,
-        "Investidor": nome_investidor,
-
-    }
-
-    campos_faltando = []
-
-    for nome, valor in campos_obrigatorios.items():
-        if valor is None:
-            campos_faltando.append(nome)
-        elif isinstance(valor, str) and not valor.strip():
-            campos_faltando.append(nome)
-        elif isinstance(valor, list) and len(valor) == 0:
-            campos_faltando.append(nome)
-
-    if campos_faltando:
-        st.error(
-            "Não foi possível gerar o recibo. "
-            "Os seguintes campos estão faltando:\n\n"
-            + "\n".join([f"- {c}" for c in campos_faltando]),
-            icon=":material/error:"
-        )
-        return False
+#     """
+#     Gera um arquivo DOCX de recibo com texto padrão do projeto.
+#     """
 
 
-    doc = Document()
+#     # ============================
+#     # VALIDAÇÃO DE CAMPOS OBRIGATÓRIOS
+#     # ============================
 
-    # ============================
-    # TÍTULO
-    # ============================
-    titulo = doc.add_paragraph("Recibo")
-    titulo.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    titulo.runs[0].bold = True
-    titulo.runs[0].font.size = Pt(14)
+#     campos_obrigatorios = {
+#         "Nome/número do contrato": contrato_nome,
+#         "Data de assinatura do contrato": data_assinatura_contrato,
+#         "Nome do projeto": nome_projeto,
+#         "Valor da parcela": valor_parcela,
+#         "Número da parcela": numero_parcela,
+#         "Organização": nome_organizacao,
+#         "CNPJ da organização": cnpj_organizacao,
+#         "Contatos para assinatura": contatos,
+#         "Investidor": nome_investidor,
 
-    doc.add_paragraph("")
-    doc.add_paragraph("")
-    doc.add_paragraph("")
+#     }
 
-    # ============================
-    # TEXTO PRINCIPAL
-    # ============================
-    valor_fmt = f"R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    valor_extenso = valor_por_extenso(valor_parcela)
-    ordinal = numero_ordinal_pt(numero_parcela)
+#     campos_faltando = []
 
-    data_assinatura = data_extenso_pt(data_assinatura_contrato)
+#     for nome, valor in campos_obrigatorios.items():
+#         if valor is None:
+#             campos_faltando.append(nome)
+#         elif isinstance(valor, str) and not valor.strip():
+#             campos_faltando.append(nome)
+#         elif isinstance(valor, list) and len(valor) == 0:
+#             campos_faltando.append(nome)
 
-    data_hoje = data_extenso_pt(datetime.datetime.today())
-
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    p.paragraph_format.line_spacing = 2.3
-    p.paragraph_format.space_after = Pt(12)
-
-    p.add_run(
-        "Recebi do Instituto Internacional de Educação do Brasil (IEB), "
-        "a quantia de "
-    )
-
-    r = p.add_run(f"{valor_fmt} ({valor_extenso})")
-    r.bold = True
-
-    p.add_run(
-        ", referente à "
-        f"{ordinal} parcela de Recursos destinados a apoiar o projeto titulado "
-    )
-
-    r = p.add_run(nome_projeto)
-    r.bold = True
-    r.italic = True
-
-    p.add_run(
-        ", sob o Mecanismo de Pequenos Apoios, conforme o contrato de subvenção nº "
-    )
-
-    r = p.add_run(contrato_nome)
-    r.bold = True
-    r.italic = True
+#     if campos_faltando:
+#         st.error(
+#             "Não foi possível gerar o recibo. "
+#             "Os seguintes campos estão faltando:\n\n"
+#             + "\n".join([f"- {c}" for c in campos_faltando]),
+#             icon=":material/error:"
+#         )
+#         return False
 
 
-    p.add_run(
-        f", assinado em {data_assinatura}, no âmbito do "
-    )
+#     doc = Document()
 
-    r = p.add_run(nome_investidor)
-    r.bold = True
+#     # ============================
+#     # TÍTULO
+#     # ============================
+#     titulo = doc.add_paragraph("Recibo")
+#     titulo.alignment = WD_ALIGN_PARAGRAPH.CENTER
+#     titulo.runs[0].bold = True
+#     titulo.runs[0].font.size = Pt(14)
 
-    p.add_run(
-        ".\n\n"
-        f"Brasília-DF, {data_hoje}"
-    )
+#     doc.add_paragraph("")
+#     doc.add_paragraph("")
+#     doc.add_paragraph("")
 
-    # Ajusta o tamanho da fonte do parágrafo
-    for run in p.runs:
-        run.font.size = Pt(12.5)
+#     # ============================
+#     # TEXTO PRINCIPAL
+#     # ============================
+#     valor_fmt = f"R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+#     valor_extenso = valor_por_extenso(valor_parcela)
+#     ordinal = numero_ordinal_pt(numero_parcela)
+
+#     data_assinatura = data_extenso_pt(data_assinatura_contrato)
+
+#     data_hoje = data_extenso_pt(datetime.datetime.today())
+
+#     p = doc.add_paragraph()
+#     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+#     p.paragraph_format.line_spacing = 2.3
+#     p.paragraph_format.space_after = Pt(12)
+
+#     p.add_run(
+#         "Recebi do Instituto Internacional de Educação do Brasil (IEB), "
+#         "a quantia de "
+#     )
+
+#     r = p.add_run(f"{valor_fmt} ({valor_extenso})")
+#     r.bold = True
+
+#     p.add_run(
+#         ", referente à "
+#         f"{ordinal} parcela de Recursos destinados a apoiar o projeto titulado "
+#     )
+
+#     r = p.add_run(nome_projeto)
+#     r.bold = True
+#     r.italic = True
+
+#     p.add_run(
+#         ", sob o Mecanismo de Pequenos Apoios, conforme o contrato de subvenção nº "
+#     )
+
+#     r = p.add_run(contrato_nome)
+#     r.bold = True
+#     r.italic = True
 
 
+#     p.add_run(
+#         f", assinado em {data_assinatura}, no âmbito do "
+#     )
 
-    # ============================
-    # ASSINATURAS
-    # ============================
+#     r = p.add_run(nome_investidor)
+#     r.bold = True
 
-    def add_assinatura_centralizada(doc, texto, bold=False):
-        p = doc.add_paragraph(texto)
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p.paragraph_format.space_before = Pt(0)
-        p.paragraph_format.space_after = Pt(0)
-        p.paragraph_format.line_spacing = 1.3
-        if bold:
-            p.runs[0].bold = True
-        return p  # retorna para ajuste de fonte depois
+#     p.add_run(
+#         ".\n\n"
+#         f"Brasília-DF, {data_hoje}"
+#     )
 
-
-    for contato in contatos:
-
-        # Espaço ANTES do bloco
-        p = doc.add_paragraph("")
-        p.paragraph_format.space_after = Pt(18)
-
-        # Linha de assinatura
-        p = add_assinatura_centralizada(doc, "_" * 65)
-
-        # Organização
-        p = add_assinatura_centralizada(doc, nome_organizacao, bold=True)
-
-        # CNPJ
-        p = add_assinatura_centralizada(doc, f"CNPJ {cnpj_organizacao}", bold=True)
-
-        # Nome
-        p = add_assinatura_centralizada(doc, contato.get("nome", ""))
-
-        # Função
-        p = add_assinatura_centralizada(doc, contato.get("funcao", ""))
-
-        # Parágrafo vazio entre assinaturas
-        p = doc.add_paragraph("")
-
-        # Ajuste de fonte do último parágrafo criado
-        for run in p.runs:
-            run.font.size = Pt(12.5)
+#     # Ajusta o tamanho da fonte do parágrafo
+#     for run in p.runs:
+#         run.font.size = Pt(12.5)
 
 
 
-    # ============================
-    # SALVAR
-    # ============================
+#     # ============================
+#     # ASSINATURAS
+#     # ============================
 
-    os.makedirs(os.path.dirname(caminho_arquivo), exist_ok=True)
+#     def add_assinatura_centralizada(doc, texto, bold=False):
+#         p = doc.add_paragraph(texto)
+#         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+#         p.paragraph_format.space_before = Pt(0)
+#         p.paragraph_format.space_after = Pt(0)
+#         p.paragraph_format.line_spacing = 1.3
+#         if bold:
+#             p.runs[0].bold = True
+#         return p  # retorna para ajuste de fonte depois
 
-    doc.save(caminho_arquivo)
-    return True
+
+#     for contato in contatos:
+
+#         # Espaço ANTES do bloco
+#         p = doc.add_paragraph("")
+#         p.paragraph_format.space_after = Pt(18)
+
+#         # Linha de assinatura
+#         p = add_assinatura_centralizada(doc, "_" * 65)
+
+#         # Organização
+#         p = add_assinatura_centralizada(doc, nome_organizacao, bold=True)
+
+#         # CNPJ
+#         p = add_assinatura_centralizada(doc, f"CNPJ {cnpj_organizacao}", bold=True)
+
+#         # Nome
+#         p = add_assinatura_centralizada(doc, contato.get("nome", ""))
+
+#         # Função
+#         p = add_assinatura_centralizada(doc, contato.get("funcao", ""))
+
+#         # Parágrafo vazio entre assinaturas
+#         p = doc.add_paragraph("")
+
+#         # Ajuste de fonte do último parágrafo criado
+#         for run in p.runs:
+#             run.font.size = Pt(12.5)
 
 
-    # # ============================
-    # # SALVAR
-    # # ============================
-    # doc.save(caminho_arquivo)
-    # return True
+
+#     # ============================
+#     # SALVAR
+#     # ============================
+
+#     os.makedirs(os.path.dirname(caminho_arquivo), exist_ok=True)
+
+#     doc.save(caminho_arquivo)
+#     return True
+
+
+#     # # ============================
+#     # # SALVAR
+#     # # ============================
+#     # doc.save(caminho_arquivo)
+#     # return True
 
 
 
