@@ -599,7 +599,7 @@ if not editar_cadastro:
 
                 st.write(
                     f"O **Relatório {numero_relatorio}** está **em análise**. "
-                    "Aguarde o retorno da equipe do IEB."
+                    "Aguarde o retorno da equipe do Fundo Ecos."
                 )
 
             # Próximo evento normal
