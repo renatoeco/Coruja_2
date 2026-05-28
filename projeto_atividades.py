@@ -2252,7 +2252,7 @@ st.logo("images/logo_fundo_ecos.png", size='large')
 col_titulo, col_identificacao = st.columns([3, 2])
 
 with col_titulo:
-    st.header("Plano de Trabalho")
+    st.header("Atividades")
 
 with col_identificacao:
     st.markdown(
