@@ -2110,14 +2110,20 @@ def dialog_relatos():
             # Texto do relato
             st.write(relato.get("relato", ""))
 
-
-
-            # Status do relato
-            st.write(f"**Status:** {relato.get('status_relato', '')}")
+            st.write("")
 
             col1, col2 = st.columns([2, 3])
-            col1.write(f"**Quando:** {relato.get('quando', '-')}")
-            col2.write(f"**Onde:** {relato.get('onde', '-')}")
+
+            data_inicio = atividade.get("data_inicio", "-")
+            data_fim = atividade.get("data_fim", "-")
+
+
+            col1.write(
+                f"**Quando:** {data_inicio} - {data_fim}"
+            )
+
+            # Status do relato
+            col2.write(f"**Status:** {relato.get('status_relato', '')}")
 
             # --------------------------------------------------
             # ANEXOS
@@ -2539,9 +2545,10 @@ with plano_trabalho:
             for a in atividades_exist:
                 # Agora as datas não serão convertidas aqui.
                 lista_atividades.append({
+                    "id": a.get("id"),
                     "atividade": a.get("atividade", ""),
-                    "data_inicio": a.get("data_inicio", ""),  # mantém string
-                    "data_fim": a.get("data_fim", ""),        # mantém string
+                    "data_inicio": a.get("data_inicio", ""),
+                    "data_fim": a.get("data_fim", ""),
                 })
 
             df_atividades = pd.DataFrame(lista_atividades)
@@ -2581,7 +2588,7 @@ with plano_trabalho:
                 hide_index=True,
                 key="editor_atividades",
                 column_config={
-
+                    "id": None,
                     "atividade": st.column_config.TextColumn(
                         label="Atividade",
                         width=700
@@ -2668,6 +2675,7 @@ with plano_trabalho:
                     if all(campos_preenchidos):
 
                         atividades_final.append({
+                            "id": row.get("id"),
                             "atividade": atividade,
                             "data_inicio": pd.to_datetime(data_inicio).strftime("%d/%m/%Y"),
                             "data_fim": pd.to_datetime(data_fim).strftime("%d/%m/%Y"),
@@ -2684,7 +2692,7 @@ with plano_trabalho:
                 else:
 
                     atividades_antigas = {
-                        a["atividade"]: a for a in atividades_exist
+                        a["id"]: a for a in atividades_exist
                     }
 
                     # ------------------------------------------------------
@@ -2695,31 +2703,28 @@ with plano_trabalho:
 
                     for a in atividades_final:
 
-                        atividade_antiga = atividades_antigas.get(a["atividade"])
+                        atividade_antiga = atividades_antigas.get(a.get("id"))
 
                         if atividade_antiga:
-                            # Já existia → preserva dados
+
                             nova_lista.append({
-                                "id": atividade_antiga.get("id"),
+                                "id": atividade_antiga["id"],
                                 "atividade": a["atividade"],
                                 "data_inicio": a["data_inicio"],
                                 "data_fim": a["data_fim"],
 
-                                # preservados
                                 "porcentagem_atv": atividade_antiga.get("porcentagem_atv", 0),
                                 "status_atividade": atividade_antiga.get("status_atividade"),
                                 "relatos": atividade_antiga.get("relatos", [])
                             })
 
                         else:
-                            # Nova atividade
+
                             nova_lista.append({
                                 "id": str(bson.ObjectId()),
                                 "atividade": a["atividade"],
                                 "data_inicio": a["data_inicio"],
                                 "data_fim": a["data_fim"],
-
-                                # padrão inicial
                                 "porcentagem_atv": 0,
                                 "relatos": []
                             })
