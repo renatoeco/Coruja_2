@@ -522,7 +522,7 @@ def notificar_padrinhos_relatorio(
         enviar_email(
             corpo_html=html,
             destinatarios=[padrinho["e_mail"]],
-            assunto=f"CEPF - Relatório {numero_relatorio} recebido - Projeto {projeto['codigo']} - {projeto['sigla']}"
+            assunto=f"Coruja 2 - Relatório {numero_relatorio} recebido - Projeto {projeto['codigo']} - {projeto['sigla']}"
         )
 
     return True
@@ -1946,7 +1946,7 @@ if "step_relatorio" not in st.session_state:
 ###########################################################################################################
 
 # Logo hospedada no site do IEB para renderizar nos e-mails.
-logo_cepf = "https://cepfcerrado.iieb.org.br/wp-content/uploads/2025/02/LogoConjuntaCEPFIEBGREEN-768x140.png"
+logo_cepf = "https://fundoecos.org.br/wp-content/uploads/2025/05/Logo-Fundo-Ecos-PNG-sem-fundo-sem-margem.png"
 
 
 # Logo do sidebar
