@@ -2104,9 +2104,6 @@ def dialog_relatos():
                     unsafe_allow_html=True
                 )
 
-
-
-
             # Texto do relato
             st.write(relato.get("relato", ""))
 
