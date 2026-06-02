@@ -6,6 +6,7 @@ import datetime
 import bson
 from collections import defaultdict
 import uuid
+from st_rsuite import date_picker
 
 
 from zoneinfo import ZoneInfo 
@@ -708,10 +709,7 @@ def dialog_lanc_financ(relatorio_numero, projeto, col_projetos):
     # ==================================================
 
     # Gera id sequencial
-    id_despesa = gerar_id_lanc_despesa(projeto)
-
     col1, col2 = st.columns(2)
-
 
     data_despesa = col1.date_input(
         "Data da despesa *",
@@ -2706,13 +2704,19 @@ if step_selecionado == "Atividades":
 
                         if data_inicio_str:
                             try:
-                                data_inicio_valor = datetime.datetime.strptime(data_inicio_str, "%d/%m/%Y").date()
+                                data_inicio_valor = datetime.datetime.strptime(
+                                    data_inicio_str,
+                                    "%d/%m/%Y"
+                                ).strftime("%Y-%m-%d")
                             except Exception:
                                 pass
 
                         if data_fim_str:
                             try:
-                                data_fim_valor = datetime.datetime.strptime(data_fim_str, "%d/%m/%Y").date()
+                                data_fim_valor = datetime.datetime.strptime(
+                                    data_fim_str,
+                                    "%d/%m/%Y"
+                                ).strftime("%Y-%m-%d")
                             except Exception:
                                 pass
 
@@ -2720,19 +2724,27 @@ if step_selecionado == "Atividades":
                         # Interface de edição das datas
                         col1, col2 = st.columns(2)
 
-                        data_inicio = col1.date_input(
-                            "Data de início *",
-                            value=data_inicio_valor,
-                            key=f"edit_data_inicio_{id_relato}",
-                            format="DD/MM/YYYY"
-                        )
+                        with col1:
 
-                        data_fim = col2.date_input(
-                            "Data de fim *",
-                            value=data_fim_valor,
-                            key=f"edit_data_fim_{id_relato}",
-                            format="DD/MM/YYYY"
-                        )
+                            data_inicio = date_picker(
+                                label="Data de início *",
+                                value=data_inicio_valor,
+                                key=f"edit_data_inicio_{id_relato}",
+                                locale="pt_BR",
+                                one_tap=True,
+                                format="dd/MM/yyyy"
+                            )
+
+                        with col2:
+
+                            data_fim = date_picker(
+                                label="Data de fim *",
+                                value=data_fim_valor,
+                                key=f"edit_data_fim_{id_relato}",
+                                locale="pt_BR",
+                                one_tap=True,
+                                format="dd/MM/yyyy"
+                            )
 
 
                         st.divider()
@@ -3340,12 +3352,15 @@ if step_selecionado == "Despesas":
                         # --------------------------------------------------
                         # DATA
                         # --------------------------------------------------
-                        data = col1.date_input(
-                            "Data da despesa *",
-                            value=pd.to_datetime(lanc["data_despesa"], dayfirst=True).date(),
-                            format="DD/MM/YYYY",
-                            key=f"edit_data_{id_despesa}"
-                        )
+                        with col1:
+                            data = date_picker(
+                                label="Data da despesa *",
+                                value=pd.to_datetime(lanc["data_despesa"], dayfirst=True).date(),
+                                key=f"edit_data_{id_despesa}",
+                                format="dd/MM/yyyy",
+                                locale="pt_BR",
+                                one_tap=True
+                            )
 
 
                         with col2:
