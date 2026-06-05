@@ -963,253 +963,6 @@ def render_registro_despesa(
 
 
 
-# # Diálogo do lançamento de despesa
-# @st.dialog("Registrar despesa", width="medium")
-# def dialog_lanc_financ(relatorio_numero, projeto, col_projetos):
-
-#     # ==================================================
-#     # OPÇÕES DE DESPESA
-#     # ==================================================
-#     orcamento = projeto["financeiro"]["orcamento"]
-
-#     opcoes = []
-#     mapa_opcoes = {}
-
-#     for o in orcamento:
-#         categoria_id = str(o["categoria"])
-#         nome_categoria = categorias_map.get(categoria_id, "Categoria não encontrada")
-
-#         label = f"{nome_categoria} | {o['nome_despesa']}"
-
-#         opcoes.append(label)
-
-#         # Guarda referência real para uso posterior
-#         mapa_opcoes[label] = {
-#             "categoria_id": categoria_id,
-#             "nome_despesa": o["nome_despesa"]
-#         }
-
-#     opcoes = sorted(opcoes, key=lambda x: x.lower())
-
-#     escolha = st.selectbox(
-#         "Categoria / Despesa *",
-#         options=opcoes
-#     )
-
-#     categoria = mapa_opcoes[escolha]["categoria_id"]
-#     nome_despesa = mapa_opcoes[escolha]["nome_despesa"]
-
-#     # ==================================================
-#     # DADOS DO LANÇAMENTO
-#     # ==================================================
-
-#     # Gera id sequencial
-#     col1, col2 = st.columns(2)
-
-#     data_despesa = col1.date_input(
-#         "Data da despesa *",
-#         format="DD/MM/YYYY"
-#     )
-
-#     with col2:
-
-#         valor = st.number_input(
-#             "Valor (reais) *",
-#             min_value=0.0,
-#             format="%.2f"
-#         )
-
-
-#     descricao = st.text_area("Descrição da despesa *")
-
-#     col1, col2 = st.columns([2, 1])
-
-#     fornecedor = col1.text_input("Fornecedor *")
-#     cpf_cnpj = col2.text_input("CPF / CNPJ *")
-
-
-#     # ==================================================
-#     # LABEL DINÂMICO DOS ANEXOS - se a despesa for do tipo taxa bancária, então o anexo não é obrigatório, não coloca * no label. 
-#     # ==================================================
-
-#     categoria_nome_lower = nome_categoria.lower()
-#     is_taxa_bancaria = "taxas bancárias" in categoria_nome_lower
-
-#     # Define label dinamicamente
-#     label_anexos = "Anexos" if is_taxa_bancaria else "Anexos *"
-
-#     anexos = st.file_uploader(
-#         label_anexos,
-#         accept_multiple_files=True
-#     )
-
-
-#     # ==================================================
-#     # AÇÕES
-#     # ==================================================
-
-#     with st.container(horizontal=True):
-
-
-#         if st.button("Salvar", type="primary", icon=":material/save:"):
-
-#             # ==================================================
-#             # VALIDAÇÃO DE CAMPOS OBRIGATÓRIOS
-#             # ==================================================
-
-#             # LISTAS DE ERROS SEPARADAS
-
-#             erros_campos = []
-#             erro_consistencia = None
-
-
-
-#             # Validação da data
-#             if not data_despesa:
-#                 erros_campos.append("Data da despesa")
-
-
-#             # ==================================================
-#             # VALIDAÇÃO DE VALORES
-#             # ==================================================
-
-
-#             if not valor or valor <= 0:
-#                 erros_campos.append("Valor (reais)")
-
-
-#             # ==================================================
-#             # VALIDAÇÕES
-#             # ==================================================
-
-#             # Validação da descrição
-#             if not descricao or not descricao.strip():
-#                 erros_campos.append("Descrição da despesa")
-
-#             # Validação do fornecedor
-#             if not fornecedor or not fornecedor.strip():
-#                 erros_campos.append("Fornecedor")
-
-#             # Validação do CPF/CNPJ
-#             if not cpf_cnpj or not cpf_cnpj.strip():
-#                 erros_campos.append("CPF / CNPJ")
-
-
-#             # ==================================================
-#             # VALIDAÇÃO DOS ANEXOS (COM EXCEÇÃO)
-#             # ==================================================
-
-#             # Regra:
-#             # - Se for "Taxas bancárias" → anexo NÃO obrigatório
-#             # - Caso contrário → obrigatório
-
-#             categoria_lower = categoria.lower()
-
-#             is_taxa_bancaria = "taxas bancárias" in categoria_lower
-
-#             if not is_taxa_bancaria:
-#                 if not anexos or len(anexos) == 0:
-#                     erros_campos.append("Anexos")
-
-
-
-#             # ==================================================
-#             # SE HOUVER ERROS → MOSTRA WARNING E NÃO SALVA
-#             # ==================================================
-
-#             # EXIBE ERROS SEPARADAMENTE
-
-#             if erros_campos:
-#                 campos = ", ".join(erros_campos)
-#                 st.warning(f"Preencha os seguintes campos obrigatórios: {campos}")
-
-#             if erro_consistencia:
-#                 st.warning(erro_consistencia)
-
-#             # Se houver qualquer erro → bloqueia
-#             if erros_campos or erro_consistencia:
-#                 st.stop()
-
-
-
-
-#             # ==================================================
-#             # CONTINUA FLUXO NORMAL (SALVAR)
-#             # ==================================================
-#             with st.spinner("Salvando despesa..."):
-
-#                 novo_lancamento = {
-#                     "id_lanc_despesa": id_despesa,
-#                     "relatorio_numero": relatorio_numero,
-#                     "data_despesa": data_despesa.strftime("%d/%m/%Y"),
-#                     "descricao_despesa": descricao,
-#                     "fornecedor": fornecedor,
-#                     "cpf_cnpj": cpf_cnpj,
-#                     "valor_despesa": valor,
-#                     "status_despesa": "aberto",
-#                     "anexos": []
-#                 }
-
-
-
-#                 # ==================================================
-#                 # DRIVE
-#                 # ==================================================
-#                 servico = obter_servico_drive()
-
-#                 pasta_projeto = obter_pasta_projeto(
-#                     servico,
-#                     projeto["codigo"],
-#                     projeto["sigla"]
-#                 )
-
-#                 pasta_financeiro = obter_pasta_relatos_financeiros(
-#                     servico,
-#                     pasta_projeto
-#                 )
-
-#                 pasta_lanc = obter_ou_criar_pasta(
-#                     servico,
-#                     id_despesa,
-#                     pasta_financeiro
-#                 )
-
-#                 for arq in anexos:
-#                     id_drive = enviar_arquivo_drive(servico, pasta_lanc, arq)
-#                     novo_lancamento["anexos"].append({
-#                         "nome_arquivo": arq.name,
-#                         "id_arquivo": id_drive
-#                     })
-
-#                 # ==================================================
-#                 # SALVA NO OBJETO
-#                 # ==================================================
-#                 for d in projeto["financeiro"]["orcamento"]:
-#                     if d["categoria"] == categoria and d["nome_despesa"] == nome_despesa:
-#                         d.setdefault("lancamentos", []).append(novo_lancamento)
-#                         break
-
-#                 # ==================================================
-#                 # SALVA NO MONGO
-#                 # ==================================================
-#                 col_projetos.update_one(
-#                     {"codigo": projeto["codigo"]},
-#                     {
-#                         "$set": {
-#                             "financeiro.orcamento": projeto["financeiro"]["orcamento"]
-#                         }
-#                     }
-#                 )
-
-#             st.success("Despesa registrada com sucesso!", icon=":material/check:")
-#             time.sleep(3)
-#             st.rerun()
-
-#         if st.button("Cancelar"):
-#             st.rerun()
-
-
-
 
 
 
@@ -1593,8 +1346,12 @@ def garantir_permissao_publica_leitura(servico, pasta_id):
 # ==========================================================================================
 # DIÁLOGO: RELATAR ATIVIDADE
 # ==========================================================================================
-@st.dialog("Relatar atividade", width="medium")
-def dialog_relatos():
+
+
+def renderizar_formulario_relato():
+
+# @st.dialog("Relatar atividade", width="medium")
+# def dialog_relatos():
 
     projeto = st.session_state.get("projeto_mongo")
     if not projeto:
@@ -2476,32 +2233,18 @@ if step_selecionado == "Atividades":
     st.markdown("#### Relatos de atividades")
     st.write('')
 
-    # --------------------------------------------------
-    # BOTÃO PARA CRIAR NOVO RELATO
-    # --------------------------------------------------
-    with st.container(horizontal=True, horizontal_alignment="right"):
 
-        if pode_editar_relatorio:
-            if st.button(
-                "Relatar atividade",
-                type="primary",
-                key=f"btn_relatar_{idx}",
-                icon=":material/add:",
-                width=260
-            ):
-                # Limpa qualquer resíduo antigo de formulário
-                for chave in [
-                    "campo_relato",
-                    "campo_quando",
-                    "campo_onde",
-                    "campo_anexos",
-                    "fotos_relato",
-                    "atividade_select_dialog"
-                ]:
-                    if chave in st.session_state:
-                        del st.session_state[chave]
+    # --------------------------------------------------
+    # FORMULÁRIO DE NOVO RELATO
+    # --------------------------------------------------
+    if pode_editar_relatorio:
 
-                dialog_relatos()
+        with st.expander(
+            "Relatar atividade",
+            expanded=False
+        ):
+
+            renderizar_formulario_relato()
 
 
     # --------------------------------------------------
