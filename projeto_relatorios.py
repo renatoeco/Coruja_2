@@ -668,180 +668,205 @@ def gerar_id_lanc_despesa(projeto):
 
 
 
-# Diálogo do lançamento de despesa
-@st.dialog("Registrar despesa", width="medium")
-def dialog_lanc_financ(relatorio_numero, projeto, col_projetos):
+# ==================================================
+# REGISTRO DE DESPESA (EXPANDER)
+# ==================================================
+def render_registro_despesa(
+    relatorio_numero,
+    projeto,
+    col_projetos,
+    categorias_map
+):
 
-    # ==================================================
-    # OPÇÕES DE DESPESA
-    # ==================================================
-    orcamento = projeto["financeiro"]["orcamento"]
+    # --------------------------------------------------
+    # Controle de reset do formulário
+    # --------------------------------------------------
+    if "form_despesa_key" not in st.session_state:
+        st.session_state["form_despesa_key"] = 0
 
-    opcoes = []
-    mapa_opcoes = {}
+    form_key = st.session_state["form_despesa_key"]
 
-    for o in orcamento:
-        categoria_id = str(o["categoria"])
-        nome_categoria = categorias_map.get(categoria_id, "Categoria não encontrada")
+    with st.expander("Registrar despesa", expanded=False):
 
-        label = f"{nome_categoria} | {o['nome_despesa']}"
+        # ==================================================
+        # OPÇÕES DE DESPESA
+        # ==================================================
+        orcamento = projeto["financeiro"]["orcamento"]
 
-        opcoes.append(label)
+        opcoes = []
+        mapa_opcoes = {}
 
-        # Guarda referência real para uso posterior
-        mapa_opcoes[label] = {
-            "categoria_id": categoria_id,
-            "nome_despesa": o["nome_despesa"]
-        }
+        for o in orcamento:
 
-    opcoes = sorted(opcoes, key=lambda x: x.lower())
+            categoria_id = str(o["categoria"])
 
-    escolha = st.selectbox(
-        "Categoria / Despesa *",
-        options=opcoes
-    )
+            nome_categoria = categorias_map.get(
+                categoria_id,
+                "Categoria não encontrada"
+            )
 
-    categoria = mapa_opcoes[escolha]["categoria_id"]
-    nome_despesa = mapa_opcoes[escolha]["nome_despesa"]
+            label = f"{nome_categoria} | {o['nome_despesa']}"
 
-    # ==================================================
-    # DADOS DO LANÇAMENTO
-    # ==================================================
+            opcoes.append(label)
 
-    # Gera id sequencial
-    col1, col2 = st.columns(2)
+            # Mapeamento da opção selecionada
+            mapa_opcoes[label] = {
+                "categoria_id": categoria_id,
+                "nome_despesa": o["nome_despesa"],
+                "nome_categoria": nome_categoria
+            }
 
-    data_despesa = col1.date_input(
-        "Data da despesa *",
-        format="DD/MM/YYYY"
-    )
+        opcoes = sorted(opcoes, key=lambda x: x.lower())
 
-    with col2:
-
-        valor = st.number_input(
-            "Valor (reais) *",
-            min_value=0.0,
-            format="%.2f"
+        escolha = st.selectbox(
+            "Categoria / Despesa *",
+            options=opcoes,
+            key=f"desp_categoria_{form_key}"
         )
 
+        categoria = mapa_opcoes[escolha]["categoria_id"]
 
-    descricao = st.text_area("Descrição da despesa *")
+        nome_despesa = mapa_opcoes[escolha]["nome_despesa"]
 
-    col1, col2 = st.columns([2, 1])
+        nome_categoria = mapa_opcoes[escolha]["nome_categoria"]
 
-    fornecedor = col1.text_input("Fornecedor *")
-    cpf_cnpj = col2.text_input("CPF / CNPJ *")
+        # ==================================================
+        # DADOS DO LANÇAMENTO
+        # ==================================================
+        id_despesa = gerar_id_lanc_despesa(projeto)
 
+        col1, col2 = st.columns(2)
 
-    # ==================================================
-    # LABEL DINÂMICO DOS ANEXOS - se a despesa for do tipo taxa bancária, então o anexo não é obrigatório, não coloca * no label. 
-    # ==================================================
+        with col1:
 
-    categoria_nome_lower = nome_categoria.lower()
-    is_taxa_bancaria = "taxas bancárias" in categoria_nome_lower
+            data_despesa = st.date_input(
+                "Data da despesa *",
+                format="DD/MM/YYYY",
+                key=f"desp_data_{form_key}"
+            )
 
-    # Define label dinamicamente
-    label_anexos = "Anexos" if is_taxa_bancaria else "Anexos *"
+        with col2:
 
-    anexos = st.file_uploader(
-        label_anexos,
-        accept_multiple_files=True
-    )
+            valor = st.number_input(
+                "Valor (reais) *",
+                min_value=0.0,
+                format="%.2f",
+                key=f"desp_valor_{form_key}"
+            )
 
+        descricao = st.text_area(
+            "Descrição da despesa *",
+            key=f"desp_desc_{form_key}"
+        )
 
-    # ==================================================
-    # AÇÕES
-    # ==================================================
+        col1, col2 = st.columns([2, 1])
 
-    with st.container(horizontal=True):
+        fornecedor = col1.text_input(
+            "Fornecedor *",
+            key=f"desp_forn_{form_key}"
+        )
 
+        cpf_cnpj = col2.text_input(
+            "CPF / CNPJ *",
+            key=f"desp_doc_{form_key}"
+        )
 
-        if st.button("Salvar", type="primary", icon=":material/save:"):
+        # ==================================================
+        # ANEXOS
+        # ==================================================
+        categoria_nome_lower = nome_categoria.lower()
 
-            # ==================================================
-            # VALIDAÇÃO DE CAMPOS OBRIGATÓRIOS
-            # ==================================================
+        is_taxa_bancaria = (
+            "taxas bancárias" in categoria_nome_lower
+        )
 
-            # LISTAS DE ERROS SEPARADAS
+        label_anexos = (
+            "Anexos"
+            if is_taxa_bancaria
+            else "Anexos *"
+        )
+
+        anexos = st.file_uploader(
+            label_anexos,
+            accept_multiple_files=True,
+            key=f"desp_anexos_{form_key}"
+        )
+
+        # ==================================================
+        # AÇÕES
+        # ==================================================
+        with st.container(horizontal=True):
+
+            botao_salvar_despesa = st.button(
+                "Salvar",
+                type="primary",
+                icon=":material/save:"
+            )
+
+            area_notif_despesas = st.container()
+
+        # ==================================================
+        # AÇÃO: SALVAR
+        # ==================================================
+        if botao_salvar_despesa:
 
             erros_campos = []
             erro_consistencia = None
 
-
-
-            # Validação da data
+            # --------------------------------------------------
+            # Validação dos campos obrigatórios
+            # --------------------------------------------------
             if not data_despesa:
                 erros_campos.append("Data da despesa")
-
-
-            # ==================================================
-            # VALIDAÇÃO DE VALORES
-            # ==================================================
-
 
             if not valor or valor <= 0:
                 erros_campos.append("Valor (reais)")
 
-
-            # ==================================================
-            # VALIDAÇÕES
-            # ==================================================
-
-            # Validação da descrição
             if not descricao or not descricao.strip():
                 erros_campos.append("Descrição da despesa")
 
-            # Validação do fornecedor
             if not fornecedor or not fornecedor.strip():
                 erros_campos.append("Fornecedor")
 
-            # Validação do CPF/CNPJ
             if not cpf_cnpj or not cpf_cnpj.strip():
                 erros_campos.append("CPF / CNPJ")
 
-
-            # ==================================================
-            # VALIDAÇÃO DOS ANEXOS (COM EXCEÇÃO)
-            # ==================================================
-
-            # Regra:
-            # - Se for "Taxas bancárias" → anexo NÃO obrigatório
-            # - Caso contrário → obrigatório
-
-            categoria_lower = categoria.lower()
-
-            is_taxa_bancaria = "taxas bancárias" in categoria_lower
-
+            # --------------------------------------------------
+            # Validação dos anexos
+            # --------------------------------------------------
             if not is_taxa_bancaria:
+
                 if not anexos or len(anexos) == 0:
                     erros_campos.append("Anexos")
 
-
-
-            # ==================================================
-            # SE HOUVER ERROS → MOSTRA WARNING E NÃO SALVA
-            # ==================================================
-
-            # EXIBE ERROS SEPARADAMENTE
-
+            # --------------------------------------------------
+            # Exibição de mensagens
+            # --------------------------------------------------
             if erros_campos:
+
                 campos = ", ".join(erros_campos)
-                st.warning(f"Preencha os seguintes campos obrigatórios: {campos}")
+
+                area_notif_despesas.warning(
+                    f"Preencha os seguintes campos obrigatórios: {campos}"
+                )
 
             if erro_consistencia:
-                st.warning(erro_consistencia)
+                area_notif_despesas.warning(
+                    erro_consistencia
+                )
 
-            # Se houver qualquer erro → bloqueia
+            # --------------------------------------------------
+            # Interrupção do fluxo em caso de erro
+            # --------------------------------------------------
             if erros_campos or erro_consistencia:
                 st.stop()
 
-
-
-
             # ==================================================
-            # CONTINUA FLUXO NORMAL (SALVAR)
+            # SALVAMENTO
             # ==================================================
-            with st.spinner("Salvando despesa..."):
+            with area_notif_despesas.spinner(
+                "Salvando despesa..."
+            ):
 
                 novo_lancamento = {
                     "id_lanc_despesa": id_despesa,
@@ -855,11 +880,9 @@ def dialog_lanc_financ(relatorio_numero, projeto, col_projetos):
                     "anexos": []
                 }
 
-
-
-                # ==================================================
-                # DRIVE
-                # ==================================================
+                # --------------------------------------------------
+                # Upload dos anexos no Google Drive
+                # --------------------------------------------------
                 servico = obter_servico_drive()
 
                 pasta_projeto = obter_pasta_projeto(
@@ -868,9 +891,11 @@ def dialog_lanc_financ(relatorio_numero, projeto, col_projetos):
                     projeto["sigla"]
                 )
 
-                pasta_financeiro = obter_pasta_relatos_financeiros(
-                    servico,
-                    pasta_projeto
+                pasta_financeiro = (
+                    obter_pasta_relatos_financeiros(
+                        servico,
+                        pasta_projeto
+                    )
                 )
 
                 pasta_lanc = obter_ou_criar_pasta(
@@ -880,38 +905,308 @@ def dialog_lanc_financ(relatorio_numero, projeto, col_projetos):
                 )
 
                 for arq in anexos:
-                    id_drive = enviar_arquivo_drive(servico, pasta_lanc, arq)
+
+                    id_drive = enviar_arquivo_drive(
+                        servico,
+                        pasta_lanc,
+                        arq
+                    )
+
                     novo_lancamento["anexos"].append({
                         "nome_arquivo": arq.name,
                         "id_arquivo": id_drive
                     })
 
-                # ==================================================
-                # SALVA NO OBJETO
-                # ==================================================
+                # --------------------------------------------------
+                # Inserção do lançamento no orçamento
+                # --------------------------------------------------
                 for d in projeto["financeiro"]["orcamento"]:
-                    if d["categoria"] == categoria and d["nome_despesa"] == nome_despesa:
-                        d.setdefault("lancamentos", []).append(novo_lancamento)
+
+                    if (
+                        d["categoria"] == categoria
+                        and d["nome_despesa"] == nome_despesa
+                    ):
+
+                        d.setdefault(
+                            "lancamentos",
+                            []
+                        ).append(novo_lancamento)
+
                         break
 
-                # ==================================================
-                # SALVA NO MONGO
-                # ==================================================
+                # --------------------------------------------------
+                # Persistência no MongoDB
+                # --------------------------------------------------
                 col_projetos.update_one(
                     {"codigo": projeto["codigo"]},
                     {
                         "$set": {
-                            "financeiro.orcamento": projeto["financeiro"]["orcamento"]
+                            "financeiro.orcamento":
+                            projeto["financeiro"]["orcamento"]
                         }
                     }
                 )
 
-            st.success("Despesa registrada com sucesso!", icon=":material/check:")
+            # --------------------------------------------------
+            # Reset do formulário
+            # --------------------------------------------------
+            st.session_state["form_despesa_key"] += 1
+
+            area_notif_despesas.success(
+                "Despesa registrada com sucesso!",
+                icon=":material/check:"
+            )
+
             time.sleep(3)
+
             st.rerun()
 
-        if st.button("Cancelar"):
-            st.rerun()
+
+
+# # Diálogo do lançamento de despesa
+# @st.dialog("Registrar despesa", width="medium")
+# def dialog_lanc_financ(relatorio_numero, projeto, col_projetos):
+
+#     # ==================================================
+#     # OPÇÕES DE DESPESA
+#     # ==================================================
+#     orcamento = projeto["financeiro"]["orcamento"]
+
+#     opcoes = []
+#     mapa_opcoes = {}
+
+#     for o in orcamento:
+#         categoria_id = str(o["categoria"])
+#         nome_categoria = categorias_map.get(categoria_id, "Categoria não encontrada")
+
+#         label = f"{nome_categoria} | {o['nome_despesa']}"
+
+#         opcoes.append(label)
+
+#         # Guarda referência real para uso posterior
+#         mapa_opcoes[label] = {
+#             "categoria_id": categoria_id,
+#             "nome_despesa": o["nome_despesa"]
+#         }
+
+#     opcoes = sorted(opcoes, key=lambda x: x.lower())
+
+#     escolha = st.selectbox(
+#         "Categoria / Despesa *",
+#         options=opcoes
+#     )
+
+#     categoria = mapa_opcoes[escolha]["categoria_id"]
+#     nome_despesa = mapa_opcoes[escolha]["nome_despesa"]
+
+#     # ==================================================
+#     # DADOS DO LANÇAMENTO
+#     # ==================================================
+
+#     # Gera id sequencial
+#     col1, col2 = st.columns(2)
+
+#     data_despesa = col1.date_input(
+#         "Data da despesa *",
+#         format="DD/MM/YYYY"
+#     )
+
+#     with col2:
+
+#         valor = st.number_input(
+#             "Valor (reais) *",
+#             min_value=0.0,
+#             format="%.2f"
+#         )
+
+
+#     descricao = st.text_area("Descrição da despesa *")
+
+#     col1, col2 = st.columns([2, 1])
+
+#     fornecedor = col1.text_input("Fornecedor *")
+#     cpf_cnpj = col2.text_input("CPF / CNPJ *")
+
+
+#     # ==================================================
+#     # LABEL DINÂMICO DOS ANEXOS - se a despesa for do tipo taxa bancária, então o anexo não é obrigatório, não coloca * no label. 
+#     # ==================================================
+
+#     categoria_nome_lower = nome_categoria.lower()
+#     is_taxa_bancaria = "taxas bancárias" in categoria_nome_lower
+
+#     # Define label dinamicamente
+#     label_anexos = "Anexos" if is_taxa_bancaria else "Anexos *"
+
+#     anexos = st.file_uploader(
+#         label_anexos,
+#         accept_multiple_files=True
+#     )
+
+
+#     # ==================================================
+#     # AÇÕES
+#     # ==================================================
+
+#     with st.container(horizontal=True):
+
+
+#         if st.button("Salvar", type="primary", icon=":material/save:"):
+
+#             # ==================================================
+#             # VALIDAÇÃO DE CAMPOS OBRIGATÓRIOS
+#             # ==================================================
+
+#             # LISTAS DE ERROS SEPARADAS
+
+#             erros_campos = []
+#             erro_consistencia = None
+
+
+
+#             # Validação da data
+#             if not data_despesa:
+#                 erros_campos.append("Data da despesa")
+
+
+#             # ==================================================
+#             # VALIDAÇÃO DE VALORES
+#             # ==================================================
+
+
+#             if not valor or valor <= 0:
+#                 erros_campos.append("Valor (reais)")
+
+
+#             # ==================================================
+#             # VALIDAÇÕES
+#             # ==================================================
+
+#             # Validação da descrição
+#             if not descricao or not descricao.strip():
+#                 erros_campos.append("Descrição da despesa")
+
+#             # Validação do fornecedor
+#             if not fornecedor or not fornecedor.strip():
+#                 erros_campos.append("Fornecedor")
+
+#             # Validação do CPF/CNPJ
+#             if not cpf_cnpj or not cpf_cnpj.strip():
+#                 erros_campos.append("CPF / CNPJ")
+
+
+#             # ==================================================
+#             # VALIDAÇÃO DOS ANEXOS (COM EXCEÇÃO)
+#             # ==================================================
+
+#             # Regra:
+#             # - Se for "Taxas bancárias" → anexo NÃO obrigatório
+#             # - Caso contrário → obrigatório
+
+#             categoria_lower = categoria.lower()
+
+#             is_taxa_bancaria = "taxas bancárias" in categoria_lower
+
+#             if not is_taxa_bancaria:
+#                 if not anexos or len(anexos) == 0:
+#                     erros_campos.append("Anexos")
+
+
+
+#             # ==================================================
+#             # SE HOUVER ERROS → MOSTRA WARNING E NÃO SALVA
+#             # ==================================================
+
+#             # EXIBE ERROS SEPARADAMENTE
+
+#             if erros_campos:
+#                 campos = ", ".join(erros_campos)
+#                 st.warning(f"Preencha os seguintes campos obrigatórios: {campos}")
+
+#             if erro_consistencia:
+#                 st.warning(erro_consistencia)
+
+#             # Se houver qualquer erro → bloqueia
+#             if erros_campos or erro_consistencia:
+#                 st.stop()
+
+
+
+
+#             # ==================================================
+#             # CONTINUA FLUXO NORMAL (SALVAR)
+#             # ==================================================
+#             with st.spinner("Salvando despesa..."):
+
+#                 novo_lancamento = {
+#                     "id_lanc_despesa": id_despesa,
+#                     "relatorio_numero": relatorio_numero,
+#                     "data_despesa": data_despesa.strftime("%d/%m/%Y"),
+#                     "descricao_despesa": descricao,
+#                     "fornecedor": fornecedor,
+#                     "cpf_cnpj": cpf_cnpj,
+#                     "valor_despesa": valor,
+#                     "status_despesa": "aberto",
+#                     "anexos": []
+#                 }
+
+
+
+#                 # ==================================================
+#                 # DRIVE
+#                 # ==================================================
+#                 servico = obter_servico_drive()
+
+#                 pasta_projeto = obter_pasta_projeto(
+#                     servico,
+#                     projeto["codigo"],
+#                     projeto["sigla"]
+#                 )
+
+#                 pasta_financeiro = obter_pasta_relatos_financeiros(
+#                     servico,
+#                     pasta_projeto
+#                 )
+
+#                 pasta_lanc = obter_ou_criar_pasta(
+#                     servico,
+#                     id_despesa,
+#                     pasta_financeiro
+#                 )
+
+#                 for arq in anexos:
+#                     id_drive = enviar_arquivo_drive(servico, pasta_lanc, arq)
+#                     novo_lancamento["anexos"].append({
+#                         "nome_arquivo": arq.name,
+#                         "id_arquivo": id_drive
+#                     })
+
+#                 # ==================================================
+#                 # SALVA NO OBJETO
+#                 # ==================================================
+#                 for d in projeto["financeiro"]["orcamento"]:
+#                     if d["categoria"] == categoria and d["nome_despesa"] == nome_despesa:
+#                         d.setdefault("lancamentos", []).append(novo_lancamento)
+#                         break
+
+#                 # ==================================================
+#                 # SALVA NO MONGO
+#                 # ==================================================
+#                 col_projetos.update_one(
+#                     {"codigo": projeto["codigo"]},
+#                     {
+#                         "$set": {
+#                             "financeiro.orcamento": projeto["financeiro"]["orcamento"]
+#                         }
+#                     }
+#                 )
+
+#             st.success("Despesa registrada com sucesso!", icon=":material/check:")
+#             time.sleep(3)
+#             st.rerun()
+
+#         if st.button("Cancelar"):
+#             st.rerun()
 
 
 
@@ -3073,33 +3368,27 @@ if step_selecionado == "Despesas":
     # ==================================================
     # BOTÃO: REGISTRAR DESPESA
     # ==================================================
-    with st.container(horizontal=True, horizontal_alignment="distribute"):
-       
+    # with st.container(horizontal=True, horizontal_alignment="distribute"):
 
-        saldo_parcela = calcular_saldo_parcela()
+    saldo_parcela = calcular_saldo_parcela()
 
-        saldo_formatado = f"{saldo_parcela:.1f}".replace(".", ",")
+    saldo_formatado = f"{saldo_parcela:.1f}".replace(".", ",")
 
 
-        st.markdown(
-            f"Saldo disponível da parcela: "
-            f"<span style='font-size:22px'><b>{saldo_formatado}%</b></span>",
-            unsafe_allow_html=True
+    st.markdown(
+        f"Saldo disponível da parcela: "
+        f"<span style='font-size:22px'><b>{saldo_formatado}%</b></span>",
+        unsafe_allow_html=True
+    )
+
+
+    if pode_registrar:
+        render_registro_despesa(
+            relatorio_numero,
+            projeto,
+            col_projetos,
+            categorias_map,
         )
-
-
-        if pode_registrar:
-                    if st.button(
-                        "Registrar despesa",
-                        type="primary",
-                        icon=":material/add:",
-                        width=260
-                    ):
-                        dialog_lanc_financ(
-                            relatorio_numero=relatorio_numero,
-                            projeto=projeto,
-                            col_projetos=col_projetos
-                        )
 
     st.write("")
 
