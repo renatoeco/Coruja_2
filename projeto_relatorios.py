@@ -6691,11 +6691,27 @@ if step_selecionado == "Avaliação":
 
                 nome_org = organizacao.get("nome_organizacao") if organizacao else "Organização"
 
-                emails_destino = [
+                # E-mails dos contatos do projeto
+                emails_destino = {
                     c.get("email")
                     for c in projeto.get("contatos", [])
                     if c.get("email")
-                ]
+                }
+
+                # E-mails dos beneficiários vinculados ao projeto
+                beneficiarios = db["pessoas"].find({
+                    "tipo_usuario": "beneficiario",
+                    "status": "ativo",
+                    "projetos": projeto["codigo"]
+                })
+
+                for beneficiario in beneficiarios:
+                    email = beneficiario.get("e_mail")
+                    if email:
+                        emails_destino.add(email)
+
+                # Converte para lista
+                emails_destino = list(emails_destino)
 
                 if emails_destino:
                     email_html = gerar_email_relatorio_reprovado(
@@ -6798,11 +6814,27 @@ if step_selecionado == "Avaliação":
 
                 nome_org = organizacao.get("nome_organizacao") if organizacao else "Organização"
 
-                emails_destino = [
+                # E-mails dos contatos do projeto
+                emails_destino = {
                     c.get("email")
                     for c in projeto.get("contatos", [])
                     if c.get("email")
-                ]
+                }
+
+                # E-mails dos beneficiários vinculados ao projeto
+                beneficiarios = db["pessoas"].find({
+                    "tipo_usuario": "beneficiario",
+                    "status": "ativo",
+                    "projetos": projeto["codigo"]
+                })
+
+                for beneficiario in beneficiarios:
+                    email = beneficiario.get("e_mail")
+                    if email:
+                        emails_destino.add(email)
+
+                # Converte para lista
+                emails_destino = list(emails_destino)
 
                 if emails_destino:
 
