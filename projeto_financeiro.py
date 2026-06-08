@@ -1490,7 +1490,7 @@ usuario_interno = st.session_state.tipo_usuario in ["admin", "equipe"]
 
 if usuario_interno:
     cron_desemb, orcamento, remanejamentos, recibos = st.tabs(
-        ["Cronograma", "Orçamento", "Remanejamentos", "Recibos"]
+        ["Cronograma", "Orçamento", "Remanejamentos", "Comprovantes de pagamento"]
     )
 else:
     cron_desemb, orcamento, remanejamentos = st.tabs(
@@ -3429,8 +3429,8 @@ if usuario_interno:
 
     with recibos:
 
-        st.markdown("### Recibos")
-        st.caption("Ao **guardar o recibo**, é necessário informar a **data de pagamento** (para a evolução do cronograma do projeto).")
+        st.markdown("### Comprovantes de pagamento")
+        st.caption("Ao **guardar o comprovante de pagamento**, é necessário informar a **data de pagamento** (para a evolução do cronograma do projeto).")
         st.write("")
 
         # --------------------------------------------------
@@ -3488,11 +3488,11 @@ if usuario_interno:
             col1.write(f"**Parcela {numero}**")
 
             # --------------------------------------------------
-            # COLUNA 2 — Guardar recibo (abre uploader)
+            # COLUNA 2 — Guardar comprovante de pagamento (abre uploader)
             # --------------------------------------------------
  
             if col2.button(
-                "Guardar recibo",
+                "Guardar comprovante de pagamento",
                 key=f"abrir_uploader_{numero}",
                 width="stretch",
                 icon=":material/save:"
@@ -3511,7 +3511,7 @@ if usuario_interno:
                 nome_arquivo = recibo.get("nome_arquivo", "Recibo")
 
                 if id_recibo:
-                    col3.write(":material/check: Recibo salvo")
+                    col3.write(":material/check: Comprovante salvo")
                     link = gerar_link_drive(id_recibo)
                     col4.markdown(f"[{nome_arquivo}]({link})")
 
@@ -3524,7 +3524,7 @@ if usuario_interno:
 
                 with st.container(border=True):
 
-                    st.markdown(f"**Enviar recibo da Parcela {numero}**")
+                    st.markdown(f"**Enviar comprovante de pagamento da Parcela {numero}**")
 
                     # --------------------------------------------------
                     # Data do pagamento (obrigatória)
@@ -3540,7 +3540,7 @@ if usuario_interno:
                     # Upload do arquivo
                     # --------------------------------------------------
                     arquivo = st.file_uploader(
-                        "Selecione o arquivo do recibo:",
+                        "Selecione o arquivo do comprovante:",
                         type=["pdf", "png", "jpg", "jpeg", "docx", "doc"],
                         key=f"uploader_recibo_{numero}"
                     )
@@ -3553,7 +3553,7 @@ if usuario_interno:
                         # SALVAR
                         # ----------------------------
                         if st.button(
-                            "Salvar recibo",
+                            "Salvar comprovante",
                             key=f"salvar_recibo_{numero}",
                             type="primary",
                             icon=":material/save:",
@@ -3615,7 +3615,7 @@ if usuario_interno:
                             # -----------------------------------
                             # Feedback + reset de estado
                             # -----------------------------------
-                            st.success("Recibo salvo com sucesso!", icon=":material/check:")
+                            st.success("Comprovante de pagamento salvo com sucesso!", icon=":material/check:")
                             st.session_state["recibo_aberto_parcela"] = None
                             time.sleep(3)
                             st.rerun()
