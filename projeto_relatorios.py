@@ -5948,11 +5948,146 @@ if step_selecionado == "Enviar":
             f"##### Relatório enviado em {data_formatada}.")
 
         st.write("Aguardando análise.")
+        
+               
     # --------------------------------------------------
     # CASO 2: RELATÓRIO APROVADO
     # --------------------------------------------------
     elif status_atual_db == "aprovado":
-        st.markdown("##### Relatório aprovado.")
+        #st.markdown("##### Relatório aprovado.")
+        
+        # ==================================================
+        # RELATÓRIO DE MONITORAMENTO E DEVOLUTIVAS (SOMENTE LEITURA)
+        # ==================================================
+        
+        if (
+            relatorio.get("respostas_monitoramento")
+            or relatorio.get("devolucao")
+        ):
+
+            #st.divider()
+
+            col_monitoramento, col_devolutivas = st.columns(
+                [1, 1],
+                gap="medium"
+            )
+            
+            with col_monitoramento:
+
+                if relatorio.get("respostas_monitoramento"):
+
+                    st.markdown("### Relatório de Monitoramento")
+
+                    edital = col_editais.find_one(
+                        {"codigo_edital": projeto["edital"]}
+                    )
+
+                    perguntas_monitoramento = sorted(
+                        edital.get("perguntas_monitoramento", []),
+                        key=lambda x: x.get("ordem", 0)
+                    )
+
+                    respostas_monitoramento = relatorio.get(
+                        "respostas_monitoramento",
+                        {}
+                    )
+
+                    for pergunta in perguntas_monitoramento:
+
+                        tipo = pergunta.get("tipo")
+                        texto = pergunta.get("pergunta")
+                        ordem = pergunta.get("ordem")
+
+                        chave = f"pergunta_{ordem}"
+
+                        resposta = (
+                            respostas_monitoramento
+                            .get(chave, {})
+                            .get("resposta")
+                        )
+
+                        if tipo == "titulo":
+                            st.subheader(texto)
+
+                        elif tipo == "subtitulo":
+                            st.markdown(f"##### {texto}")
+
+                        elif tipo == "paragrafo":
+                            st.write(texto)
+
+                        elif tipo == "upload_arquivo":
+
+                            st.markdown(f"**{texto}**")
+
+                            if resposta:
+                                for arquivo in resposta:
+
+                                    link = gerar_link_drive(
+                                        arquivo["id"]
+                                    )
+
+                                    st.markdown(
+                                        f":material/attach_file: "
+                                        f"[{arquivo['nome']}]({link})"
+                                    )
+                            else:
+                                st.caption("Nenhum arquivo enviado")
+
+                        else:
+
+                            if isinstance(resposta, list):
+                                resposta = ", ".join(resposta)
+
+                            renderizar_visualizacao(
+                                texto,
+                                resposta if resposta not in [None, ""] else "—"
+                            )
+
+                        st.write("")
+                        
+            with col_devolutivas:
+
+                devolucoes = relatorio.get("devolucao", [])
+
+                if devolucoes:
+
+                    st.markdown("### Devolutivas")
+
+                    for devolucao in reversed(devolucoes):
+
+                        status = devolucao.get(
+                            "status_devolucao",
+                            "—"
+                        )
+
+                        if status == "Devolvido":
+                            cor = "rgba(226, 101, 12)"
+                        elif status == "Aprovado":
+                            cor = "rgba(110, 140, 60)"
+                        else:
+                            cor = "#999999"
+
+                        with st.container(border=True):
+
+                            st.markdown(
+                                f"<span style='color:{cor};font-weight:600'>"
+                                f"{status}"
+                                f"</span>",
+                                unsafe_allow_html=True
+                            )
+
+                            st.markdown(
+                                f"**{devolucao.get('autor')}** · "
+                                f"{devolucao.get('data_devolucao')}"
+                            )
+
+                            st.markdown(
+                                devolucao.get(
+                                    "texto_devolutiva",
+                                    ""
+                                ).replace("\n", "<br>"),
+                                unsafe_allow_html=True
+                            )
 
     # --------------------------------------------------
     # CASO 3: RELATÓRIO EM MODO EDIÇÃO E USUÁRIO PODE EDITAR
@@ -6116,6 +6251,139 @@ if step_selecionado == "Enviar":
 
             time.sleep(3)
             st.rerun()
+
+        # ==================================================
+        # RELATÓRIO DE MONITORAMENTO E DEVOLUTIVAS (SOMENTE LEITURA)
+        # ==================================================
+        
+        if (
+            relatorio.get("respostas_monitoramento")
+            or relatorio.get("devolucao")
+        ):
+
+            st.divider()
+
+            col_monitoramento, col_devolutivas = st.columns(
+                [1, 1],
+                gap="medium"
+            )
+            
+            with col_monitoramento:
+
+                if relatorio.get("respostas_monitoramento"):
+
+                    st.markdown("### Relatório de Monitoramento")
+
+                    edital = col_editais.find_one(
+                        {"codigo_edital": projeto["edital"]}
+                    )
+
+                    perguntas_monitoramento = sorted(
+                        edital.get("perguntas_monitoramento", []),
+                        key=lambda x: x.get("ordem", 0)
+                    )
+
+                    respostas_monitoramento = relatorio.get(
+                        "respostas_monitoramento",
+                        {}
+                    )
+
+                    for pergunta in perguntas_monitoramento:
+
+                        tipo = pergunta.get("tipo")
+                        texto = pergunta.get("pergunta")
+                        ordem = pergunta.get("ordem")
+
+                        chave = f"pergunta_{ordem}"
+
+                        resposta = (
+                            respostas_monitoramento
+                            .get(chave, {})
+                            .get("resposta")
+                        )
+
+                        if tipo == "titulo":
+                            st.subheader(texto)
+
+                        elif tipo == "subtitulo":
+                            st.markdown(f"##### {texto}")
+
+                        elif tipo == "paragrafo":
+                            st.write(texto)
+
+                        elif tipo == "upload_arquivo":
+
+                            st.markdown(f"**{texto}**")
+
+                            if resposta:
+                                for arquivo in resposta:
+
+                                    link = gerar_link_drive(
+                                        arquivo["id"]
+                                    )
+
+                                    st.markdown(
+                                        f":material/attach_file: "
+                                        f"[{arquivo['nome']}]({link})"
+                                    )
+                            else:
+                                st.caption("Nenhum arquivo enviado")
+
+                        else:
+
+                            if isinstance(resposta, list):
+                                resposta = ", ".join(resposta)
+
+                            renderizar_visualizacao(
+                                texto,
+                                resposta if resposta not in [None, ""] else "—"
+                            )
+
+                        st.write("")
+                        
+            with col_devolutivas:
+
+                devolucoes = relatorio.get("devolucao", [])
+
+                if devolucoes:
+
+                    st.markdown("### Devolutivas")
+
+                    for devolucao in reversed(devolucoes):
+
+                        status = devolucao.get(
+                            "status_devolucao",
+                            "—"
+                        )
+
+                        if status == "Devolvido":
+                            cor = "rgba(226, 101, 12)"
+                        elif status == "Aprovado":
+                            cor = "rgba(110, 140, 60)"
+                        else:
+                            cor = "#999999"
+
+                        with st.container(border=True):
+
+                            st.markdown(
+                                f"<span style='color:{cor};font-weight:600'>"
+                                f"{status}"
+                                f"</span>",
+                                unsafe_allow_html=True
+                            )
+
+                            st.markdown(
+                                f"**{devolucao.get('autor')}** · "
+                                f"{devolucao.get('data_devolucao')}"
+                            )
+
+                            st.markdown(
+                                devolucao.get(
+                                    "texto_devolutiva",
+                                    ""
+                                ).replace("\n", "<br>"),
+                                unsafe_allow_html=True
+                            )
 
     # --------------------------------------------------
     # CASO 4: USUÁRIO NÃO PODE EDITAR
