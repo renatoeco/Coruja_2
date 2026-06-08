@@ -722,25 +722,25 @@ def renderizar_card_alteracao(
     st.write(f"**Justificativa:** {item.get('justificativa','')}")
 
 
-def get_nome_organizacao(projeto):
-    """
-    Retorna o nome da organização a partir do id_organizacao do projeto.
-    """
+# def get_nome_organizacao(projeto):
+#     """
+#     Retorna o nome da organização a partir do id_organizacao do projeto.
+#     """
 
-    organizacao_id = projeto.get("id_organizacao")
+#     organizacao_id = projeto.get("id_organizacao")
 
-    if not organizacao_id:
-        return "-"
+#     if not organizacao_id:
+#         return "-"
 
-    org = col_organizacoes.find_one(
-        {"_id": organizacao_id},
-        {"nome_organizacao": 1}
-    )
+#     org = col_organizacoes.find_one(
+#         {"_id": organizacao_id},
+#         {"nome_organizacao": 1}
+#     )
 
-    if not org:
-        return "-"
+#     if not org:
+#         return "-"
 
-    return org.get("nome_organizacao", "-")
+#     return org.get("nome_organizacao", "-")
 
 
 # ==================================================
