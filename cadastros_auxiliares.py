@@ -84,7 +84,7 @@ def buscar_edital_seguro(codigo):
 
 
 @st.fragment
-def formulario_nova_pergunta(perguntas, edital_selecionado):
+def formulario_nova_pergunta(perguntas, edital_selecionado, campo_perguntas="perguntas_relatorio", prefixo="relatorio"):
 
     # ------------------------------------------------------
     # ESPAÇAMENTO VISUAL
@@ -107,12 +107,12 @@ def formulario_nova_pergunta(perguntas, edital_selecionado):
             "Número",
             "Múltipla escolha",
             "Escolha única",
-            "Upload de arquivos",  # 👈 NOVO
+            "Upload de arquivos",  # NOVO
             "Título",
             "Subtítulo",
             "Parágrafo",
         ],
-        key="tipo_pergunta_nova"
+        key=f"tipo_pergunta_nova_{prefixo}"
     )
 
 
@@ -143,19 +143,19 @@ def formulario_nova_pergunta(perguntas, edital_selecionado):
     ]:
         pergunta = st.text_input(
             label_texto,
-            key="texto_pergunta_nova"
+            key=f"texto_pergunta_nova_{prefixo}"
         )
     elif tipo == "Parágrafo":
         pergunta = st.text_area(
             label_texto,
-            key="texto_pergunta_nova"
+            key=f"texto_pergunta_nova2_{prefixo}"
         )
 
     # Tipos que exigem opções
     if tipo in ["Múltipla escolha", "Escolha única"]:
         pergunta = st.text_input(
             "Texto da pergunta",
-            key="texto_pergunta_opcoes"
+            key=f"texto_pergunta_opcoes_{prefixo}"
         )
 
         opcoes = st.text_area(
@@ -167,7 +167,7 @@ def formulario_nova_pergunta(perguntas, edital_selecionado):
     # ------------------------------------------------------
     st.write("")
 
-    if st.button("Salvar pergunta", type="primary", icon=":material/save:"):
+    if st.button("Salvar pergunta", type="primary", icon=":material/save:", key=f"salvar_pergunta_{prefixo}"):
 
         # ----------------------------
         # VALIDAÇÕES
@@ -227,7 +227,7 @@ def formulario_nova_pergunta(perguntas, edital_selecionado):
         # --------------------------------------------------
         col_editais.update_one(
             {"codigo_edital": edital_selecionado},
-            {"$push": {"perguntas_relatorio": nova_pergunta}}
+            {"$push": {campo_perguntas: nova_pergunta}}
         )
 
 
@@ -237,9 +237,11 @@ def formulario_nova_pergunta(perguntas, edital_selecionado):
 
         # Limpa campos dinâmicos
         for chave in [
-            "tipo_pergunta_nova",
-            "texto_pergunta_nova",
-            "texto_pergunta_opcoes"
+            f"tipo_pergunta_nova_{prefixo}",
+            f"texto_pergunta_nova_{prefixo}",
+            f"texto_pergunta_nova2_{prefixo}",
+            f"texto_pergunta_opcoes_{prefixo}",
+            f"opcoes_pergunta_nova_{prefixo}",
         ]:
             if chave in st.session_state:
                 del st.session_state[chave]
@@ -265,7 +267,7 @@ def formulario_nova_pergunta(perguntas, edital_selecionado):
 
 # Diálogo de confirmação de exclusão de pergunta de relatório
 @st.dialog("Confirmar exclusão", width="small")
-def confirmar_exclusao_pergunta(pergunta_atual, perguntas, edital_selecionado):
+def confirmar_exclusao_pergunta(pergunta_atual, perguntas, edital_selecionado, campo_perguntas="perguntas_relatorio"):
 
     st.markdown("**Você tem certeza que deseja excluir esta pergunta?**")
     st.markdown(f"> {pergunta_atual['pergunta']}")
@@ -273,10 +275,10 @@ def confirmar_exclusao_pergunta(pergunta_atual, perguntas, edital_selecionado):
     st.write("")
 
     with st.container(horizontal=True):
-        if st.button(":material/cancel: Cancelar"):
+        if st.button(":material/cancel: Cancelar", key=f"cancelar_exclusao_{campo_perguntas}"):
             st.rerun()
 
-        if st.button(":material/delete: Excluir pergunta", type="primary"):
+        if st.button(":material/delete: Excluir pergunta", type="primary", key=f"confirmar_exclusao_{campo_perguntas}"):
 
             # Remove a pergunta
             novas = [p for p in perguntas if p != pergunta_atual]
@@ -287,7 +289,7 @@ def confirmar_exclusao_pergunta(pergunta_atual, perguntas, edital_selecionado):
 
             col_editais.update_one(
                 {"codigo_edital": edital_selecionado},
-                {"$set": {"perguntas_relatorio": novas}}
+                {"$set": {campo_perguntas: novas}}
             )
 
             st.success("Pergunta excluída com sucesso!")
@@ -311,14 +313,15 @@ st.write('')
 
 
 #aba_perguntas, aba_pesquisas, aba_direcoes, aba_indicadores, aba_publicos, aba_beneficios, aba_categorias_despesa, aba_corredores, aba_kbas = st.tabs([
-aba_perguntas, aba_direcoes, aba_indicadores, aba_publicos, aba_categorias_despesa = st.tabs([
-# aba_perguntas, aba_pesquisas, aba_beneficiarios, aba_direcoes, aba_indicadores, aba_categorias_despesa, aba_corredores, aba_kbas, aba_tipos_manejo = st.tabs([
+#aba_perguntas, aba_pesquisas, aba_beneficiarios, aba_direcoes, aba_indicadores, aba_categorias_despesa, aba_corredores, aba_kbas, aba_tipos_manejo = st.tabs([
+
+aba_perguntas, aba_monitoramento, aba_direcoes, aba_indicadores, aba_publicos, aba_categorias_despesa = st.tabs([
     'Perguntas do Relatório',
+    'Perguntas de Monitoramento',
     'Linhas Temáticas',
     'Indicadores por Edital',
     'Públicos',
     'Categorias de despesa',
-    # 'Tipos de manejo',
 ])
 
 
@@ -428,7 +431,7 @@ with aba_perguntas:
         # ======================================================
 
         with aba_nova:
-            formulario_nova_pergunta(perguntas, edital_selecionado_perguntas)
+            formulario_nova_pergunta(perguntas, edital_selecionado_perguntas, "perguntas_relatorio", "relatorio")
 
 
 
@@ -453,8 +456,9 @@ with aba_perguntas:
                 }
 
                 selecionada = st.selectbox(
-                    "",
-                    list(mapa_perguntas.keys())
+                    "Perg",
+                    list(mapa_perguntas.keys()),
+                    label_visibility="collapsed",
                 )
 
                 # Garante que algo foi selecionado
@@ -562,7 +566,7 @@ with aba_perguntas:
 
                         opcoes = st.text_area(
                             "Opções (uma por linha)",
-                            value="\n".join(pergunta_atual.get("opcoes", []))
+                            value="\n".join(pergunta_atual.get("opcoes", [])),
                         ).split("\n")
 
                     # if tipo == "Linha divisória":
@@ -627,11 +631,12 @@ with aba_perguntas:
                                 st.rerun()
 
                         # -------- EXCLUIR --------
-                        if st.button("Excluir pergunta", icon=":material/delete:"):
+                        if st.button("Excluir pergunta", icon=":material/delete:", key="btn_excluir_pergunta_relatorio"):
                             confirmar_exclusao_pergunta(
                                 pergunta_atual=pergunta_atual,
                                 perguntas=perguntas,
-                                edital_selecionado=edital_selecionado_perguntas
+                                edital_selecionado=edital_selecionado_perguntas,
+                                campo_perguntas="perguntas_relatorio"
                             )
 
 
@@ -666,7 +671,7 @@ with aba_perguntas:
                     custom_style=estilo
                 )
 
-                if st.button("Salvar nova ordem", type="primary", icon=":material/save:"):
+                if st.button("Salvar nova ordem", type="primary", icon=":material/save:", key="salvar_ordem_relatorio"):
 
                     novas_perguntas = []
 
@@ -685,7 +690,363 @@ with aba_perguntas:
                     st.rerun()
 
 
+# ==========================================================
+# ABA PERGUNTAS DO RELATÓRIO DE MONITORAMENTO
+# ==========================================================
 
+with aba_monitoramento:
+
+    st.subheader("Perguntas de Monitoramento")
+    st.write("")
+    
+    # ------------------------------------------------------
+    # SELEÇÃO DO EDITAL
+    # ------------------------------------------------------
+
+    if "codigo_edital" in df_editais.columns:
+        lista_editais = df_editais["codigo_edital"].dropna().astype(str).unique().tolist()
+    else:
+        lista_editais = []
+        st.warning("Editais sem campo 'codigo_edital'.")
+
+    edital_selecionado_perguntas_monitoramento = st.selectbox(
+        "Selecione o Edital:",
+        options=[""] + lista_editais,
+        index=0,
+        width=300,
+        key="edital_selecionado_perguntas_monitoramento"
+    )
+
+    # Se nenhum edital foi selecionado
+    if not edital_selecionado_perguntas_monitoramento:
+        st.caption("Selecione um edital para continuar.")
+
+    else:
+        # ------------------------------------------------------
+        # BUSCA O EDITAL
+        # ------------------------------------------------------
+
+        edital_monitoramento = buscar_edital_seguro(edital_selecionado_perguntas_monitoramento)
+
+        perguntas_monitoramento = sorted(
+            edital_monitoramento.get("perguntas_monitoramento", []),
+            key=lambda x: x.get("ordem", 9999)
+        )
+
+        # ======================================================
+        # ABAS INTERNAS
+        # ======================================================
+
+        aba_visualizar, aba_nova, aba_editar, aba_reordenar = st.tabs([
+            "Perguntas cadastradas",
+            "Nova pergunta",
+            "Editar / Excluir",
+            "Reordenar"
+        ])
+
+        # ======================================================
+        # ABA 1 — VISUALIZAR
+        # ======================================================
+
+        with aba_visualizar:
+
+            if not perguntas_monitoramento:
+                st.caption("Nenhuma pergunta cadastrada.")
+            else:
+                for idx, p in enumerate(perguntas_monitoramento, start=1):
+                    st.markdown(f"**{idx}. {p['pergunta']}**")
+
+                    tipo_legivel = {
+                        "texto_curto": "Resposta curta",
+                        "texto_longo": "Resposta longa",
+                        "numero": "Número",
+                        "multipla_escolha": "Múltipla escolha",
+                        "escolha_unica": "Escolha única",
+                        "upload_arquivo": "Upload de arquivos", 
+                        "titulo": "Título",
+                        "subtitulo": "Subtítulo",
+                        "paragrafo": "Parágrafo"
+                    }.get(p["tipo"], p["tipo"])
+
+
+                    # tipo_legivel = {
+                    #     "texto_curto": "Resposta curta",
+                    #     "texto_longo": "Resposta longa",
+                    #     "numero": "Número",
+                    #     "multipla_escolha": "Múltipla escolha",
+                    #     "escolha_unica": "Escolha única"
+                    # }.get(p["tipo"], p["tipo"])
+
+                    st.caption(f"Tipo: {tipo_legivel}")
+
+                    if p["tipo"] in ["multipla_escolha", "escolha_unica"]:
+                        for opcao in p.get("opcoes", []):
+                            st.write(f"• {opcao}")
+
+                    st.write("")
+
+        # ======================================================
+        # ABA 2 — NOVA PERGUNTA
+        # ======================================================
+
+        with aba_nova:
+            formulario_nova_pergunta(perguntas_monitoramento, edital_selecionado_perguntas_monitoramento, "perguntas_monitoramento", "monitoramento")
+
+
+
+        # ======================================================
+        # ABA 3 — EDITAR / EXCLUIR
+        # ======================================================
+
+        with aba_editar:
+
+            if not perguntas_monitoramento:
+                st.caption("Nenhuma pergunta cadastrada.")
+
+            else:
+                st.markdown("##### Selecione uma pergunta para EDITAR ou EXCLUIR")
+
+                # ----------------------------------------------
+                # MAPA DE PERGUNTAS DE MONITORAMENTO
+                # ----------------------------------------------
+                mapa_perguntas_monitoramento = {
+                    f"{p['ordem']}. {p['pergunta']}": p
+                    for p in perguntas_monitoramento
+                }
+
+                selecionada = st.selectbox(
+                    "Perg monit",
+                    list(mapa_perguntas_monitoramento.keys()),
+                    label_visibility="collapsed"
+                )
+
+                # Garante que algo foi selecionado
+                if selecionada:
+
+                    pergunta_atual = mapa_perguntas_monitoramento[selecionada]
+
+                    st.divider()
+
+                    # ----------------------------------------------
+                    # TIPO ATUAL
+                    # ----------------------------------------------
+                    mapa_tipo_inv = {
+                        "texto_curto": "Resposta curta",
+                        "texto_longo": "Resposta longa",
+                        "numero": "Número",
+                        "multipla_escolha": "Múltipla escolha",
+                        "escolha_unica": "Escolha única",
+                        "upload_arquivo": "Upload de arquivos",
+                        "titulo": "Título",
+                        "subtitulo": "Subtítulo",
+                        "paragrafo": "Parágrafo"
+                    }
+
+
+
+
+                    # mapa_tipo_inv = {
+                    #     "texto_curto": "Resposta curta",
+                    #     "texto_longo": "Resposta longa",
+                    #     "numero": "Número",
+                    #     "multipla_escolha": "Múltipla escolha",
+                    #     "escolha_unica": "Escolha única",
+                    #     "titulo": "Título",
+                    #     "subtitulo": "Subtítulo",
+                    #     # "divisoria": "Linha divisória",
+                    #     "paragrafo": "Parágrafo"
+                    # }
+
+                    tipo_atual = mapa_tipo_inv.get(pergunta_atual["tipo"])
+
+                    tipo = st.selectbox(
+                        "Tipo de pergunta",
+                        list(mapa_tipo_inv.values()),
+                        index=list(mapa_tipo_inv.values()).index(tipo_atual),
+                        key=f"selectbox_tipo_monitoramento_{pergunta_atual['ordem']}"
+                    )
+
+
+
+                    # ----------------------------------------------
+                    # CAMPOS DINÂMICOS
+                    # ----------------------------------------------
+                    texto = ""
+                    opcoes = []
+
+                    label_texto = "Texto da pergunta"
+
+                    if tipo == "Título":
+                        label_texto = "Texto do título"
+                    elif tipo == "Subtítulo":
+                        label_texto = "Texto do subtítulo"
+                    elif tipo == "Parágrafo":
+                        label_texto = "Texto do parágrafo"
+
+
+                    if tipo in [
+                        "Resposta curta",
+                        "Resposta longa",
+                        "Número",
+                        "Upload de arquivos",
+                        "Título",
+                        "Subtítulo"
+                    ]:
+                        texto = st.text_input(
+                            label_texto,
+                            value=pergunta_atual.get("pergunta", "")
+                        )
+
+
+
+                    # if tipo in [
+                    #     "Resposta curta",
+                    #     "Resposta longa",
+                    #     "Número",
+                    #     "Título",
+                    #     "Subtítulo"
+                    # ]:
+                    #     texto = st.text_input(
+                    #         label_texto,
+                    #         value=pergunta_atual.get("pergunta", "")
+                    #     )
+
+                    elif tipo == "Parágrafo":
+                        texto = st.text_area(
+                            label_texto,
+                            value=pergunta_atual.get("pergunta", "")
+                        )
+
+                    elif tipo in ["Múltipla escolha", "Escolha única"]:
+                        texto = st.text_input(
+                            "Texto da pergunta",
+                            value=pergunta_atual.get("pergunta", "")
+                        )
+
+                        opcoes = st.text_area(
+                            "Opções (uma por linha)",
+                            value="\n".join(pergunta_atual.get("opcoes", [])),
+                        ).split("\n")
+
+                    # if tipo == "Linha divisória":
+                    #     st.write("Este tipo não possui texto editável.")
+
+                    st.write("")
+
+                    # ----------------------------------------------
+                    # BOTÕES DE AÇÃO
+                    # ----------------------------------------------
+                    with st.container(horizontal=True, horizontal_alignment="left"):
+
+                        # -------- SALVAR --------
+                        if st.button("Salvar alterações", type="primary", icon=":material/save:", key="salvar_pergunta_edicao_monitoramento"):
+
+                            # Validações
+                            if not texto.strip():
+                            # if tipo != "Linha divisória" and not texto.strip():
+                                st.warning("O texto não pode ficar vazio.")
+                            elif tipo in ["Múltipla escolha", "Escolha única"] and not any(o.strip() for o in opcoes):
+                                st.warning("Informe pelo menos uma opção.")
+                            else:
+                                mapa_tipo = {
+                                    "Resposta curta": "texto_curto",
+                                    "Resposta longa": "texto_longo",
+                                    "Número": "numero",
+                                    "Múltipla escolha": "multipla_escolha",
+                                    "Escolha única": "escolha_unica",
+                                    "Título": "titulo",
+                                    "Subtítulo": "subtitulo",
+                                    "Upload de arquivos": "upload_arquivo",
+                                    "Parágrafo": "paragrafo"
+                                }
+
+                                nova = {
+                                    "tipo": mapa_tipo[tipo],
+                                    "ordem": pergunta_atual["ordem"]
+                                }
+                                
+                                nova["pergunta"] = texto.strip()
+                                
+                                # if mapa_tipo[tipo] != "divisoria":
+                                #     nova["pergunta"] = texto.strip()
+                                # else:
+                                #     nova["pergunta"] = "Divisória"
+
+                                if mapa_tipo[tipo] in ["multipla_escolha", "escolha_unica"]:
+                                    nova["opcoes"] = [o.strip() for o in opcoes if o.strip()]
+
+                                perguntas_monitoramento_atualizadas = [
+                                    nova if p == pergunta_atual else p
+                                    for p in perguntas_monitoramento
+                                ]
+
+                                col_editais.update_one(
+                                    {"codigo_edital": edital_selecionado_perguntas_monitoramento},
+                                    {"$set": {"perguntas_monitoramento": perguntas_monitoramento_atualizadas}}
+                                )
+
+                                st.success(":material/check: Pergunta atualizada!")
+                                time.sleep(3)
+                                st.rerun()
+
+                        # -------- EXCLUIR --------
+                        if st.button("Excluir pergunta", icon=":material/delete:", key="btn_excluir_pergunta_monitoramento"):
+                            confirmar_exclusao_pergunta(
+                                pergunta_atual=pergunta_atual,
+                                perguntas=perguntas_monitoramento,
+                                edital_selecionado=edital_selecionado_perguntas_monitoramento,
+                                campo_perguntas="perguntas_monitoramento"
+                            )
+
+
+
+        # ======================================================
+        # ABA 4 — REORDENAR
+        # ======================================================
+
+        with aba_reordenar:
+
+            if not perguntas_monitoramento:
+                st.caption("Nenhuma pergunta para ordenar.")
+            else:
+                st.write('')
+                st.write('**Arraste para reordenar as perguntas**')
+
+                estilo = """
+                    .sortable-component {
+                        background-color:white;
+                        font-size: 16px;
+                        counter-reset: item;
+                    }
+                    .sortable-item {
+                        background-color: white;
+                        color: black;
+                    }
+                """
+
+                nova_ordem = sort_items(
+                    items=[p["pergunta"] for p in perguntas_monitoramento],
+                    direction="vertical",
+                    custom_style=estilo
+                )
+
+                if st.button("Salvar nova ordem", type="primary", icon=":material/save:", key="salvar_ordem_monitoramento"):
+
+                    novas_perguntas_monitoramento = []
+
+                    for i, texto in enumerate(nova_ordem, start=1):
+                        pergunta = next(p for p in perguntas_monitoramento if p["pergunta"] == texto)
+                        pergunta["ordem"] = i
+                        novas_perguntas_monitoramento.append(pergunta)
+
+                    col_editais.update_one(
+                        {"codigo_edital": edital_selecionado_perguntas_monitoramento},
+                        {"$set": {"perguntas_monitoramento": novas_perguntas_monitoramento}}
+                    )
+
+                    st.success(":material/check: Ordem atualizada com sucesso!")
+                    time.sleep(3)
+                    st.rerun()
 
 
 # ==========================================================
