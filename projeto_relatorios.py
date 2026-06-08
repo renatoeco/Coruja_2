@@ -5922,16 +5922,7 @@ if step_selecionado == "Formulário":
             st.rerun()
 
 
-
-
-
-
-
-
-
 # ---------- ENVIAR ----------
-
-
 if step_selecionado == "Enviar":
 
     st.write('')
@@ -6133,14 +6124,6 @@ if step_selecionado == "Enviar":
         st.info("Este relatório não pode ser editado no momento.")
 
 
-
-
-
-
-
-
-
-
 # ---------- AVALIAÇÃO ----------
 if step_selecionado == "Avaliação":
 
@@ -6155,214 +6138,427 @@ if step_selecionado == "Avaliação":
         r for r in projeto["relatorios"]
         if r["numero"] == relatorio_numero
     )
+    
+    edital = col_editais.find_one(
+        {"codigo_edital": projeto["edital"]}
+    )
+
+    perguntas_monitoramento = sorted(
+        edital.get("perguntas_monitoramento", []),
+        key=lambda x: x.get("ordem", 0)
+    )
+    
+    if not perguntas_monitoramento:
+        st.caption(
+            "Nenhuma pergunta de monitoramento foi cadastrada para este edital."
+        )
+    
+    chave_monitoramento = f"monitoramento_{relatorio_numero}"
+
+    if st.session_state.get("monitoramento_ativo") != chave_monitoramento:
+
+        st.session_state.monitoramento_ativo = chave_monitoramento
+
+        st.session_state.respostas_monitoramento = (
+            relatorio.get("respostas_monitoramento", {}).copy()
+        )
 
     # Layout em quatro colunas para avaliação, devolutiva e aprovação
-    col1, col2 = st.columns([1, 2], gap="medium")
+    col1, col2 = st.columns([1, 1], gap="medium")
 
     # Anotações
     with col1:
 
-        st.write("**Anotações internas**")
+        st.write("**Relatório de Monitoramento**")
+        st.write("")
+        
+        # -------------------------------------------------------------------------
+        # Armazena uploads temporários em memória (evita múltiplos envios no rerun)
+        # Somente no clique do botão "Salvar formulário" os arquivos serão enviados
+        # -------------------------------------------------------------------------
+        if "temp_uploads_monitoramento" not in st.session_state:
+            st.session_state.temp_uploads_monitoramento = {}
+            
+        pode_editar_monitoramento = (
+            status_atual_db == "em_analise"
+        )
 
-        # --------------------------------------------------
-        # DIALOG DE NOVA ANOTAÇÃO
-        # --------------------------------------------------
-        @st.dialog("Nova anotação")
-        def dialog_nova_anotacao():
-            texto = st.text_area(
-                "Anotação",
-                placeholder="Digite sua anotação sobre este relatório..."
-            )
 
-            if st.button("Salvar anotação", type="primary", icon=":material/save:"):
-                if not texto.strip():
-                    st.warning("A anotação não pode estar vazia.")
-                    return
+        for pergunta in perguntas_monitoramento:
+            tipo = pergunta.get("tipo")
+            texto = pergunta.get("pergunta")
+            opcoes = pergunta.get("opcoes", [])
+            ordem = pergunta.get("ordem")
 
-                nova = {
-                    "texto_anotacao": texto.strip(),
-                    "data_anotacao": datetime.datetime.now().strftime("%d/%m/%Y"),
-                    "autor_anotacao": st.session_state.get("nome", "Usuário")
-                }
+            # Chave única da pergunta dentro do relatório
+            chave = f"pergunta_{ordem}"
 
-                col_projetos.update_one(
-                    {
-                        "codigo": projeto_codigo,
-                        "relatorios.numero": relatorio_numero
-                    },
-                    {
-                        "$push": {
-                            "relatorios.$.anotacoes_avaliacao": nova
-                        }
-                    }
+
+            # ---------------------------------------------------------------------
+            # TÍTULO (não salva resposta)
+            # ---------------------------------------------------------------------
+            if tipo == "titulo":
+                st.subheader(texto)
+                st.write("")
+                continue
+
+
+            # ---------------------------------------------------------------------
+            # SUBTÍTULO (não salva resposta)
+            # ---------------------------------------------------------------------
+            elif tipo == "subtitulo":
+                st.markdown(f"##### {texto}")
+                st.write("")
+                continue
+
+
+            # ---------------------------------------------------------------------
+            # PARÁGRAFO → apenas texto informativo
+            # ---------------------------------------------------------------------
+            elif tipo == "paragrafo":
+                st.write(texto)
+                st.write("")
+                continue
+
+
+            # ---------------------------------------------------------------------
+            # TEXTO CURTO
+            # ---------------------------------------------------------------------
+            elif tipo == "texto_curto":
+
+                resposta_atual = (
+                    st.session_state.respostas_monitoramento
+                    .get(chave, {})
+                    .get("resposta", "")
                 )
 
-                st.success("Anotação salva com sucesso.", icon=":material/check:")
+                if pode_editar_monitoramento:
+                    resposta = st.text_input(
+                        label=texto,
+                        value=resposta_atual,
+                        key=f"monitoramento_{chave}"
+                    )
+
+                    st.session_state.respostas_monitoramento[chave] = {
+                        "tipo": tipo,
+                        "ordem": ordem,
+                        "pergunta": texto,
+                        "resposta": resposta
+                    }
+                else:
+                    renderizar_visualizacao(texto, resposta_atual)
+
+
+            # ---------------------------------------------------------------------
+            # TEXTO LONGO
+            # ---------------------------------------------------------------------
+            elif tipo == "texto_longo":
+
+                resposta_atual = (
+                    st.session_state.respostas_monitoramento
+                    .get(chave, {})
+                    .get("resposta", "")
+                )
+
+                if pode_editar_monitoramento:
+                    resposta = st.text_area(
+                        label=texto,
+                        value=resposta_atual,
+                        height=150,
+                        key=f"monitoramento_{chave}"
+                    )
+
+                    st.session_state.respostas_monitoramento[chave] = {
+                        "tipo": tipo,
+                        "ordem": ordem,
+                        "pergunta": texto,
+                        "resposta": resposta
+                    }
+                else:
+                    renderizar_visualizacao(texto, resposta_atual)
+
+
+            # ---------------------------------------------------------------------
+            # NÚMERO
+            # ---------------------------------------------------------------------
+            elif tipo == "numero":
+
+                resposta_atual = (
+                    st.session_state.respostas_monitoramento
+                    .get(chave, {})
+                    .get("resposta", 0)
+                )
+
+                if pode_editar_monitoramento:
+                    resposta = st.number_input(
+                        label=texto,
+                        value=float(resposta_atual),
+                        step=1.0,
+                        format="%g",
+                        key=f"monitoramento_{chave}"
+                    )
+
+                    st.session_state.respostas_monitoramento[chave] = {
+                        "tipo": tipo,
+                        "ordem": ordem,
+                        "pergunta": texto,
+                        "resposta": resposta
+                    }
+                else:
+                    renderizar_visualizacao(
+                        texto,
+                        formatar_numero_br_dinamico(resposta_atual)
+                    )
+
+
+            # ---------------------------------------------------------------------
+            # ESCOLHA ÚNICA
+            # ---------------------------------------------------------------------
+            elif tipo == "escolha_unica":
+
+                resposta_atual = (
+                    st.session_state.respostas_monitoramento
+                    .get(chave, {})
+                    .get("resposta", opcoes[0] if opcoes else "")
+                )
+
+                if pode_editar_monitoramento:
+                    resposta = st.radio(
+                        label=texto,
+                        options=opcoes,
+                        index=opcoes.index(resposta_atual) if resposta_atual in opcoes else 0,
+                        key=f"monitoramento_{chave}"
+                    )
+
+                    st.session_state.respostas_monitoramento[chave] = {
+                        "tipo": tipo,
+                        "ordem": ordem,
+                        "pergunta": texto,
+                        "resposta": resposta
+                    }
+                else:
+                    renderizar_visualizacao(texto, resposta_atual)
+
+
+            # ---------------------------------------------------------------------
+            # MÚLTIPLA ESCOLHA
+            # ---------------------------------------------------------------------
+            elif tipo == "multipla_escolha":
+
+                resposta_atual = (
+                    st.session_state.respostas_monitoramento
+                    .get(chave, {})
+                    .get("resposta", [])
+                )
+
+                if not isinstance(resposta_atual, list):
+                    resposta_atual = []
+
+                resposta_atual = [
+                    item
+                    for item in resposta_atual
+                    if item in opcoes
+                ]
+
+                if pode_editar_monitoramento:
+                    resposta = st.multiselect(
+                        label=texto,
+                        options=opcoes,
+                        default=resposta_atual,
+                        key=f"monitoramento_{chave}",
+                        placeholder=""
+                    )
+
+                    st.session_state.respostas_monitoramento[chave] = {
+                        "tipo": tipo,
+                        "ordem": ordem,
+                        "pergunta": texto,
+                        "resposta": resposta
+                    }
+                else:
+                    renderizar_visualizacao(texto, ", ".join(resposta_atual))
+
+
+
+            # ---------------------------------------------------------------------
+            # UPLOAD DE ARQUIVOS
+            # ---------------------------------------------------------------------
+            elif tipo == "upload_arquivo":
+
+                MAX_MB = 10
+                MAX_BYTES = MAX_MB * 1024 * 1024
+
+                resposta_atual = (
+                    st.session_state.respostas_monitoramento
+                    .get(chave, {})
+                    .get("resposta", [])
+                )
+
+                if pode_editar_monitoramento:
+
+                    arquivos = st.file_uploader(
+                        label=f"{texto} (máx. 10 MB por arquivo)",
+                        accept_multiple_files=True,
+                        key=f"monitoramento_{chave}"
+                    )
+
+                    # ---------------------------------------------------------
+                    # Validação 
+                    # ---------------------------------------------------------
+                    if arquivos:
+                        validos = [
+                            arq for arq in arquivos
+                            if arq.size <= MAX_BYTES
+                        ]
+
+                        for arq in arquivos:
+                            if arq.size > MAX_BYTES:
+                                st.warning(
+                                    f"O arquivo '{arq.name}' excede 10 MB e não será enviado."
+                                )
+
+                        # substitui (não acumula)
+                        st.session_state.temp_uploads_monitoramento[chave] = validos
+                    else:
+                        # se remover seleção, limpa também
+                        st.session_state.temp_uploads_monitoramento.pop(chave, None)
+
+                    # ---------------------------------------------------------
+                    # Lista de arquivos já salvos (após uploader)
+                    # ---------------------------------------------------------
+                    if resposta_atual:
+                        st.caption("Arquivos já enviados:")
+                        for arq in resposta_atual:
+                            link = gerar_link_drive(arq["id"])
+                            st.markdown(
+                                f":material/attach_file: [{arq['nome']}]({link})"
+                            )
+
+                    st.session_state.respostas_monitoramento[chave] = {
+                        "tipo": tipo,
+                        "ordem": ordem,
+                        "pergunta": texto,
+                        "resposta": resposta_atual
+                    }
+
+                else:
+                    st.markdown(f"**{texto}**")
+
+                    if resposta_atual:
+                        for arq in resposta_atual:
+                            link = gerar_link_drive(arq["id"])
+                            st.markdown(
+                                f":material/attach_file: [{arq['nome']}]({link})"
+                            )
+                    else:
+                        st.caption("Nenhum arquivo enviado")
+
+
+            # ---------------------------------------------------------------------
+            # TIPO NÃO SUPORTADO
+            # ---------------------------------------------------------------------
+            else:
+                st.warning(f"Tipo de pergunta não suportado: {tipo}")
+
+            st.write("")
+                
+        ###########################################################################
+        # 4. BOTÃO PARA SALVAR RESPOSTAS + UPLOAD REAL PARA O DRIVE
+        ###########################################################################
+        if pode_editar_monitoramento:
+            if st.button("Salvar monitoramento", type="primary", icon=":material/save:", key="salvar_monitoramento"):
+
+                with st.spinner("Salvando o relatório de monitoramento..."):
+
+                    servico = None
+
+                    # ---------------------------------------------------------
+                    # Upload incremental (somente se houver novos arquivos)
+                    # ---------------------------------------------------------
+                    for chave, arquivos in list(st.session_state.temp_uploads_monitoramento.items()):
+
+                        if not arquivos:
+                            continue
+
+                        if not servico:
+                            servico = obter_servico_drive()
+
+                        pasta_projeto_id = obter_pasta_projeto(
+                            servico,
+                            projeto["codigo"],
+                            projeto["sigla"]
+                        )
+
+                        pasta_relatorios_id = obter_pasta_relatorios(
+                            servico,
+                            pasta_projeto_id
+                        )
+
+                        novos_arquivos = []
+
+                        for arquivo in arquivos:
+                            arquivo_id = enviar_arquivo_drive(
+                                servico,
+                                pasta_relatorios_id,
+                                arquivo
+                            )
+
+                            if arquivo_id:
+                                novos_arquivos.append({
+                                    "id": arquivo_id,
+                                    "nome": arquivo.name
+                                })
+
+                        existentes = (
+                            st.session_state.respostas_monitoramento[chave]
+                            .get("resposta", [])
+                        )
+
+                        st.session_state.respostas_monitoramento[chave]["resposta"] = (
+                            existentes + novos_arquivos
+                        )
+
+                    # ---------------------------------------------------------
+                    # LIMPEZA CRÍTICA (evita duplicação no rerun)
+                    # ---------------------------------------------------------
+                    st.session_state.temp_uploads_monitoramento = {}
+
+                    # # limpa widgets file_uploader
+                    # for k in list(st.session_state.keys()):
+                    #     if k.startswith("monitoramento_pergunta_"):
+                    #         del st.session_state[k]
+
+                    # ---------------------------------------------------------
+                    # Salva no Mongo
+                    # ---------------------------------------------------------
+                    nome_usuario = st.session_state.get("nome", "Usuário")
+                    data_verificacao = datetime.datetime.now().strftime("%d/%m/%Y")
+
+                    col_projetos.update_one(
+                        {
+                            "codigo": projeto["codigo"],
+                            "relatorios.numero": relatorio_numero
+                        },
+                        {
+                            "$set": {
+                                "relatorios.$.respostas_monitoramento":
+                                    st.session_state.respostas_monitoramento,
+
+                                "relatorios.$.monitoramento_preenchido_por":
+                                    f"{nome_usuario} em {data_verificacao}"
+                            }
+                        }
+                    )
+
+                st.success("Respostas salvas com sucesso!", icon=":material/check:")
                 time.sleep(3)
                 st.rerun()
-
-        # --------------------------------------------------
-        # BOTÃO NOVA ANOTAÇÃO
-        # --------------------------------------------------
-        if st.button(
-            "Nova anotação",
-            type="secondary",
-            icon=":material/add:"
-        ):
-            dialog_nova_anotacao()
-
-
-
-
-
-
-
-        # --------------------------------------------------
-        # RENDERIZAÇÃO DAS ANOTAÇÕES (POPOVER COM AÇÕES)
-        # --------------------------------------------------
-
-        if "anotacao_editando" not in st.session_state:
-            st.session_state["anotacao_editando"] = None
-
-        if "anotacao_apagando" not in st.session_state:
-            st.session_state["anotacao_apagando"] = None
-
-        anotacoes = relatorio_db.get("anotacoes_avaliacao", [])
-
-        if not anotacoes:
-            st.caption("Nenhuma anotação registrada.")
-        else:
-            for i, a in enumerate(reversed(anotacoes)):
-
-                idx_real = len(anotacoes) - 1 - i
-                autor = a.get("autor_anotacao")
-                data = a.get("data_anotacao")
-                texto = a.get("texto_anotacao")
-
-                with st.container(border=True):
-
-                    # Cabeçalho
-                    col_h1, col_h2 = st.columns([9, 1])
-                    col_h1.markdown(f"**{autor}** · {data}")
-
-                    # --------------------------------------------------
-                    # POPOVER DE AÇÕES (somente autor)
-                    # --------------------------------------------------
-                    if st.session_state.get("nome") == autor:
-
-                        with col_h2.popover("⋮", type="tertiary"):
-
-                            if st.button(
-                                "Editar anotação",
-                                key=f"btn_edit_anot_{relatorio_numero}_{idx_real}",
-                                icon=":material/edit:",
-                                type="tertiary"
-                            ):
-                                st.session_state["anotacao_editando"] = idx_real
-                                st.session_state["anotacao_apagando"] = None
-                                st.rerun()
-
-                            if st.button(
-                                "Apagar anotação",
-                                key=f"btn_del_anot_{relatorio_numero}_{idx_real}",
-                                icon=":material/delete:",
-                                type="tertiary"
-                            ):
-                                st.session_state["anotacao_apagando"] = idx_real
-                                st.session_state["anotacao_editando"] = None
-                                st.rerun()
-
-                    # --------------------------------------------------
-                    # CONFIRMAÇÃO DE EXCLUSÃO
-                    # --------------------------------------------------
-                    if st.session_state["anotacao_apagando"] == idx_real:
-
-                        st.warning("Tem certeza que deseja apagar esta anotação? Esta ação não pode ser desfeita.", icon=":material/warning:")
-
-                        with st.container(horizontal=True):
-
-                            if st.button(
-                                "Sim, apagar anotação",
-                                key=f"btn_confirm_del_{relatorio_numero}_{idx_real}",
-                                type="primary",
-                                icon=":material/delete:"
-                            ):
-                                del projeto["relatorios"][idx]["anotacoes_avaliacao"][idx_real]
-
-                                col_projetos.update_one(
-                                    {"codigo": projeto_codigo},
-                                    {"$set": {"relatorios": projeto["relatorios"]}}
-                                )
-
-                                st.success("Anotação apagada.", icon=":material/check:")
-                                time.sleep(3)
-
-                                st.session_state["anotacao_apagando"] = None
-                                st.rerun()
-
-                            if st.button(
-                                "Cancelar",
-                                key=f"btn_cancel_del_{relatorio_numero}_{idx_real}"
-                            ):
-                                st.session_state["anotacao_apagando"] = None
-                                st.rerun()
-
-                    # --------------------------------------------------
-                    # MODO EDIÇÃO
-                    # --------------------------------------------------
-                    elif st.session_state["anotacao_editando"] == idx_real:
-
-                        text_key = f"text_anot_{relatorio_numero}_{idx_real}"
-
-                        if text_key not in st.session_state:
-                            st.session_state[text_key] = texto
-
-                        novo_texto = st.text_area(
-                            "Editar anotação",
-                            key=text_key
-                        )
-
-                        with st.container(horizontal=True):
-
-                            if st.button(
-                                "Atualizar",
-                                key=f"btn_upd_{relatorio_numero}_{idx_real}",
-                                type="primary",
-                                icon=":material/save:"
-                            ):
-                                projeto["relatorios"][idx]["anotacoes_avaliacao"][idx_real]["texto_anotacao"] = novo_texto
-
-                                col_projetos.update_one(
-                                    {"codigo": projeto_codigo},
-                                    {"$set": {"relatorios": projeto["relatorios"]}}
-                                )
-
-                                st.success("Anotação atualizada.")
-                                time.sleep(3)
-
-                                st.session_state["anotacao_editando"] = None
-                                st.session_state.pop(text_key, None)
-                                st.rerun()
-
-                            if st.button(
-                                "Cancelar",
-                                key=f"btn_cancel_edit_{relatorio_numero}_{idx_real}"
-                            ):
-                                st.session_state["anotacao_editando"] = None
-                                st.session_state.pop(text_key, None)
-                                st.rerun()
-
-                    # --------------------------------------------------
-                    # MODO VISUALIZAÇÃO
-                    # --------------------------------------------------
-                    else:
-                        st.markdown(
-                            texto.replace("\n", "<br>"),
-                            unsafe_allow_html=True
-                        )
-                        
-
-
+            
+            if relatorio_db.get("monitoramento_preenchido_por"):
+                st.caption(
+                    f"Monitoramento verificado por "
+                    f"{relatorio_db['monitoramento_preenchido_por']}"
+                )        
 
     # ###############################################################
     # COLUNA 3 — ENCAMINHAMENTO
@@ -6370,6 +6566,7 @@ if step_selecionado == "Avaliação":
     with col2:
 
         st.write("**Encaminhamento**")
+        st.write("")
 
         # --------------------------------------------------
         # CONTROLE DE PERMISSÃO
@@ -6396,6 +6593,10 @@ if step_selecionado == "Avaliação":
             disabled=not pode_encaminhar
         )
         
+        monitoramento_ok = bool(
+            relatorio_db.get("respostas_monitoramento", {})
+        )
+        
         # --------------------------------------------------
         # REGRA: CHECKLIST PARA APROVAÇÃO
         # --------------------------------------------------
@@ -6404,7 +6605,8 @@ if step_selecionado == "Avaliação":
             despesas_ok,
             indicadores_ok,
             "benef_verif_por" in relatorio_db,
-            "form_verif_por" in relatorio_db
+            "form_verif_por" in relatorio_db,
+            monitoramento_ok
         ])
 
         # --------------------------------------------------
@@ -6433,9 +6635,20 @@ if step_selecionado == "Avaliação":
         # ==================================================
         if botao_reprovar:
 
-            if not texto_devolutiva or not texto_devolutiva.strip():
-                st.warning("A devolutiva deve ser preenchida para a reprovação.")
+            if "monitoramento_preenchido_por" not in relatorio_db:
+
+                st.warning(
+                    "O relatório de monitoramento deve ser preenchido e salvo antes da avaliação."
+                )
+
+            elif not texto_devolutiva or not texto_devolutiva.strip():
+
+                st.warning(
+                    "A devolutiva deve ser preenchida para a reprovação."
+                )
+
             else:
+
                 st.session_state["confirmar_reprovacao"] = True
 
         if st.session_state["confirmar_reprovacao"]:
@@ -6506,17 +6719,20 @@ if step_selecionado == "Avaliação":
                 st.rerun()
 
 
-
-
-
-
         # ==================================================
         # AÇÃO — APROVAR (COM CONFIRMAÇÃO + VALIDAÇÃO)
         # ==================================================
         if botao_aprovar:
 
-            if not texto_devolutiva or not texto_devolutiva.strip():
+            if "monitoramento_preenchido_por" not in relatorio_db:
+
+                st.warning(
+                    "O relatório de monitoramento deve ser preenchido e salvo antes da aprovação."
+                )
+
+            elif not texto_devolutiva or not texto_devolutiva.strip():
                 st.warning("A devolutiva deve ser preenchida para aprovação.")
+                
             else:
                 st.session_state["confirmar_aprovacao"] = True
 
@@ -6604,19 +6820,11 @@ if step_selecionado == "Avaliação":
                         f"Relatório {relatorio_numero} aprovado"
                     )
 
-
-
                 st.success("Relatório aprovado com sucesso.", icon=":material/check:")
                 time.sleep(3)
 
                 st.session_state["confirmar_aprovacao"] = False
                 st.rerun()
-
-
-
-
-
-
 
         # --------------------------------------------------
         # LISTAGEM DE DEVOLUÇÕES
@@ -6736,20 +6944,6 @@ if step_selecionado == "Avaliação":
                             ):
                                 st.session_state["dev_avaliacao_apagando"] = None
                                 st.rerun()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # ###################################################################################################
