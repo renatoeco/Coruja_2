@@ -6166,7 +6166,7 @@ if step_selecionado == "Avaliação":
     # Layout em quatro colunas para avaliação, devolutiva e aprovação
     col1, col2 = st.columns([1, 1], gap="medium")
 
-    # Anotações
+    # Relatório de monitoramento
     with col1:
 
         st.write("**Relatório de Monitoramento**")
