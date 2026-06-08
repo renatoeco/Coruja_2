@@ -21,6 +21,9 @@ df_projetos = pd.DataFrame(list(col_projetos.find()))
 col_editais = db["editais"]
 df_editais = pd.DataFrame(list(col_editais.find()))
 
+col_organizacoes = db["organizacoes"]
+df_organizacoes = pd.DataFrame(list(col_organizacoes.find()))
+
 
 ###########################################################################################################
 # FUNÇÕES
@@ -173,12 +176,28 @@ for _, projeto in df_filtrado.iterrows():
             continue
 
         encontrou_localidade = True
+        
+        # Busca os dados da organização vinculada ao projeto
+        organizacao_nome = ""
+
+        id_organizacao = projeto.get("id_organizacao")
+
+        if id_organizacao is not None:
+
+            organizacao_filtrada = df_organizacoes[
+                df_organizacoes["_id"] == id_organizacao
+            ]
+
+            if not organizacao_filtrada.empty:
+                organizacao_nome = organizacao_filtrada.iloc[0].get(
+                    "nome_organizacao", ""
+                )
 
         pontos_mapa.append({
             "codigo": projeto.get("codigo"),
             "sigla": projeto.get("sigla"),
             "nome_projeto": projeto.get("nome_do_projeto"),
-            "organizacao": projeto.get("organizacao"),
+            "organizacao": organizacao_nome,
             "municipio": local.get("municipio"),
             "localidade": local.get("nome_localidade"),
             "latitude": lat,
