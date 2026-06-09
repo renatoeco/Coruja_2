@@ -744,7 +744,8 @@ def render_registro_despesa(
                 key=f"desp_data_{form_key}",
                 format="dd/MM/yyyy",
                 locale="pt_BR",
-                one_tap=True
+                one_tap=True,
+                placeholder="dd/mm/aaaa"
             )
 
         with col2:
@@ -1527,7 +1528,8 @@ def renderizar_formulario_relato():
                 key="campo_data_inicio",
                 format="dd/MM/yyyy",
                 locale="pt_BR",
-                one_tap=True
+                one_tap=True,
+                placeholder="dd/mm/aaaa"
             )
 
         with col2:
@@ -1537,7 +1539,9 @@ def renderizar_formulario_relato():
                 key="campo_data_fim",
                 format="dd/MM/yyyy",
                 locale="pt_BR",
-                one_tap=True
+                one_tap=True,
+                placeholder="dd/mm/aaaa"
+
             )
 
 
