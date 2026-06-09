@@ -13,16 +13,16 @@ st.set_page_config(page_title="Novo Projeto", page_icon=":material/add_circle:")
 # CONEXÃO COM O BANCO
 ###########################################################################################################
 
+
 db = conectar_mongo_coruja()
 
 col_projetos = db["projetos"]
 col_pessoas = db["pessoas"]
 col_organizacoes = db["organizacoes"]
 col_editais = db["editais"]
-col_publicos = db["publicos"]
 
 df_pessoas = pd.DataFrame(list(col_pessoas.find()))
-df_publicos = pd.DataFrame(list(col_publicos.find()))
+
 
 ###########################################################################################################
 # SESSION STATE
@@ -44,8 +44,6 @@ if "form_projeto" not in st.session_state:
         "data_inicio": None,
         "data_fim": None,
         "responsavel": [],
-        # "direcoes": [],
-        "publicos": [],
         "objetivo": ""
     }
 
@@ -122,19 +120,6 @@ edital_doc = next((e for e in editais if e["codigo_edital"] == edital), {})
 
 
 ###########################################################################################################
-# DADOS AUXILIARES (PÚBLICOS)
-###########################################################################################################
-
-
-# Verifica se dataframe está vazio OU coluna não existe
-if df_publicos.empty or "publico" not in df_publicos.columns:
-    lista_publicos = []
-else:
-    # Remove valores nulos e garante lista limpa
-    lista_publicos = df_publicos["publico"].dropna().tolist()
-
-
-###########################################################################################################
 # FORMULÁRIO
 ###########################################################################################################
 
@@ -196,21 +181,12 @@ with st.form(key=f"form_novo_projeto_{st.session_state.form_key}", border=False)
             key="data_fim"
         )
 
-
-    col1, col2 = st.columns([2, 1])
-
-    responsaveis_ids = col1.multiselect(
+    responsaveis_ids = st.multiselect(
         "Responsáveis pelo projeto",
         lista_ids,
         default=st.session_state.form_projeto["responsavel"],
-        format_func=lambda x: "" if x is None else mapa_id_nome[x]
-    )
-
-    publicos = col2.multiselect(
-        "Públicos",
-        options=lista_publicos if lista_publicos else ["Nenhum público cadastrado"],
-        default=st.session_state.form_projeto["publicos"] if lista_publicos else [],
-        disabled=not lista_publicos  # desativa se não houver dados
+        format_func=lambda x: "" if x is None else mapa_id_nome[x],
+        placeholder=""
     )
 
     objetivo = st.text_area(
@@ -274,7 +250,6 @@ if submit:
         "data_inicio": data_inicio,
         "data_fim": data_fim,
         "responsavel": responsaveis_ids,  # lista de _id
-        "publicos": publicos,
         "objetivo": objetivo,
         "primeiro_f_ecos": primeiro_f_ecos,
         "primeiro_vida": primeiro_vida
@@ -293,8 +268,6 @@ if submit:
         "Objetivo": objetivo,
         "Data início": data_inicio,
         "Data fim": data_fim,
-
-        "Públicos": publicos
     }
 
     faltando = [k for k, v in obrigatorios.items() if not v]
@@ -325,7 +298,7 @@ if submit:
             "duracao": duracao,
             "data_inicio_contrato": data_inicio.strftime("%d/%m/%Y") if data_inicio else None,
             "data_fim_contrato": data_fim.strftime("%d/%m/%Y") if data_fim else None,
-            "publicos": publicos,
+            "publicos": [],
             "primeiro_f_ecos": primeiro_f_ecos,
             "primeiro_vida": primeiro_vida,
             "status": "Em dia",
@@ -365,7 +338,6 @@ if submit:
             "data_inicio": None,
             "data_fim": None,
             "responsavel": [],
-            "publicos": [],
             "objetivo": "",
             "primeiro_f_ecos": False,
             "primeiro_vida": False
