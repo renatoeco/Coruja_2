@@ -182,7 +182,7 @@ with st.form(key=f"form_novo_projeto_{st.session_state.form_key}", border=False)
         )
 
     responsaveis_ids = st.multiselect(
-        "Responsáveis pelo projeto",
+        "Responsáveis pelo projeto (beneficiários)",
         lista_ids,
         default=st.session_state.form_projeto["responsavel"],
         format_func=lambda x: "" if x is None else mapa_id_nome[x],
