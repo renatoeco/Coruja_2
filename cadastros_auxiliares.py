@@ -1864,10 +1864,25 @@ with aba_publicos:
 
     # 1) Carrega documentos da coleção (ordenados)
     dados_publicos = list(
-        col_publicos.find({}, {"publico": 1}).sort("publico", 1)
+        col_publicos.find(
+            {},
+            {
+                "publico": 1,
+                "categoria": 1
+            }
+        ).sort("publico", 1)
     )
 
     df_publicos = pd.DataFrame(dados_publicos)
+
+    if "categoria" not in df_publicos.columns:
+        df_publicos["categoria"] = "Geral"
+
+    df_publicos["categoria"] = (
+        df_publicos["categoria"]
+        .fillna("Geral")
+        .astype(str)
+    )
 
     # Converte ObjectId para string
     if "_id" in df_publicos.columns:
@@ -1890,10 +1905,15 @@ with aba_publicos:
             st.caption("Nenhum tipo de beneficiário cadastrado.")
         else:
             st.dataframe(
-                df_publicos[["publico"]].sort_values("publico"),
+                df_publicos[
+                    ["publico", "categoria"]
+                ].sort_values("publico"),
                 hide_index=True,
-                width=500,
-                column_config={"publico": st.column_config.TextColumn("Público")},
+                width="stretch",
+                column_config={
+                    "publico": st.column_config.TextColumn("Público"),
+                    "categoria": st.column_config.TextColumn("Categoria")
+                },
             )
 
 
@@ -1910,17 +1930,41 @@ with aba_publicos:
                 {"publico": pd.Series(dtype="str")}
             )
         else:
-            df_editor = df_publicos[["publico"]].copy()
+            df_editor = df_publicos[
+                ["_id", "publico", "categoria"]
+            ].copy()
+
             df_editor["publico"] = df_editor["publico"].astype(str)
+
+            df_editor["categoria"] = (
+                df_editor["categoria"]
+                .fillna("Geral")
+                .astype(str)
+            )
 
         df_editado = st.data_editor(
             df_editor,
             num_rows="dynamic",
             hide_index=True,
             key="editor_publicos",
-            width=500,
+            width=800,
             column_config={
-                "publico": st.column_config.TextColumn("Público")
+
+                "_id": None,
+
+                "publico": st.column_config.TextColumn(
+                    "Público"
+                ),
+
+                "categoria": st.column_config.SelectboxColumn(
+                    "Categoria",
+                    options=[
+                        "Geral",
+                        "Comunidades Tradicionais",
+                        "Povos Indígenas"
+                    ],
+                    required=True
+                )
             }
         )
 
@@ -1954,23 +1998,58 @@ with aba_publicos:
                 )
                 st.stop()
 
-            valores_orig = (
-                set(df_publicos["publico"])
-                if "publico" in df_publicos.columns
-                else set()
+            # Normaliza categoria
+            df_editado["categoria"] = (
+                df_editado["categoria"]
+                .fillna("Geral")
+                .astype(str)
+                .str.strip()
             )
-            valores_editados = set(lista_editada)
 
-            # 1) Removidos
-            for publico in valores_orig - valores_editados:
-                col_publicos.delete_one({"publico": publico})
+            # IDs existentes
+            ids_banco = set(df_publicos["_id"].astype(str))
 
-            # 2) Novos
-            for publico in valores_editados - valores_orig:
-                if col_publicos.find_one({"publico": publico}):
-                    st.error(f"O valor '{publico}' já existe e não será inserido.")
-                    st.stop()
-                col_publicos.insert_one({"publico": publico})
+            ids_editor = set(
+                df_editado["_id"]
+                .fillna("")
+                .astype(str)
+            )
+
+            # Remove excluídos
+            for id_remover in ids_banco - ids_editor:
+                col_publicos.delete_one(
+                    {"_id": ObjectId(id_remover)}
+                )
+
+            # Atualiza ou cria
+            for _, row in df_editado.iterrows():
+
+                publico = row["publico"]
+                categoria = row["categoria"]
+                id_publico = row.get("_id")
+
+                # Atualização
+                if id_publico and str(id_publico).strip():
+
+                    col_publicos.update_one(
+                        {"_id": ObjectId(id_publico)},
+                        {
+                            "$set": {
+                                "publico": publico,
+                                "categoria": categoria
+                            }
+                        }
+                    )
+
+                # Novo registro
+                else:
+
+                    col_publicos.insert_one(
+                        {
+                            "publico": publico,
+                            "categoria": categoria
+                        }
+                    )
 
             st.success("Beneficiários atualizados com sucesso!")
             time.sleep(3)
