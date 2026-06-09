@@ -739,10 +739,12 @@ def render_registro_despesa(
 
         with col1:
 
-            data_despesa = st.date_input(
-                "Data da despesa *",
-                format="DD/MM/YYYY",
-                key=f"desp_data_{form_key}"
+            data_despesa = date_picker(
+                label="Data da despesa *",
+                key=f"desp_data_{form_key}",
+                format="dd/MM/yyyy",
+                locale="pt_BR",
+                one_tap=True
             )
 
         with col2:
@@ -1251,10 +1253,23 @@ def salvar_relato():
     # --------------------------------------------------
     # 9. OBJETO FINAL DO RELATO
     # --------------------------------------------------
-    
 
-    data_inicio_str = data_inicio.strftime("%d/%m/%Y") if data_inicio else None
-    data_fim_str = data_fim.strftime("%d/%m/%Y") if data_fim else None    
+    def converter_date_picker(valor):
+
+        if not valor:
+            return None
+
+        if isinstance(valor, dict):
+            return datetime.datetime.strptime(
+                valor["selected_date"],
+                "%Y-%m-%d"
+            ).strftime("%d/%m/%Y")
+
+        return None
+
+
+    data_inicio_str = converter_date_picker(data_inicio)
+    data_fim_str = converter_date_picker(data_fim)
     
 
     novo_relato = {
@@ -1505,17 +1520,25 @@ def renderizar_formulario_relato():
 
         col1, col2 = st.columns(2)
 
-        col1.date_input(
-            "Data de início *",
-            key="campo_data_inicio",
-            format="DD/MM/YYYY"
-        )
+        with col1:
 
-        col2.date_input(
-            "Data de fim *",
-            key="campo_data_fim",
-            format="DD/MM/YYYY"
-        )
+            data_inicio = date_picker(
+                label="Data de início *",
+                key="campo_data_inicio",
+                format="dd/MM/yyyy",
+                locale="pt_BR",
+                one_tap=True
+            )
+
+        with col2:
+
+            data_fim = date_picker(
+                label="Data de fim *",
+                key="campo_data_fim",
+                format="dd/MM/yyyy",
+                locale="pt_BR",
+                one_tap=True
+            )
 
 
         st.divider()
@@ -2209,14 +2232,6 @@ else:
 ###########################################################################################################
 # CONTEÚDO DOS STEPS
 ###########################################################################################################
-
-
-
-
-
-
-
-
 
 
 # ---------- ATIVIDADES ----------
