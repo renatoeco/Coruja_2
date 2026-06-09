@@ -228,6 +228,36 @@ df_editais = pd.DataFrame(list(col_editais.find()))
 # Públicos
 df_publicos = pd.DataFrame(list(col_publicos.find()))
 
+# Garantias
+df_publicos["_id"] = df_publicos["_id"].astype(str)
+
+if "categoria" not in df_publicos.columns:
+    df_publicos["categoria"] = "Geral"
+
+# Públicos por categoria
+df_publicos_geral = (
+    df_publicos[df_publicos["categoria"] == "Geral"]
+    .sort_values("publico")
+)
+
+df_publicos_tradicionais = (
+    df_publicos[df_publicos["categoria"] == "Comunidades Tradicionais"]
+    .sort_values("publico")
+)
+
+df_publicos_indigenas = (
+    df_publicos[df_publicos["categoria"] == "Povos Indígenas"]
+    .sort_values("publico")
+)
+
+# mapa id -> nome
+mapa_publicos = dict(
+    zip(
+        df_publicos["_id"],
+        df_publicos["publico"]
+    )
+)
+
 # Organizações
 df_organizacoes = pd.DataFrame(list(col_organizacoes.find()))
 
@@ -481,11 +511,52 @@ if not editar_cadastro:
 
     if publicos:
 
-        with col2.popover("**Beneficiários**", type="tertiary"):
+        with col2.popover("**Beneficiários**", type="tertiary", width="content"):
 
-            for publico in publicos:
+            ids_publicos = [
+                str(p)
+                for p in publicos
+            ]
 
-                st.write(f"**{publico}**")
+            publicos_projeto = df_publicos[
+                df_publicos["_id"].isin(ids_publicos)
+            ]
+
+            geral = publicos_projeto[
+                publicos_projeto["categoria"] == "Geral"
+            ]
+
+            tradicionais = publicos_projeto[
+                publicos_projeto["categoria"] == "Comunidades Tradicionais"
+            ]
+
+            indigenas = publicos_projeto[
+                publicos_projeto["categoria"] == "Povos Indígenas"
+            ]
+
+            colunas = []
+
+            if not geral.empty:
+                colunas.append(("Geral", geral))
+
+            if not tradicionais.empty:
+                colunas.append(("Comunidades Tradicionais", tradicionais))
+
+            if not indigenas.empty:
+                colunas.append(("Povos Indígenas", indigenas))
+
+            cols = st.columns(len(colunas), gap="xsmall", border=True)
+
+            for col, (titulo, df_cat) in zip(cols, colunas):
+
+                with col:
+
+                    st.markdown(f"**{titulo}**")
+
+                    st.write("")
+
+                    for _, row in df_cat.iterrows():
+                        st.write(row["publico"])
 
     else:
         st.markdown(
@@ -1927,22 +1998,66 @@ else:
 
             with st.form("form_publicos", border=False):
 
-                opcoes_publicos = df_publicos["publico"].dropna().tolist()
-
                 publicos_atual = projeto.get("publicos", [])
 
-                if not isinstance(publicos_atual, list):
-                    publicos_atual = []
+                publicos_atual = [
+                    str(p)
+                    for p in publicos_atual
+                ]
 
-                publicos = []
+                # ==========================
+                # GERAL
+                # ==========================
 
-                for publico in opcoes_publicos:
-                    checked = st.checkbox(
-                        publico,
-                        value=publico in publicos_atual
-                    )
-                    if checked:
-                        publicos.append(publico)
+                publicos_geral = st.multiselect(
+                    "Geral",
+                    options=df_publicos_geral["_id"].tolist(),
+                    default=[
+                        p
+                        for p in publicos_atual
+                        if p in df_publicos_geral["_id"].tolist()
+                    ],
+                    format_func=lambda x: mapa_publicos.get(x, x),
+                    placeholder=""
+                )
+
+                # ==========================
+                # COMUNIDADES TRADICIONAIS
+                # ==========================
+
+                publicos_tradicionais = st.multiselect(
+                    "Comunidades Tradicionais",
+                    options=df_publicos_tradicionais["_id"].tolist(),
+                    default=[
+                        p
+                        for p in publicos_atual
+                        if p in df_publicos_tradicionais["_id"].tolist()
+                    ],
+                    format_func=lambda x: mapa_publicos.get(x, x),
+                    placeholder=""
+                )
+
+                # ==========================
+                # POVOS INDÍGENAS
+                # ==========================
+
+                publicos_indigenas = st.multiselect(
+                    "Povos Indígenas",
+                    options=df_publicos_indigenas["_id"].tolist(),
+                    default=[
+                        p
+                        for p in publicos_atual
+                        if p in df_publicos_indigenas["_id"].tolist()
+                    ],
+                    format_func=lambda x: mapa_publicos.get(x, x),
+                    placeholder=""
+                )
+
+                publicos = (
+                    publicos_geral
+                    + publicos_tradicionais
+                    + publicos_indigenas
+                )
 
                 st.write('')
 
