@@ -3492,7 +3492,7 @@ if usuario_interno:
             # --------------------------------------------------
  
             if col2.button(
-                "Guardar comprovante de pagamento",
+                "Salvar comprovante",
                 key=f"abrir_uploader_{numero}",
                 width="stretch",
                 icon=":material/save:"
@@ -3557,7 +3557,7 @@ if usuario_interno:
                             key=f"salvar_recibo_{numero}",
                             type="primary",
                             icon=":material/save:",
-                            width=180
+                            
                         ):
 
                             # -----------------------------------
@@ -3627,7 +3627,6 @@ if usuario_interno:
                             "Cancelar",
                             key=f"cancelar_{numero}",
                             icon=":material/close:",
-                            width=180
                         ):
                             st.session_state["recibo_aberto_parcela"] = None
                             st.rerun()
