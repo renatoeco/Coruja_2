@@ -668,6 +668,789 @@ def gerar_id_lanc_despesa(projeto):
 
 
 
+# # ==================================================
+# # REGISTRO DE DESPESA (EXPANDER)
+# # ==================================================
+# def render_registro_despesa(
+#     relatorio_numero,
+#     projeto,
+#     col_projetos,
+#     categorias_map
+# ):
+
+#     # --------------------------------------------------
+#     # Controle de reset do formulário
+#     # --------------------------------------------------
+#     if "form_despesa_key" not in st.session_state:
+#         st.session_state["form_despesa_key"] = 0
+
+#     form_key = st.session_state["form_despesa_key"]
+
+#     with st.expander("Registrar despesa", expanded=False):
+
+#         # Carregamento do orçamento e preparação do selectbox de despesas
+
+#         orcamento = projeto["financeiro"]["orcamento"]
+
+#         opcoes = []
+#         mapa_opcoes = {}
+
+#         for o in orcamento:
+
+#             categoria_id = str(o["categoria"])
+
+#             nome_categoria = categorias_map.get(
+#                 categoria_id,
+#                 "Categoria não encontrada"
+#             )
+
+#             label = f"{nome_categoria} | {o['nome_despesa']}"
+
+#             opcoes.append(label)
+
+#             # Mapeamento da opção selecionada
+#             mapa_opcoes[label] = {
+#                 "categoria_id": categoria_id,
+#                 "nome_despesa": o["nome_despesa"],
+#                 "nome_categoria": nome_categoria
+#             }
+
+#         opcoes = sorted(opcoes, key=lambda x: x.lower())
+
+
+
+
+
+#         # ==================================================
+#         # Qual tipo de despesa será registrada
+#         # ==================================================
+
+#         tipo_despesa = st.radio(
+#             "Qual tipo de despesa deseja cadastrar?",
+#             options=["Despesa do Orçamento", "Contrapartida Financeira", "Contrapartida Não-Financeira"],
+#             horizontal=True,
+#             key=f"tipo_despesa_{form_key}",
+            
+#         )
+
+#         st.write('')
+
+
+
+#         # ==================================================
+#         # OPÇÕES DE DESPESA DO ORÇAMENTO
+#         # ==================================================
+#         if tipo_despesa == "Despesa do Orçamento":
+
+#             escolha = st.selectbox(
+#                 "Categoria / Despesa *",
+#                 options=opcoes,
+#                 key=f"desp_categoria_{form_key}"
+#             )
+
+#             categoria = mapa_opcoes[escolha]["categoria_id"]
+
+#             nome_despesa = mapa_opcoes[escolha]["nome_despesa"]
+
+#             nome_categoria = mapa_opcoes[escolha]["nome_categoria"]
+
+#             # ==================================================
+#             # DADOS DO LANÇAMENTO
+#             # ==================================================
+#             id_despesa = gerar_id_lanc_despesa(projeto)
+
+#             col1, col2 = st.columns(2)
+
+#             with col1:
+
+#                 data_despesa = date_picker(
+#                     label="Data da despesa *",
+#                     key=f"desp_data_{form_key}",
+#                     format="dd/MM/yyyy",
+#                     locale="pt_BR",
+#                     one_tap=True,
+#                     placeholder="dd/mm/aaaa"
+#                 )
+
+#             with col2:
+
+#                 valor = st.number_input(
+#                     "Valor (reais) *",
+#                     min_value=0.0,
+#                     format="%.2f",
+#                     key=f"desp_valor_{form_key}"
+#                 )
+
+#             descricao = st.text_area(
+#                 "Descrição da despesa *",
+#                 key=f"desp_desc_{form_key}"
+#             )
+
+#             col1, col2 = st.columns([2, 1])
+
+#             fornecedor = col1.text_input(
+#                 "Fornecedor *",
+#                 key=f"desp_forn_{form_key}"
+#             )
+
+#             cpf_cnpj = col2.text_input(
+#                 "CPF / CNPJ",
+#                 key=f"desp_doc_{form_key}"
+#             )
+
+#             # ==================================================
+#             # ANEXOS
+#             # ==================================================
+#             categoria_nome_lower = nome_categoria.lower()
+
+
+#             anexos = st.file_uploader(
+#                 "Anexos *",
+#                 accept_multiple_files=True,
+#                 key=f"desp_anexos_{form_key}"
+#             )
+
+#             # ==================================================
+#             # AÇÕES
+#             # ==================================================
+#             with st.container(horizontal=True):
+
+#                 botao_salvar_despesa = st.button(
+#                     "Salvar Despesa do Orçamento",
+#                     type="primary",
+#                     icon=":material/save:"
+#                 )
+
+#                 area_notif_despesas = st.container()
+
+#             # ==================================================
+#             # AÇÃO: SALVAR
+#             # ==================================================
+#             if botao_salvar_despesa:
+
+#                 erros_campos = []
+#                 erro_consistencia = None
+
+#                 # --------------------------------------------------
+#                 # Validação dos campos obrigatórios
+#                 # --------------------------------------------------
+#                 if not data_despesa:
+#                     erros_campos.append("Data da despesa")
+
+#                 if not valor or valor <= 0:
+#                     erros_campos.append("Valor (reais)")
+
+#                 if not descricao or not descricao.strip():
+#                     erros_campos.append("Descrição da despesa")
+
+#                 if not fornecedor or not fornecedor.strip():
+#                     erros_campos.append("Fornecedor")
+
+#                 # if not cpf_cnpj or not cpf_cnpj.strip():
+#                 #     erros_campos.append("CPF / CNPJ")
+
+#                 # --------------------------------------------------
+#                 # Validação dos anexos
+#                 # --------------------------------------------------
+#                 if not is_taxa_bancaria:
+
+#                     if not anexos or len(anexos) == 0:
+#                         erros_campos.append("Anexos")
+
+#                 # --------------------------------------------------
+#                 # Exibição de mensagens
+#                 # --------------------------------------------------
+#                 if erros_campos:
+
+#                     campos = ", ".join(erros_campos)
+
+#                     area_notif_despesas.warning(
+#                         f"Preencha os seguintes campos obrigatórios: {campos}"
+#                     )
+
+#                 if erro_consistencia:
+#                     area_notif_despesas.warning(
+#                         erro_consistencia
+#                     )
+
+
+
+#                 # ==================================================
+#                 # SALVAMENTO
+#                 # ==================================================
+#                 with area_notif_despesas.spinner(
+#                     "Salvando despesa..."
+#                 ):
+
+#                     novo_lancamento = {
+#                         "id_lanc_despesa": id_despesa,
+#                         "relatorio_numero": relatorio_numero,
+#                         "data_despesa": data_despesa.strftime("%d/%m/%Y"),
+#                         "descricao_despesa": descricao,
+#                         "fornecedor": fornecedor,
+#                         "cpf_cnpj": cpf_cnpj,
+#                         "valor_despesa": valor,
+#                         "status_despesa": "aberto",
+#                         "anexos": [],
+#                         "tipo_despesa": "orçamento"
+
+#                     }
+
+#                     # --------------------------------------------------
+#                     # Upload dos anexos no Google Drive
+#                     # --------------------------------------------------
+#                     servico = obter_servico_drive()
+
+#                     pasta_projeto = obter_pasta_projeto(
+#                         servico,
+#                         projeto["codigo"],
+#                         projeto["sigla"]
+#                     )
+
+#                     pasta_financeiro = (
+#                         obter_pasta_relatos_financeiros(
+#                             servico,
+#                             pasta_projeto
+#                         )
+#                     )
+
+#                     pasta_lanc = obter_ou_criar_pasta(
+#                         servico,
+#                         id_despesa,
+#                         pasta_financeiro
+#                     )
+
+#                     for arq in anexos:
+
+#                         id_drive = enviar_arquivo_drive(
+#                             servico,
+#                             pasta_lanc,
+#                             arq
+#                         )
+
+#                         novo_lancamento["anexos"].append({
+#                             "nome_arquivo": arq.name,
+#                             "id_arquivo": id_drive
+#                         })
+
+#                     # --------------------------------------------------
+#                     # Inserção do lançamento no orçamento
+#                     # --------------------------------------------------
+#                     for d in projeto["financeiro"]["orcamento"]:
+
+#                         if (
+#                             d["categoria"] == categoria
+#                             and d["nome_despesa"] == nome_despesa
+#                         ):
+
+#                             d.setdefault(
+#                                 "lancamentos",
+#                                 []
+#                             ).append(novo_lancamento)
+
+#                             break
+
+#                     # --------------------------------------------------
+#                     # Persistência no MongoDB
+#                     # --------------------------------------------------
+#                     col_projetos.update_one(
+#                         {"codigo": projeto["codigo"]},
+#                         {
+#                             "$set": {
+#                                 "financeiro.orcamento":
+#                                 projeto["financeiro"]["orcamento"]
+#                             }
+#                         }
+#                     )
+
+#                 # --------------------------------------------------
+#                 # Reset do formulário
+#                 # --------------------------------------------------
+#                 st.session_state["form_despesa_key"] += 1
+
+#                 area_notif_despesas.success(
+#                     "Despesa registrada com sucesso!",
+#                     icon=":material/check:"
+#                 )
+
+#                 time.sleep(3)
+
+#                 st.rerun()
+
+
+
+
+#         # ==================================================
+#         # OPÇÕES DE DESPESA DE CONTRAPARTIDA FINANCEIRA
+#         # ==================================================
+#         if tipo_despesa == "Contrapartida Financeira":
+
+#             escolha = st.selectbox(
+#                 "Categoria / Despesa *",
+#                 options=opcoes,
+#                 key=f"desp_categoria_{form_key}"
+#             )
+
+#             categoria = mapa_opcoes[escolha]["categoria_id"]
+
+#             nome_despesa = mapa_opcoes[escolha]["nome_despesa"]
+
+#             nome_categoria = mapa_opcoes[escolha]["nome_categoria"]
+
+#             # ==================================================
+#             # DADOS DO LANÇAMENTO
+#             # ==================================================
+#             id_despesa = gerar_id_lanc_despesa(projeto)
+
+#             col1, col2 = st.columns(2)
+
+#             with col1:
+
+#                 data_despesa = date_picker(
+#                     label="Data da despesa *",
+#                     key=f"desp_data_{form_key}",
+#                     format="dd/MM/yyyy",
+#                     locale="pt_BR",
+#                     one_tap=True,
+#                     placeholder="dd/mm/aaaa"
+#                 )
+
+#             with col2:
+
+#                 valor = st.number_input(
+#                     "Valor (reais) *",
+#                     min_value=0.0,
+#                     format="%.2f",
+#                     key=f"desp_valor_{form_key}"
+#                 )
+
+#             descricao = st.text_area(
+#                 "Descrição da despesa *",
+#                 key=f"desp_desc_{form_key}"
+#             )
+
+
+#             # ==================================================
+#             # ANEXOS
+#             # ==================================================
+
+#             anexos = st.file_uploader(
+#                 "Anexos *",
+#                 accept_multiple_files=True,
+#                 key=f"desp_anexos_{form_key}"
+#             )
+
+#             # ==================================================
+#             # AÇÕES
+#             # ==================================================
+#             with st.container(horizontal=True):
+
+#                 botao_salvar_CPFin = st.button(
+#                     "Salvar Contrapartida Financeira",
+#                     type="primary",
+#                     icon=":material/save:",
+#                     key=f"btn_save_CF_{form_key}"
+#                 )
+
+#                 area_notif_despesas = st.container()
+
+#             # ==================================================
+#             # AÇÃO: SALVAR
+#             # ==================================================
+#             if botao_salvar_CPFin:
+
+#                 erros_campos = []
+#                 erro_consistencia = None
+
+#                 # --------------------------------------------------
+#                 # Validação dos campos obrigatórios
+#                 # --------------------------------------------------
+#                 if not data_despesa:
+#                     erros_campos.append("Data da despesa")
+
+#                 if not valor or valor <= 0:
+#                     erros_campos.append("Valor (reais)")
+
+#                 if not descricao or not descricao.strip():
+#                     erros_campos.append("Descrição da despesa")
+
+#                 if not fornecedor or not fornecedor.strip():
+#                     erros_campos.append("Fornecedor")
+
+#                 # if not cpf_cnpj or not cpf_cnpj.strip():
+#                 #     erros_campos.append("CPF / CNPJ")
+
+#                 # --------------------------------------------------
+#                 # Validação dos anexos
+#                 # --------------------------------------------------
+
+#                 if not anexos or len(anexos) == 0:
+#                     erros_campos.append("Anexos")
+
+#                 # --------------------------------------------------
+#                 # Exibição de mensagens
+#                 # --------------------------------------------------
+#                 if erros_campos:
+
+#                     campos = ", ".join(erros_campos)
+
+#                     area_notif_despesas.warning(
+#                         f"Preencha os seguintes campos obrigatórios: {campos}"
+#                     )
+
+#                 if erro_consistencia:
+#                     area_notif_despesas.warning(
+#                         erro_consistencia
+#                     )
+
+
+
+#                 # ==================================================
+#                 # SALVAMENTO
+#                 # ==================================================
+#                 with area_notif_despesas.spinner(
+#                     "Salvando despesa..."
+#                 ):
+
+#                     novo_lancamento = {
+#                         "id_lanc_despesa": id_despesa,
+#                         "relatorio_numero": relatorio_numero,
+#                         "data_despesa": data_despesa.strftime("%d/%m/%Y"),
+#                         "descricao_despesa": descricao,
+#                         "fornecedor": fornecedor,
+#                         "cpf_cnpj": cpf_cnpj,
+#                         "valor_despesa": valor,
+#                         "status_despesa": "aberto",
+#                         "anexos": [],
+#                         "tipo_despesa": "CPFin"
+#                     }
+
+#                     # --------------------------------------------------
+#                     # Upload dos anexos no Google Drive
+#                     # --------------------------------------------------
+#                     servico = obter_servico_drive()
+
+#                     pasta_projeto = obter_pasta_projeto(
+#                         servico,
+#                         projeto["codigo"],
+#                         projeto["sigla"]
+#                     )
+
+#                     pasta_financeiro = (
+#                         obter_pasta_relatos_financeiros(
+#                             servico,
+#                             pasta_projeto
+#                         )
+#                     )
+
+#                     pasta_lanc = obter_ou_criar_pasta(
+#                         servico,
+#                         id_despesa,
+#                         pasta_financeiro
+#                     )
+
+#                     for arq in anexos:
+
+#                         id_drive = enviar_arquivo_drive(
+#                             servico,
+#                             pasta_lanc,
+#                             arq
+#                         )
+
+#                         novo_lancamento["anexos"].append({
+#                             "nome_arquivo": arq.name,
+#                             "id_arquivo": id_drive
+#                         })
+
+#                     # --------------------------------------------------
+#                     # Inserção do lançamento no orçamento
+#                     # --------------------------------------------------
+#                     for d in projeto["financeiro"]["orcamento"]:
+
+#                         if (
+#                             d["categoria"] == categoria
+#                             and d["nome_despesa"] == nome_despesa
+#                         ):
+
+#                             d.setdefault(
+#                                 "lancamentos",
+#                                 []
+#                             ).append(novo_lancamento)
+
+#                             break
+
+#                     # --------------------------------------------------
+#                     # Persistência no MongoDB
+#                     # --------------------------------------------------
+#                     col_projetos.update_one(
+#                         {"codigo": projeto["codigo"]},
+#                         {
+#                             "$set": {
+#                                 "financeiro.orcamento":
+#                                 projeto["financeiro"]["orcamento"]
+#                             }
+#                         }
+#                     )
+
+#                 # --------------------------------------------------
+#                 # Reset do formulário
+#                 # --------------------------------------------------
+#                 st.session_state["form_despesa_key"] += 1
+
+#                 area_notif_despesas.success(
+#                     "Despesa registrada com sucesso!",
+#                     icon=":material/check:"
+#                 )
+
+#                 time.sleep(3)
+
+#                 st.rerun()
+
+
+
+
+#         # ==================================================
+#         # OPÇÕES DE DESPESA DE CONTRAPARTIDA NÃO FINANCEIRA
+#         # ==================================================
+#         if tipo_despesa == "Contrapartida Não-Financeira":
+
+#             escolha = st.selectbox(
+#                 "Categoria / Despesa *",
+#                 options=opcoes,
+#                 key=f"desp_categoria_{form_key}"
+#             )
+
+#             categoria = mapa_opcoes[escolha]["categoria_id"]
+
+#             nome_despesa = mapa_opcoes[escolha]["nome_despesa"]
+
+#             nome_categoria = mapa_opcoes[escolha]["nome_categoria"]
+
+#             # ==================================================
+#             # DADOS DO LANÇAMENTO
+#             # ==================================================
+#             id_despesa = gerar_id_lanc_despesa(projeto)
+
+#             col1, col2 = st.columns(2)
+
+#             with col1:
+
+#                 data_despesa = date_picker(
+#                     label="Data da despesa *",
+#                     key=f"desp_data_{form_key}",
+#                     format="dd/MM/yyyy",
+#                     locale="pt_BR",
+#                     one_tap=True,
+#                     placeholder="dd/mm/aaaa"
+#                 )
+
+#             with col2:
+
+#                 valor = st.number_input(
+#                     "Valor (reais) *",
+#                     min_value=0.0,
+#                     format="%.2f",
+#                     key=f"desp_valor_{form_key}"
+#                 )
+
+#             descricao = st.text_area(
+#                 "Descrição da despesa *",
+#                 key=f"desp_desc_{form_key}"
+#             )
+
+#             # col1, col2 = st.columns([2, 1])
+
+#             # fornecedor = col1.text_input(
+#             #     "Fornecedor *",
+#             #     key=f"desp_forn_{form_key}"
+#             # )
+
+#             # cpf_cnpj = col2.text_input(
+#             #     "CPF / CNPJ",
+#             #     key=f"desp_doc_{form_key}"
+#             # )
+
+#             # # ==================================================
+#             # # ANEXOS
+#             # # ==================================================
+#             # categoria_nome_lower = nome_categoria.lower()
+
+
+#             # label_anexos = (
+#             # "Anexos *"
+#             # )
+
+#             # anexos = st.file_uploader(
+#             #     "Anexos *",
+#             #     accept_multiple_files=True,
+#             #     key=f"desp_anexos_{form_key}"
+#             # )
+
+#             # ==================================================
+#             # AÇÕES
+#             # ==================================================
+#             with st.container(horizontal=True):
+
+#                 botao_salvar_CPNFin = st.button(
+#                     "Salvar Contrapartida Não-Financeira",
+#                     type="primary",
+#                     icon=":material/save:",
+#                     key=f"btn_save_CPNF_{form_key}"
+#                 )
+
+#                 area_notif_despesas = st.container()
+
+#             # ==================================================
+#             # AÇÃO: SALVAR
+#             # ==================================================
+#             if botao_salvar_CPNFin:
+
+#                 erros_campos = []
+#                 erro_consistencia = None
+
+#                 # --------------------------------------------------
+#                 # Validação dos campos obrigatórios
+#                 # --------------------------------------------------
+#                 if not data_despesa:
+#                     erros_campos.append("Data da despesa")
+
+#                 if not valor or valor <= 0:
+#                     erros_campos.append("Valor (reais)")
+
+#                 if not descricao or not descricao.strip():
+#                     erros_campos.append("Descrição da despesa")
+
+#                 # if not fornecedor or not fornecedor.strip():
+#                 #     erros_campos.append("Fornecedor")
+
+#                 # if not cpf_cnpj or not cpf_cnpj.strip():
+#                 #     erros_campos.append("CPF / CNPJ")
+
+
+#                 # --------------------------------------------------
+#                 # Exibição de mensagens
+#                 # --------------------------------------------------
+#                 if erros_campos:
+
+#                     campos = ", ".join(erros_campos)
+
+#                     area_notif_despesas.warning(
+#                         f"Preencha os seguintes campos obrigatórios: {campos}"
+#                     )
+
+#                 if erro_consistencia:
+#                     area_notif_despesas.warning(
+#                         erro_consistencia
+#                     )
+
+#                 # --------------------------------------------------
+#                 # Interrupção do fluxo em caso de erro
+#                 # --------------------------------------------------
+#                 if erros_campos or erro_consistencia:
+#                     st.stop()
+
+#                 # ==================================================
+#                 # SALVAMENTO
+#                 # ==================================================
+#                 with area_notif_despesas.spinner(
+#                     "Salvando despesa..."
+#                 ):
+
+#                     novo_lancamento = {
+#                         "id_lanc_despesa": id_despesa,
+#                         "relatorio_numero": relatorio_numero,
+#                         "data_despesa": data_despesa.strftime("%d/%m/%Y"),
+#                         "descricao_despesa": descricao,
+#                         "fornecedor": fornecedor,
+#                         "cpf_cnpj": cpf_cnpj,
+#                         "valor_despesa": valor,
+#                         "status_despesa": "aberto",
+#                         "anexos": [],
+#                         "tipo_despesa": "CPNFin"
+#                     }
+
+#                     # --------------------------------------------------
+#                     # Upload dos anexos no Google Drive
+#                     # --------------------------------------------------
+#                     servico = obter_servico_drive()
+
+#                     pasta_projeto = obter_pasta_projeto(
+#                         servico,
+#                         projeto["codigo"],
+#                         projeto["sigla"]
+#                     )
+
+#                     pasta_financeiro = (
+#                         obter_pasta_relatos_financeiros(
+#                             servico,
+#                             pasta_projeto
+#                         )
+#                     )
+
+#                     pasta_lanc = obter_ou_criar_pasta(
+#                         servico,
+#                         id_despesa,
+#                         pasta_financeiro
+#                     )
+
+#                     for arq in anexos:
+
+#                         id_drive = enviar_arquivo_drive(
+#                             servico,
+#                             pasta_lanc,
+#                             arq
+#                         )
+
+#                         novo_lancamento["anexos"].append({
+#                             "nome_arquivo": arq.name,
+#                             "id_arquivo": id_drive
+#                         })
+
+#                     # --------------------------------------------------
+#                     # Inserção do lançamento no orçamento
+#                     # --------------------------------------------------
+#                     for d in projeto["financeiro"]["orcamento"]:
+
+#                         if (
+#                             d["categoria"] == categoria
+#                             and d["nome_despesa"] == nome_despesa
+#                         ):
+
+#                             d.setdefault(
+#                                 "lancamentos",
+#                                 []
+#                             ).append(novo_lancamento)
+
+#                             break
+
+#                     # --------------------------------------------------
+#                     # Persistência no MongoDB
+#                     # --------------------------------------------------
+#                     col_projetos.update_one(
+#                         {"codigo": projeto["codigo"]},
+#                         {
+#                             "$set": {
+#                                 "financeiro.orcamento":
+#                                 projeto["financeiro"]["orcamento"]
+#                             }
+#                         }
+#                     )
+
+#                 # --------------------------------------------------
+#                 # Reset do formulário
+#                 # --------------------------------------------------
+#                 st.session_state["form_despesa_key"] += 1
+
+#                 area_notif_despesas.success(
+#                     "Despesa registrada com sucesso!",
+#                     icon=":material/check:"
+#                 )
+
+#                 time.sleep(3)
+
+#                 st.rerun()
+
+
 # ==================================================
 # REGISTRO DE DESPESA (EXPANDER)
 # ==================================================
@@ -686,42 +1469,98 @@ def render_registro_despesa(
 
     form_key = st.session_state["form_despesa_key"]
 
+    # --------------------------------------------------
+    # Carregamento do orçamento
+    # --------------------------------------------------
+    orcamento = projeto["financeiro"]["orcamento"]
+
+    opcoes = []
+    mapa_opcoes = {}
+
+    for o in orcamento:
+
+        categoria_id = str(o["categoria"])
+
+        nome_categoria = categorias_map.get(
+            categoria_id,
+            "Categoria não encontrada"
+        )
+
+        label = f"{nome_categoria} | {o['nome_despesa']}"
+
+        opcoes.append(label)
+
+        mapa_opcoes[label] = {
+            "categoria_id": categoria_id,
+            "nome_despesa": o["nome_despesa"],
+            "nome_categoria": nome_categoria
+        }
+
+    opcoes = sorted(opcoes, key=lambda x: x.lower())
+
+    # ==================================================
+    # EXPANDER
+    # ==================================================
     with st.expander("Registrar despesa", expanded=False):
 
         # ==================================================
-        # OPÇÕES DE DESPESA
+        # TIPO DE DESPESA
         # ==================================================
-        orcamento = projeto["financeiro"]["orcamento"]
+        tipo_despesa = st.radio(
+            "Qual tipo de despesa deseja cadastrar?",
+            options=[
+                "Despesa do Orçamento",
+                "Contrapartida Financeira",
+                "Contrapartida Não-Financeira"
+            ],
+            horizontal=True,
+            key=f"tipo_despesa_{form_key}"
+        )
 
-        opcoes = []
-        mapa_opcoes = {}
+        st.write("")
 
-        for o in orcamento:
+        # ==================================================
+        # CONFIGURAÇÃO DINÂMICA POR TIPO
+        # ==================================================
+        mostrar_fornecedor = (
+            tipo_despesa != "Contrapartida Não-Financeira"
+        )
 
-            categoria_id = str(o["categoria"])
+        mostrar_anexos = (
+            tipo_despesa != "Contrapartida Não-Financeira"
+        )
 
-            nome_categoria = categorias_map.get(
-                categoria_id,
-                "Categoria não encontrada"
+        if tipo_despesa == "Despesa do Orçamento":
+
+            tipo_salvo = "orçamento"
+
+            texto_botao = (
+                "Salvar Despesa do Orçamento"
             )
 
-            label = f"{nome_categoria} | {o['nome_despesa']}"
+        elif tipo_despesa == "Contrapartida Financeira":
 
-            opcoes.append(label)
+            tipo_salvo = "CPFin"
 
-            # Mapeamento da opção selecionada
-            mapa_opcoes[label] = {
-                "categoria_id": categoria_id,
-                "nome_despesa": o["nome_despesa"],
-                "nome_categoria": nome_categoria
-            }
+            texto_botao = (
+                "Salvar Contrapartida Financeira"
+            )
 
-        opcoes = sorted(opcoes, key=lambda x: x.lower())
+        else:
 
+            tipo_salvo = "CPNFin"
+
+            texto_botao = (
+                "Salvar Contrapartida Não-Financeira"
+            )
+
+        # ==================================================
+        # SELEÇÃO DA DESPESA
+        # ==================================================
         escolha = st.selectbox(
             "Categoria / Despesa *",
             options=opcoes,
-            key=f"desp_categoria_{form_key}"
+            key=f"desp_categoria_{tipo_salvo}_{form_key}"
         )
 
         categoria = mapa_opcoes[escolha]["categoria_id"]
@@ -737,87 +1576,96 @@ def render_registro_despesa(
 
         col1, col2 = st.columns(2)
 
+        # --------------------------------------------------
+        # DATA
+        # --------------------------------------------------
         with col1:
 
             data_despesa = date_picker(
                 label="Data da despesa *",
-                key=f"desp_data_{form_key}",
+                key=f"desp_data_{tipo_salvo}_{form_key}",
                 format="dd/MM/yyyy",
                 locale="pt_BR",
                 one_tap=True,
                 placeholder="dd/mm/aaaa"
             )
 
+        # --------------------------------------------------
+        # VALOR
+        # --------------------------------------------------
         with col2:
 
             valor = st.number_input(
                 "Valor (reais) *",
                 min_value=0.0,
                 format="%.2f",
-                key=f"desp_valor_{form_key}"
+                key=f"desp_valor_{tipo_salvo}_{form_key}"
             )
 
+        # --------------------------------------------------
+        # DESCRIÇÃO
+        # --------------------------------------------------
         descricao = st.text_area(
             "Descrição da despesa *",
-            key=f"desp_desc_{form_key}"
+            key=f"desp_desc_{tipo_salvo}_{form_key}"
         )
 
-        col1, col2 = st.columns([2, 1])
+        # ==================================================
+        # FORNECEDOR / CPF
+        # ==================================================
+        fornecedor = ""
+        cpf_cnpj = ""
 
-        fornecedor = col1.text_input(
-            "Fornecedor *",
-            key=f"desp_forn_{form_key}"
-        )
+        if mostrar_fornecedor:
 
-        cpf_cnpj = col2.text_input(
-            "CPF / CNPJ",
-            key=f"desp_doc_{form_key}"
-        )
+            col1, col2 = st.columns([2, 1])
+
+            fornecedor = col1.text_input(
+                "Fornecedor *",
+                key=f"desp_forn_{tipo_salvo}_{form_key}"
+            )
+
+            cpf_cnpj = col2.text_input(
+                "CPF / CNPJ",
+                key=f"desp_doc_{tipo_salvo}_{form_key}"
+            )
 
         # ==================================================
         # ANEXOS
         # ==================================================
-        categoria_nome_lower = nome_categoria.lower()
+        anexos = []
 
-        is_taxa_bancaria = (
-            "taxas bancárias" in categoria_nome_lower
-        )
+        if mostrar_anexos:
 
-        label_anexos = (
-            "Anexos"
-            if is_taxa_bancaria
-            else "Anexos *"
-        )
-
-        anexos = st.file_uploader(
-            label_anexos,
-            accept_multiple_files=True,
-            key=f"desp_anexos_{form_key}"
-        )
+            anexos = st.file_uploader(
+                "Anexos *",
+                accept_multiple_files=True,
+                key=f"desp_anexos_{tipo_salvo}_{form_key}"
+            )
 
         # ==================================================
         # AÇÕES
         # ==================================================
         with st.container(horizontal=True):
 
-            botao_salvar_despesa = st.button(
-                "Salvar",
+            botao_salvar = st.button(
+                texto_botao,
                 type="primary",
-                icon=":material/save:"
+                icon=":material/save:",
+                key=f"btn_save_{tipo_salvo}_{form_key}"
             )
 
             area_notif_despesas = st.container()
 
         # ==================================================
-        # AÇÃO: SALVAR
+        # SALVAR
         # ==================================================
-        if botao_salvar_despesa:
+        if botao_salvar:
 
             erros_campos = []
-            erro_consistencia = None
 
             # --------------------------------------------------
-            # Validação dos campos obrigatórios
+            # VALIDAÇÃO DOS CAMPOS
             # --------------------------------------------------
             if not data_despesa:
                 erros_campos.append("Data da despesa")
@@ -828,23 +1676,63 @@ def render_registro_despesa(
             if not descricao or not descricao.strip():
                 erros_campos.append("Descrição da despesa")
 
-            if not fornecedor or not fornecedor.strip():
-                erros_campos.append("Fornecedor")
+            # --------------------------------------------------
+            # FORNECEDOR
+            # --------------------------------------------------
+            if mostrar_fornecedor:
 
-            # if not cpf_cnpj or not cpf_cnpj.strip():
-            #     erros_campos.append("CPF / CNPJ")
+                if not fornecedor or not fornecedor.strip():
+                    erros_campos.append("Fornecedor")
+
+                # ----------------------------------------------
+                # VALIDAÇÃO CPF/CNPJ
+                # ----------------------------------------------
+                if cpf_cnpj and cpf_cnpj.strip():
+
+                    cpf_cnpj_numeros = ''.join(
+                        filter(str.isdigit, cpf_cnpj)
+                    )
+
+                    if len(cpf_cnpj_numeros) not in [11, 14]:
+
+                        erros_campos.append(
+                            "CPF / CNPJ inválido."
+                        )
+
+                    else:
+
+                        # CPF
+                        if len(cpf_cnpj_numeros) == 11:
+
+                            cpf_cnpj = (
+                                f"{cpf_cnpj_numeros[:3]}."
+                                f"{cpf_cnpj_numeros[3:6]}."
+                                f"{cpf_cnpj_numeros[6:9]}-"
+                                f"{cpf_cnpj_numeros[9:]}"
+                            )
+
+                        # CNPJ
+                        else:
+
+                            cpf_cnpj = (
+                                f"{cpf_cnpj_numeros[:2]}."
+                                f"{cpf_cnpj_numeros[2:5]}."
+                                f"{cpf_cnpj_numeros[5:8]}/"
+                                f"{cpf_cnpj_numeros[8:12]}-"
+                                f"{cpf_cnpj_numeros[12:]}"
+                            )
 
             # --------------------------------------------------
-            # Validação dos anexos
+            # VALIDAÇÃO DOS ANEXOS
             # --------------------------------------------------
-            if not is_taxa_bancaria:
+            if mostrar_anexos:
 
                 if not anexos or len(anexos) == 0:
                     erros_campos.append("Anexos")
 
-            # --------------------------------------------------
-            # Exibição de mensagens
-            # --------------------------------------------------
+            # ==================================================
+            # EXIBE ERROS
+            # ==================================================
             if erros_campos:
 
                 campos = ", ".join(erros_campos)
@@ -853,15 +1741,6 @@ def render_registro_despesa(
                     f"Preencha os seguintes campos obrigatórios: {campos}"
                 )
 
-            if erro_consistencia:
-                area_notif_despesas.warning(
-                    erro_consistencia
-                )
-
-            # --------------------------------------------------
-            # Interrupção do fluxo em caso de erro
-            # --------------------------------------------------
-            if erros_campos or erro_consistencia:
                 st.stop()
 
             # ==================================================
@@ -880,48 +1759,51 @@ def render_registro_despesa(
                     "cpf_cnpj": cpf_cnpj,
                     "valor_despesa": valor,
                     "status_despesa": "aberto",
-                    "anexos": []
+                    "anexos": [],
+                    "tipo_despesa": tipo_salvo
                 }
 
                 # --------------------------------------------------
-                # Upload dos anexos no Google Drive
+                # UPLOAD DOS ANEXOS
                 # --------------------------------------------------
-                servico = obter_servico_drive()
+                if mostrar_anexos and anexos:
 
-                pasta_projeto = obter_pasta_projeto(
-                    servico,
-                    projeto["codigo"],
-                    projeto["sigla"]
-                )
+                    servico = obter_servico_drive()
 
-                pasta_financeiro = (
-                    obter_pasta_relatos_financeiros(
+                    pasta_projeto = obter_pasta_projeto(
                         servico,
-                        pasta_projeto
-                    )
-                )
-
-                pasta_lanc = obter_ou_criar_pasta(
-                    servico,
-                    id_despesa,
-                    pasta_financeiro
-                )
-
-                for arq in anexos:
-
-                    id_drive = enviar_arquivo_drive(
-                        servico,
-                        pasta_lanc,
-                        arq
+                        projeto["codigo"],
+                        projeto["sigla"]
                     )
 
-                    novo_lancamento["anexos"].append({
-                        "nome_arquivo": arq.name,
-                        "id_arquivo": id_drive
-                    })
+                    pasta_financeiro = (
+                        obter_pasta_relatos_financeiros(
+                            servico,
+                            pasta_projeto
+                        )
+                    )
+
+                    pasta_lanc = obter_ou_criar_pasta(
+                        servico,
+                        id_despesa,
+                        pasta_financeiro
+                    )
+
+                    for arq in anexos:
+
+                        id_drive = enviar_arquivo_drive(
+                            servico,
+                            pasta_lanc,
+                            arq
+                        )
+
+                        novo_lancamento["anexos"].append({
+                            "nome_arquivo": arq.name,
+                            "id_arquivo": id_drive
+                        })
 
                 # --------------------------------------------------
-                # Inserção do lançamento no orçamento
+                # INSERE LANÇAMENTO
                 # --------------------------------------------------
                 for d in projeto["financeiro"]["orcamento"]:
 
@@ -938,7 +1820,7 @@ def render_registro_despesa(
                         break
 
                 # --------------------------------------------------
-                # Persistência no MongoDB
+                # PERSISTÊNCIA NO MONGO
                 # --------------------------------------------------
                 col_projetos.update_one(
                     {"codigo": projeto["codigo"]},
@@ -951,7 +1833,7 @@ def render_registro_despesa(
                 )
 
             # --------------------------------------------------
-            # Reset do formulário
+            # RESET DO FORMULÁRIO
             # --------------------------------------------------
             st.session_state["form_despesa_key"] += 1
 
@@ -963,9 +1845,6 @@ def render_registro_despesa(
             time.sleep(3)
 
             st.rerun()
-
-
-
 
 
 
@@ -3095,22 +3974,14 @@ if step_selecionado == "Atividades":
 
 
 
-
-
-
-
-
 # ==================================================
 # ---------- DESPESAS ----------
 # ==================================================
 if step_selecionado == "Despesas":
 
-
-    st.write("")
     st.write("")
 
     st.markdown("#### Registros de despesas")
-    st.write("")
 
     # --------------------------------------------------
     # PERFIS DE USUÁRIO
@@ -3124,18 +3995,19 @@ if step_selecionado == "Despesas":
     # REGRA: quem pode registrar despesas
     # --------------------------------------------------
     pode_registrar = (
-        usuario_beneficiario and status_atual_db == "modo_edicao"
+        usuario_beneficiario
+        and status_atual_db == "modo_edicao"
     )
 
     # ==================================================
-    # BOTÃO: REGISTRAR DESPESA
+    # SALDO DISPONÍVEL DA PARCELA
     # ==================================================
-    # with st.container(horizontal=True, horizontal_alignment="distribute"):
-
     saldo_parcela = calcular_saldo_parcela()
 
-    saldo_formatado = f"{saldo_parcela:.1f}".replace(".", ",")
-
+    saldo_formatado = (
+        f"{saldo_parcela:.1f}"
+        .replace(".", ",")
+    )
 
     st.markdown(
         f"Saldo disponível da parcela: "
@@ -3143,13 +4015,18 @@ if step_selecionado == "Despesas":
         unsafe_allow_html=True
     )
 
+    st.write("")
 
+    # ==================================================
+    # FORMULÁRIO DE REGISTRO DE DESPESA
+    # ==================================================
     if pode_registrar:
+
         render_registro_despesa(
             relatorio_numero,
             projeto,
             col_projetos,
-            categorias_map,
+            categorias_map
         )
 
     st.write("")
@@ -3157,21 +4034,41 @@ if step_selecionado == "Despesas":
 
 
 
+
+
     # ==================================================
-    # AGRUPAMENTO DE DESPESAS (CATEGORIA > NOME)
+    # AGRUPAMENTO DE DESPESAS
+    # TIPO > CATEGORIA > NOME
     # ==================================================
-    grupo = defaultdict(lambda: defaultdict(list))
+    grupo = defaultdict(
+        lambda: defaultdict(
+            lambda: defaultdict(list)
+        )
+    )
 
     for despesa in projeto.get("financeiro", {}).get("orcamento", []):
+
         categoria_id = str(despesa.get("categoria"))
-        nome_categoria = categorias_map.get(categoria_id, "Categoria não encontrada")
+
+        nome_categoria = categorias_map.get(
+            categoria_id,
+            "Categoria não encontrada"
+        )
 
         for lanc in despesa.get("lancamentos", []):
-            if lanc.get("relatorio_numero") == relatorio_numero:
-                grupo[nome_categoria][despesa["nome_despesa"]].append({
-                    "lancamento": lanc,
-                    "categoria_id": categoria_id
-                })
+
+            if lanc.get("relatorio_numero") != relatorio_numero:
+                continue
+
+            tipo_despesa = lanc.get(
+                "tipo_despesa",
+                "orçamento"
+            )
+
+            grupo[tipo_despesa][nome_categoria][despesa["nome_despesa"]].append({
+                "lancamento": lanc,
+                "categoria_id": categoria_id
+            })
 
     # --------------------------------------------------
     # SE NÃO HÁ DESPESAS
@@ -3181,374 +4078,464 @@ if step_selecionado == "Despesas":
         st.stop()
 
     # ==================================================
-    # RENDERIZAÇÃO DAS DESPESAS
+    # CONFIGURAÇÃO DOS BLOCOS
     # ==================================================
-    for nome_categoria, despesas in grupo.items():
+    blocos_despesa = [
+        {
+            "tipo": "orçamento",
+            "titulo": "Despesas do Orçamento"
+        },
+        {
+            "tipo": "CPFin",
+            "titulo": "Contrapartida Financeira"
+        },
+        {
+            "tipo": "CPNFin",
+            "titulo": "Contrapartida Não-Financeira"
+        }
+    ]
 
-        st.markdown(f"##### {nome_categoria}")
+    # ==================================================
+    # RENDERIZAÇÃO DOS BLOCOS
+    # ==================================================
+    for bloco in blocos_despesa:
 
-        for nome_despesa, lancamentos in despesas.items():
+        tipo_bloco = bloco["tipo"]
 
-            st.markdown(f"###### {nome_despesa}")
+        titulo_bloco = bloco["titulo"]
 
-            for item in lancamentos:
-                lanc = item["lancamento"]
-                categoria_id = item["categoria_id"]
+        despesas_bloco = grupo.get(tipo_bloco, {})
 
-                id_despesa = lanc["id_lanc_despesa"]
+        # --------------------------------------------------
+        # PULA BLOCO VAZIO
+        # --------------------------------------------------
+        if not despesas_bloco:
+            continue
 
-                # --------------------------------------------------
-                # CONTROLE DE EDIÇÃO INLINE
-                # --------------------------------------------------
-                if "despesa_editando_id" not in st.session_state:
-                    st.session_state["despesa_editando_id"] = None
+        st.write("")
 
-                editando = st.session_state["despesa_editando_id"] == id_despesa
+        st.markdown(f"### {titulo_bloco}")
 
-                with st.container(border=True):
+        st.write("")
 
-                    # ==================================================
-                    # BADGE DE STATUS
-                    # ==================================================
-                    status_despesa_db = lanc.get("status_despesa", "em_analise")
-                    tem_devolutiva = bool(lanc.get("devolutiva"))
+        # ==================================================
+        # CATEGORIAS
+        # ==================================================
+        for nome_categoria, despesas in despesas_bloco.items():
 
-                    if status_despesa_db == "aberto" and tem_devolutiva:
-                        badge = {"label": "Pendente", "bg": "#F8D7DA", "color": "#721C24"}
-                    elif status_despesa_db == "aberto":
-                        badge = {"label": "Aberto", "bg": "#FFF3CD", "color": "#856404"}
-                    elif status_despesa_db == "aceito":
-                        badge = {"label": "Aceito", "bg": "#D4EDDA", "color": "#155724"}
-                    else:
-                        badge = {"label": "Em análise", "bg": "#D1ECF1", "color": "#0C5460"}
+            st.markdown(f"##### {nome_categoria}")
 
+            # ==================================================
+            # NOMES DE DESPESA
+            # ==================================================
+            for nome_despesa, lancamentos in despesas.items():
 
-                    col1, col2 = st.columns([9, 1])
+                st.markdown(f"###### {nome_despesa}")
 
-                    col2.markdown(
-                        f"""
-                        <div style="margin-bottom:6px;">
-                            <span style="
-                                background:{badge['bg']};
-                                color:{badge['color']};
-                                padding:4px 10px;
-                                border-radius:20px;
-                                font-size:12px;
-                                font-weight:600;
-                            ">
-                                {badge['label']}
-                            </span>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
+                # ==================================================
+                # CARDS
+                # ==================================================
+                for item in lancamentos:
+
+                    lanc = item["lancamento"]
+
+                    categoria_id = item["categoria_id"]
+
+                    id_despesa = lanc["id_lanc_despesa"]
+
+                    # --------------------------------------------------
+                    # CONTROLE DE EDIÇÃO INLINE
+                    # --------------------------------------------------
+                    if "despesa_editando_id" not in st.session_state:
+                        st.session_state["despesa_editando_id"] = None
+
+                    editando = (
+                        st.session_state["despesa_editando_id"]
+                        == id_despesa
                     )
 
-
-
-
-
                     # ==================================================
-                    # PERMISSÕES
+                    # CARD
                     # ==================================================
-                    pode_editar_despesa = (
-                        usuario_beneficiario
-                        and status_atual_db == "modo_edicao"
-                        and status_despesa_db == "aberto"
-                    )
+                    with st.container(border=True):
 
-                    pode_avaliar_despesa = (
-                        (usuario_admin or usuario_equipe)
-                        and status_atual_db == "em_analise"
-                    )
+                        # ==================================================
+                        # BADGE DE STATUS
+                        # ==================================================
+                        status_despesa_db = lanc.get(
+                            "status_despesa",
+                            "em_analise"
+                        )
 
+                        tem_devolutiva = bool(
+                            lanc.get("devolutiva")
+                        )
 
+                        if (
+                            status_despesa_db == "aberto"
+                            and tem_devolutiva
+                        ):
 
+                            badge = {
+                                "label": "Pendente",
+                                "bg": "#F8D7DA",
+                                "color": "#721C24"
+                            }
 
-                    # ==================================================
-                    # VISUALIZAÇÃO DA DESPESA
-                    # ==================================================
-                    if not editando:
+                        elif status_despesa_db == "aberto":
 
-                        st.write(f"**{id_despesa.upper()}:** {lanc.get('descricao_despesa')}")
+                            badge = {
+                                "label": "Aberto",
+                                "bg": "#FFF3CD",
+                                "color": "#856404"
+                            }
 
-                        col1, col2 = st.columns(2)
+                        elif status_despesa_db == "aceito":
 
-                        with col1:
+                            badge = {
+                                "label": "Aceito",
+                                "bg": "#D4EDDA",
+                                "color": "#155724"
+                            }
 
-                            # DADOS DA DESPESA
-                            def linha(label, valor):
-                                c1, c2 = st.columns([1, 3])
-                                c1.write(f"**{label}:**")
-                                c2.write(valor if valor else "-")
+                        else:
 
-                            linha("Data", lanc.get("data_despesa"))
-                            linha("Fornecedor", lanc.get("fornecedor"))
-                            linha("CPF/CNPJ", lanc.get("cpf_cnpj"))
+                            badge = {
+                                "label": "Em análise",
+                                "bg": "#D1ECF1",
+                                "color": "#0C5460"
+                            }
 
-                            valor = lanc.get("valor_despesa", 0)
-                            valor_br = f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                            linha("Valor (R$)", valor_br)
+                        col1, col2 = st.columns([9, 1])
 
-
-                        with col2:
-
-                            anexos = lanc.get("anexos", [])
-                            if anexos:
-                                st.markdown("**Anexos:**")
-                                for a in anexos:
-                                    link = gerar_link_drive(a["id_arquivo"])
-                                    st.markdown(f"- [{a['nome_arquivo']}]({link})")
+                        col2.markdown(
+                            f"""
+                            <div style="margin-bottom:6px;">
+                                <span style="
+                                    background:{badge['bg']};
+                                    color:{badge['color']};
+                                    padding:4px 10px;
+                                    border-radius:20px;
+                                    font-size:12px;
+                                    font-weight:600;
+                                ">
+                                    {badge['label']}
+                                </span>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
 
 
 
 
                         # ==================================================
-                        # MOSTRA DEVOLUTIVA
+                        # PERMISSÕES
                         # ==================================================
-                        status_despesa_db = lanc.get("status_despesa")
-                        devolutiva = lanc.get("devolutiva")
+                        pode_editar_despesa = (
+                            usuario_beneficiario
+                            and status_atual_db == "modo_edicao"
+                            and status_despesa_db == "aberto"
+                        )
 
-                        mostrar_devolutiva = False
+                        pode_avaliar_despesa = (
+                            (usuario_admin or usuario_equipe)
+                            and status_atual_db == "em_analise"
+                        )
 
-                        # --------------------------------------------------
-                        # REGRA 0: se estiver ACEITO, nunca mostra
-                        # --------------------------------------------------
-                        if status_despesa_db == "aceito":
+
+
+
+                        # ==================================================
+                        # VISUALIZAÇÃO DA DESPESA
+                        # ==================================================
+                        if not editando:
+
+                            st.write(f"**{id_despesa.upper()}:** {lanc.get('descricao_despesa')}")
+
+                            col1, col2 = st.columns(2)
+
+                            with col1:
+
+                                # DADOS DA DESPESA
+
+                                def linha(label, valor):
+
+                                    # Não renderiza linhas vazias
+                                    if valor is None or str(valor).strip() == "":
+                                        return
+
+                                    c1, c2 = st.columns([1, 3])
+
+                                    c1.write(f"**{label}:**")
+
+                                    c2.write(valor)
+
+
+                                linha("Data", lanc.get("data_despesa"))
+                                linha("Fornecedor", lanc.get("fornecedor"))
+                                linha("CPF/CNPJ", lanc.get("cpf_cnpj"))
+
+                                valor = lanc.get("valor_despesa", 0)
+                                valor_br = f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                                linha("Valor (R$)", valor_br)
+
+
+                            with col2:
+
+                                anexos = lanc.get("anexos", [])
+                                if anexos:
+                                    st.markdown("**Anexos:**")
+                                    for a in anexos:
+                                        link = gerar_link_drive(a["id_arquivo"])
+                                        st.markdown(f"- [{a['nome_arquivo']}]({link})")
+
+
+
+
+                            # ==================================================
+                            # MOSTRA DEVOLUTIVA
+                            # ==================================================
+                            status_despesa_db = lanc.get("status_despesa")
+                            devolutiva = lanc.get("devolutiva")
+
                             mostrar_devolutiva = False
 
-                        # --------------------------------------------------
-                        # REGRA 1: relatório em modo edição
-                        # --------------------------------------------------
-                        elif status_atual_db == "modo_edicao":
-                            mostrar_devolutiva = bool(devolutiva)
-
-                        # --------------------------------------------------
-                        # REGRA 2: relatório em análise
-                        # --------------------------------------------------
-                        elif status_atual_db == "em_analise":
-
-                            # admin/equipe avaliando não veem devolutiva enquanto avaliam
-                            if (
-                                tipo_usuario in ["admin", "equipe"]
-                                and status_despesa_db == "aberto"
-                            ):
+                            # --------------------------------------------------
+                            # REGRA 0: se estiver ACEITO, nunca mostra
+                            # --------------------------------------------------
+                            if status_despesa_db == "aceito":
                                 mostrar_devolutiva = False
+
+                            # --------------------------------------------------
+                            # REGRA 1: relatório em modo edição
+                            # --------------------------------------------------
+                            elif status_atual_db == "modo_edicao":
+                                mostrar_devolutiva = bool(devolutiva)
+
+                            # --------------------------------------------------
+                            # REGRA 2: relatório em análise
+                            # --------------------------------------------------
+                            elif status_atual_db == "em_analise":
+
+                                # admin/equipe avaliando não veem devolutiva enquanto avaliam
+                                if (
+                                    tipo_usuario in ["admin", "equipe"]
+                                    and status_despesa_db == "aberto"
+                                ):
+                                    mostrar_devolutiva = False
+                                else:
+                                    mostrar_devolutiva = bool(devolutiva)
+
+                            # --------------------------------------------------
+                            # REGRA 3: fallback seguro (ex: visitante)
+                            # --------------------------------------------------
                             else:
                                 mostrar_devolutiva = bool(devolutiva)
 
-                        # --------------------------------------------------
-                        # REGRA 3: fallback seguro (ex: visitante)
-                        # --------------------------------------------------
-                        else:
-                            mostrar_devolutiva = bool(devolutiva)
+                            # --------------------------------------------------
+                            # Renderização visual
+                            # --------------------------------------------------
+                            if mostrar_devolutiva and devolutiva:
+                                texto = devolutiva.replace("\n", "<br>")
 
-                        # --------------------------------------------------
-                        # Renderização visual
-                        # --------------------------------------------------
-                        if mostrar_devolutiva and devolutiva:
-                            texto = devolutiva.replace("\n", "<br>")
+                                st.markdown(
+                                    f"""
+                                    <blockquote style="
+                                        color: #000000;
+                                        opacity: 0.9;
+                                        border-left: 4px solid #F8D7DA;
+                                        padding-left: 12px;
+                                        margin-left: 0;
+                                    ">
+                                    <strong>Ajuste necessário:</strong><br>
+                                    {texto}
+                                    </blockquote>
+                                    """,
+                                    unsafe_allow_html=True
+                                )
 
-                            st.markdown(
-                                f"""
-                                <blockquote style="
-                                    color: #000000;
-                                    opacity: 0.9;
-                                    border-left: 4px solid #F8D7DA;
-                                    padding-left: 12px;
-                                    margin-left: 0;
-                                ">
-                                <strong>Ajuste necessário:</strong><br>
-                                {texto}
-                                </blockquote>
-                                """,
-                                unsafe_allow_html=True
+
+                            # --------------------------------------------------
+                            # BOTÃO EDITAR (somente beneficiário, despesa aberta)
+                            # --------------------------------------------------
+                            if pode_editar_despesa:
+
+                                with st.container(horizontal=True, horizontal_alignment="right"):
+                                    if st.button(
+                                        "Editar",
+                                        key=f"btn_edit_despesa_{id_despesa}",
+                                        icon=":material/edit:",
+                                        type="tertiary"
+                                    ):
+                                        st.session_state["despesa_editando_id"] = id_despesa
+                                        st.rerun()
+
+
+
+
+
+
+
+                        # ==================================================
+                        # MODO EDIÇÃO INLINE DA DESPESA
+                        # ==================================================
+                        if editando:
+
+                            st.markdown(f"**Editando {id_despesa.upper()}**")
+
+                            # --------------------------------------------------
+                            # CAMPOS PRINCIPAIS
+                            # --------------------------------------------------
+                            col1, col2 = st.columns(2)
+
+
+
+                            # --------------------------------------------------
+                            # DATA
+                            # --------------------------------------------------
+                            with col1:
+                                data = date_picker(
+                                    label="Data da despesa *",
+                                    value=pd.to_datetime(lanc["data_despesa"], dayfirst=True).date(),
+                                    key=f"edit_data_{id_despesa}",
+                                    format="dd/MM/yyyy",
+                                    locale="pt_BR",
+                                    one_tap=True
+                                )
+
+
+                            with col2:
+                                valor = st.number_input(
+                                    "Valor total (R$) *",
+                                    min_value=0.0,
+                                    value=float(lanc.get("valor_despesa", 0)),
+                                    format="%.2f",
+                                    key=f"edit_valor_{id_despesa}"
+                                )
+
+
+
+                            descricao = st.text_area(
+                                "Descrição da despesa *",
+                                value=lanc.get("descricao_despesa", ""),
+                                key=f"edit_desc_{id_despesa}"
                             )
 
+                            col1, col2 = st.columns([2, 1])
 
-                        # --------------------------------------------------
-                        # BOTÃO EDITAR (somente beneficiário, despesa aberta)
-                        # --------------------------------------------------
-                        if pode_editar_despesa:
-
-                            with st.container(horizontal=True, horizontal_alignment="right"):
-                                if st.button(
-                                    "Editar",
-                                    key=f"btn_edit_despesa_{id_despesa}",
-                                    icon=":material/edit:",
-                                    type="tertiary"
-                                ):
-                                    st.session_state["despesa_editando_id"] = id_despesa
-                                    st.rerun()
-
-
-
-
-
-
-
-                    # ==================================================
-                    # MODO EDIÇÃO INLINE DA DESPESA
-                    # ==================================================
-                    if editando:
-
-                        st.markdown(f"**Editando {id_despesa.upper()}**")
-
-                        # --------------------------------------------------
-                        # CAMPOS PRINCIPAIS
-                        # --------------------------------------------------
-                        col1, col2 = st.columns(2)
-
-
-
-                        # --------------------------------------------------
-                        # DATA
-                        # --------------------------------------------------
-                        with col1:
-                            data = date_picker(
-                                label="Data da despesa *",
-                                value=pd.to_datetime(lanc["data_despesa"], dayfirst=True).date(),
-                                key=f"edit_data_{id_despesa}",
-                                format="dd/MM/yyyy",
-                                locale="pt_BR",
-                                one_tap=True
+                            fornecedor = col1.text_input(
+                                "Fornecedor *",
+                                value=lanc.get("fornecedor", ""),
+                                key=f"edit_forn_{id_despesa}"
                             )
 
-
-                        with col2:
-                            valor = st.number_input(
-                                "Valor total (R$) *",
-                                min_value=0.0,
-                                value=float(lanc.get("valor_despesa", 0)),
-                                format="%.2f",
-                                key=f"edit_valor_{id_despesa}"
+                            cpf_cnpj = col2.text_input(
+                                "CPF/CNPJ",
+                                value=lanc.get("cpf_cnpj", ""),
+                                key=f"edit_doc_{id_despesa}"
                             )
-
-
-
-                        descricao = st.text_area(
-                            "Descrição da despesa *",
-                            value=lanc.get("descricao_despesa", ""),
-                            key=f"edit_desc_{id_despesa}"
-                        )
-
-                        col1, col2 = st.columns([2, 1])
-
-                        fornecedor = col1.text_input(
-                            "Fornecedor *",
-                            value=lanc.get("fornecedor", ""),
-                            key=f"edit_forn_{id_despesa}"
-                        )
-
-                        cpf_cnpj = col2.text_input(
-                            "CPF/CNPJ",
-                            value=lanc.get("cpf_cnpj", ""),
-                            key=f"edit_doc_{id_despesa}"
-                        )
-
-                        st.divider()
-
-                        # --------------------------------------------------
-                        # ANEXOS EXISTENTES (REMOVER)
-                        # --------------------------------------------------
-                        anexos_remover = []
-                        anexos_existentes = lanc.get("anexos", [])
-
-                        if anexos_existentes:
-                            st.markdown("**Anexos:**")
-                            for i, a in enumerate(anexos_existentes):
-                                nome = a.get("nome_arquivo", "arquivo")
-
-                                if st.checkbox(
-                                    f"Remover: {nome}",
-                                    key=f"rm_anexo_desp_{id_despesa}_{i}"
-                                ):
-                                    anexos_remover.append(a)
 
                             st.divider()
 
-                        # --------------------------------------------------
-                        # NOVOS ANEXOS
-                        # --------------------------------------------------
-                        novos_anexos = st.file_uploader(
-                            "Adicionar novos anexos",
-                            accept_multiple_files=True,
-                            key=f"novos_anexos_{id_despesa}"
-                        )
+                            # --------------------------------------------------
+                            # ANEXOS EXISTENTES (REMOVER)
+                            # --------------------------------------------------
+                            anexos_remover = []
+                            anexos_existentes = lanc.get("anexos", [])
 
-                        st.divider()
+                            if anexos_existentes:
+                                st.markdown("**Anexos:**")
+                                for i, a in enumerate(anexos_existentes):
+                                    nome = a.get("nome_arquivo", "arquivo")
+
+                                    if st.checkbox(
+                                        f"Remover: {nome}",
+                                        key=f"rm_anexo_desp_{id_despesa}_{i}"
+                                    ):
+                                        anexos_remover.append(a)
+
+                                st.divider()
+
+                            # --------------------------------------------------
+                            # NOVOS ANEXOS
+                            # --------------------------------------------------
+                            novos_anexos = st.file_uploader(
+                                "Adicionar novos anexos",
+                                accept_multiple_files=True,
+                                key=f"novos_anexos_{id_despesa}"
+                            )
+
+                            st.divider()
 
 
 
 
-                        # # ==================================================
-                        # # ÁREA DE MENSAGENS (ERROS / WARNINGS)
-                        # # ==================================================
-                        # container_erros = st.container()
 
 
-                        # --------------------------------------------------
-                        # AÇÕES
-                        # --------------------------------------------------
-                        with st.container(horizontal=True):
-
-
+                            # --------------------------------------------------
+                            # AÇÕES
+                            # --------------------------------------------------
                             with st.container(horizontal=True):
 
 
-                                if st.button(
-                                    "Cancelar",
-                                    key=f"btn_cancel_desp_{id_despesa}"
-                                ):
-                                    st.session_state["despesa_editando_id"] = None
-                                    st.rerun()
+                                with st.container(horizontal=True):
+
+
+                                    if st.button(
+                                        "Cancelar",
+                                        key=f"btn_cancel_desp_{id_despesa}"
+                                    ):
+                                        st.session_state["despesa_editando_id"] = None
+                                        st.rerun()
 
 
 
-                                if st.button(
-                                    "Salvar alterações",
-                                    key=f"btn_save_desp_{id_despesa}",
-                                    type="primary",
-                                    icon=":material/save:"
-                                ):
+                                    if st.button(
+                                        "Salvar alterações",
+                                        key=f"btn_save_desp_{id_despesa}",
+                                        type="primary",
+                                        icon=":material/save:"
+                                    ):
 
-                                    # ==================================================
-                                    # VALIDAÇÕES
-                                    # ==================================================
+                                        # ==================================================
+                                        # VALIDAÇÕES
+                                        # ==================================================
 
-                                    erros_campos = []
-                                    erro_consistencia = None
+                                        erros_campos = []
+                                        erro_consistencia = None
 
-                                    # -------------------------------
-                                    # CAMPOS OBRIGATÓRIOS
-                                    # -------------------------------
+                                        # -------------------------------
+                                        # CAMPOS OBRIGATÓRIOS
+                                        # -------------------------------
 
-                                    if not data:
-                                        erros_campos.append("Data da despesa")
+                                        if not data:
+                                            erros_campos.append("Data da despesa")
 
-                                    if not valor or valor <= 0:
-                                        erros_campos.append("Valor total (R$)")
+                                        if not valor or valor <= 0:
+                                            erros_campos.append("Valor total (R$)")
 
-                                    if not descricao or not descricao.strip():
-                                        erros_campos.append("Descrição da despesa")
+                                        if not descricao or not descricao.strip():
+                                            erros_campos.append("Descrição da despesa")
 
-                                    if not fornecedor or not fornecedor.strip():
-                                        erros_campos.append("Fornecedor")
+                                        if not fornecedor or not fornecedor.strip():
+                                            erros_campos.append("Fornecedor")
 
-                                    # if not cpf_cnpj or not cpf_cnpj.strip():
-                                    #     erros_campos.append("CPF / CNPJ")
+                                        # if not cpf_cnpj or not cpf_cnpj.strip():
+                                        #     erros_campos.append("CPF / CNPJ")
 
 
-                                    # ==================================================
-                                    # VALIDAÇÃO DE ANEXOS (COM REMOÇÃO + NOVOS)
-                                    # ==================================================
+                                        # ==================================================
+                                        # VALIDAÇÃO DE ANEXOS (COM REMOÇÃO + NOVOS)
+                                        # ==================================================
 
-                                    # Regra:
-                                    # - Se NÃO for taxa bancária → precisa ter pelo menos 1 anexo no final
+                                        # Regra:
+                                        # - Se NÃO for taxa bancária → precisa ter pelo menos 1 anexo no final
 
-                                    categoria_nome_lower = nome_categoria.lower()
-                                    is_taxa_bancaria = "taxas bancárias" in categoria_nome_lower
+                                        categoria_nome_lower = nome_categoria.lower()
+                                        # is_taxa_bancaria = "taxas bancárias" in categoria_nome_lower
 
-                                    if not is_taxa_bancaria:
+                                        # if not is_taxa_bancaria:
 
                                         anexos_existentes = lanc.get("anexos", [])
 
@@ -3566,323 +4553,328 @@ if step_selecionado == "Despesas":
 
 
 
-                                    # ==================================================
-                                    # EXIBE ERROS
-                                    # ==================================================
+                                        # ==================================================
+                                        # EXIBE ERROS
+                                        # ==================================================
 
-                                    if erros_campos:
-                                        campos = ", ".join(erros_campos)
-                                        st.warning(f"Preencha os seguintes campos obrigatórios: {campos}")
+                                        if erros_campos:
+                                            campos = ", ".join(erros_campos)
+                                            st.warning(f"Preencha os seguintes campos obrigatórios: {campos}")
 
-                                    if erro_consistencia:
-                                        st.warning(erro_consistencia)
+                                        if erro_consistencia:
+                                            st.warning(erro_consistencia)
 
-                                    if erros_campos or erro_consistencia:
-                                        st.stop()
+                                        if erros_campos or erro_consistencia:
+                                            st.stop()
 
-                                    # ==================================================
-                                    # SALVAR
-                                    # ==================================================
-                                    with st.spinner("Salvando alterações..."):
+                                        # ==================================================
+                                        # SALVAR
+                                        # ==================================================
+                                        with st.spinner("Salvando alterações..."):
 
-                                        lanc.update({
-                                            "data_despesa": data.strftime("%d/%m/%Y"),
-                                            "descricao_despesa": descricao,
-                                            "fornecedor": fornecedor,
-                                            "cpf_cnpj": cpf_cnpj,
-                                            "valor_despesa": valor
-                                        })
+                                            lanc.update({
+                                                "data_despesa": data.strftime("%d/%m/%Y"),
+                                                "descricao_despesa": descricao,
+                                                "fornecedor": fornecedor,
+                                                "cpf_cnpj": cpf_cnpj,
+                                                "valor_despesa": valor
+                                            })
 
 
 
-                                        # Remove anexos marcados
-                                        if anexos_remover:
-                                            lanc["anexos"] = [
-                                                a for a in lanc.get("anexos", [])
-                                                if a not in anexos_remover
-                                            ]
+                                            # Remove anexos marcados
+                                            if anexos_remover:
+                                                lanc["anexos"] = [
+                                                    a for a in lanc.get("anexos", [])
+                                                    if a not in anexos_remover
+                                                ]
 
-                                        # Upload de novos anexos
-                                        if novos_anexos:
-                                            servico = obter_servico_drive()
-                                            pasta_proj = obter_pasta_projeto(
-                                                servico,
-                                                projeto["codigo"],
-                                                projeto["sigla"]
+                                            # Upload de novos anexos
+                                            if novos_anexos:
+                                                servico = obter_servico_drive()
+                                                pasta_proj = obter_pasta_projeto(
+                                                    servico,
+                                                    projeto["codigo"],
+                                                    projeto["sigla"]
+                                                )
+                                                pasta_fin = obter_pasta_relatos_financeiros(servico, pasta_proj)
+                                                pasta_lanc = obter_ou_criar_pasta(servico, id_despesa, pasta_fin)
+
+                                                lanc.setdefault("anexos", [])
+
+                                                for arq in novos_anexos:
+                                                    id_drive = enviar_arquivo_drive(servico, pasta_lanc, arq)
+                                                    lanc["anexos"].append({
+                                                        "nome_arquivo": arq.name,
+                                                        "id_arquivo": id_drive
+                                                    })
+
+                                            # Persistência no Mongo
+                                            col_projetos.update_one(
+                                                {"codigo": projeto["codigo"]},
+                                                {"$set": {"financeiro.orcamento": projeto["financeiro"]["orcamento"]}}
                                             )
-                                            pasta_fin = obter_pasta_relatos_financeiros(servico, pasta_proj)
-                                            pasta_lanc = obter_ou_criar_pasta(servico, id_despesa, pasta_fin)
 
-                                            lanc.setdefault("anexos", [])
+                                        # Limpa estado
+                                        st.session_state["despesa_editando_id"] = None
+                                        st.success("Despesa atualizada com sucesso!", icon=":material/check:")
+                                        time.sleep(3)
+                                        st.rerun()
 
-                                            for arq in novos_anexos:
-                                                id_drive = enviar_arquivo_drive(servico, pasta_lanc, arq)
-                                                lanc["anexos"].append({
-                                                    "nome_arquivo": arq.name,
-                                                    "id_arquivo": id_drive
-                                                })
+                            
+                                with st.container(horizontal=True):
 
-                                        # Persistência no Mongo
+
+
+                                    # ==================================================
+                                    # BOTÃO EXCLUIR DESPESA (SOMENTE SE STATUS = ABERTO)
+                                    # ==================================================
+
+                                    status_despesa_db = lanc.get("status_despesa")
+
+                                    # Controle de estado da confirmação
+                                    confirm_delete_key = f"confirm_delete_despesa_{id_despesa}"
+
+                                    if confirm_delete_key not in st.session_state:
+                                        st.session_state[confirm_delete_key] = False
+
+                                    # Só permite excluir se estiver aberto
+                                    if status_despesa_db == "aberto":
+
+                                        with st.container(horizontal=True, horizontal_alignment="right"):
+
+                                            # Botão inicial (ícone de lixeira)
+                                            if not st.session_state[confirm_delete_key]:
+                                                if st.button(
+                                                    "",
+                                                    key=f"btn_delete_{id_despesa}",
+                                                    icon=":material/delete:",
+                                                    type="secondary"
+                                                ):
+                                                    # Ativa confirmação
+                                                    st.session_state[confirm_delete_key] = True
+                                                    st.rerun()
+
+                                            # ==================================================
+                                            # CONFIRMAÇÃO DE EXCLUSÃO
+                                            # ==================================================
+                                            else:
+
+                                                with st.container(horizontal=True):
+
+                                                    st.warning("Deseja realmente excluir esta despesa?")
+
+                                                    # col1, col2 = st.columns(2)
+
+                                                    # Botão CONFIRMAR
+                                                    if st.button(
+                                                        "Sim, excluir",
+                                                        key=f"btn_confirm_delete_{id_despesa}",
+                                                        type="primary",
+                                                        icon=":material/delete:"
+                                                    ):
+                                                        with st.spinner("Excluindo despesa..."):
+
+                                                            # Remove o lançamento da estrutura
+                                                            for d in projeto["financeiro"]["orcamento"]:
+                                                                if str(d["categoria"]) == categoria_id and d["nome_despesa"] == nome_despesa:
+                                                                    d["lancamentos"] = [
+                                                                        l for l in d.get("lancamentos", [])
+                                                                        if l.get("id_lanc_despesa") != id_despesa
+                                                                    ]
+                                                                    break
+
+                                                            # Salva no Mongo
+                                                            col_projetos.update_one(
+                                                                {"codigo": projeto["codigo"]},
+                                                                {"$set": {"financeiro.orcamento": projeto["financeiro"]["orcamento"]}}
+                                                            )
+
+                                                        # Limpa estados
+                                                        st.session_state["despesa_editando_id"] = None
+                                                        st.session_state.pop(confirm_delete_key, None)
+
+                                                        st.success("Despesa excluída com sucesso!", icon=":material/check:")
+                                                        time.sleep(3)
+                                                        st.rerun()
+
+                                                    # Botão CANCELAR
+                                                    if st.button(
+                                                        "Cancelar",
+                                                        key=f"btn_cancel_delete_{id_despesa}"
+                                                    ):
+                                                        st.session_state[confirm_delete_key] = False
+                                                        st.rerun()
+
+
+
+
+
+
+
+
+
+                        # ==================================================
+                        # AVALIAÇÃO (ADMIN / EQUIPE) — MESMA REGRA DE ATIVIDADES
+                        # ==================================================
+                        if pode_avaliar_despesa:
+
+                            STATUS_DESPESA_LABEL = {
+                                "em_analise": "Em análise",
+                                "aberto": "Devolver",
+                                "aceito": "Aceito"
+                            }
+
+                            STATUS_DESPESA_LABEL_INV = {v: k for k, v in STATUS_DESPESA_LABEL.items()}
+
+                            status_despesa_db = lanc.get("status_despesa", "em_analise")
+                            status_label = STATUS_DESPESA_LABEL.get(status_despesa_db, "Em análise")
+
+                            status_key = f"status_despesa_ui_{id_despesa}"
+                            devolutiva_key = f"devolutiva_despesa_{id_despesa}"
+
+                            # --------------------------------------------------
+                            # Estado inicial do segmented_control
+                            # Regra igual à Atividades:
+                            # aberto sem devolutiva → Em análise
+                            # --------------------------------------------------
+                            if status_despesa_db == "aberto" and not lanc.get("devolutiva"):
+                                status_label = "Em análise"
+
+                            if status_key not in st.session_state:
+                                st.session_state[status_key] = status_label
+
+                            # --------------------------------------------------
+                            # SEGMENTED CONTROL
+                            # --------------------------------------------------
+                            with st.container(horizontal=True, horizontal_alignment="right"):
+                                novo_status_label = st.segmented_control(
+                                    label="novo_status",
+                                    label_visibility="collapsed",
+                                    options=["Em análise", "Devolver", "Aceito"],
+                                    key=status_key
+                                )
+
+                            novo_status_db = STATUS_DESPESA_LABEL_INV.get(novo_status_label)
+
+                            # --------------------------------------------------
+                            # TEXTO DE AUDITORIA
+                            # --------------------------------------------------
+                            status_aprovacao = lanc.get("status_aprovacao")
+                            if status_aprovacao:
+                                st.markdown(
+                                    f"""
+                                    <div style="
+                                        text-align: right;
+                                        color: rgba(0,0,0,0.55);
+                                        font-size: 0.8rem;
+                                        margin-top: 4px;
+                                    ">
+                                        {status_aprovacao}
+                                    </div>
+                                    """,
+                                    unsafe_allow_html=True
+                                )
+                                st.write("")
+
+                            # ==================================================
+                            # CASO DEVOLVER (ação, não mudança de status)
+                            # ==================================================
+                            if novo_status_label == "Devolver":
+
+                                if devolutiva_key not in st.session_state:
+                                    st.session_state[devolutiva_key] = lanc.get("devolutiva", "")
+
+                                st.text_area(
+                                    "**Devolutiva:**",
+                                    key=devolutiva_key,
+                                    placeholder="Explique o que precisa ser ajustado nesta despesa..."
+                                )
+
+                                tem_devolutiva = bool(st.session_state.get(devolutiva_key, "").strip())
+                                label_botao = "Atualizar" if tem_devolutiva else "Salvar devolutiva"
+
+                                with st.container(horizontal=True):
+                                    if st.button(
+                                        label_botao,
+                                        key=f"btn_save_dev_{id_despesa}",
+                                        type="primary",
+                                        icon=":material/save:"
+                                    ):
+                                        nome = st.session_state.get("nome", "Usuário")
+                                        data = data_hoje_br()
+
+                                        lanc["status_despesa"] = "aberto"
+                                        lanc["devolutiva"] = st.session_state.get(devolutiva_key, "")
+                                        lanc["status_aprovacao"] = f"Devolvido por {nome} em {data}"
+
                                         col_projetos.update_one(
                                             {"codigo": projeto["codigo"]},
                                             {"$set": {"financeiro.orcamento": projeto["financeiro"]["orcamento"]}}
                                         )
 
-                                    # Limpa estado
-                                    st.session_state["despesa_editando_id"] = None
-                                    st.success("Despesa atualizada com sucesso!", icon=":material/check:")
-                                    time.sleep(3)
-                                    st.rerun()
+                                        st.session_state.pop(status_key, None)
+                                        st.session_state.pop(devolutiva_key, None)
 
-                        
-                            with st.container(horizontal=True):
+                                        st.success("Devolutiva salva.", icon=":material/check:")
+                                        time.sleep(3)
+                                        st.rerun()
 
+                            # ==================================================
+                            # CASO EM ANÁLISE OU ACEITO (mudança real de status)
+                            # ==================================================
+                            elif novo_status_db != status_despesa_db:
 
+                                nome = st.session_state.get("nome", "Usuário")
+                                data = data_hoje_br()
 
-                                # ==================================================
-                                # BOTÃO EXCLUIR DESPESA (SOMENTE SE STATUS = ABERTO)
-                                # ==================================================
+                                lanc["status_despesa"] = novo_status_db
 
-                                status_despesa_db = lanc.get("status_despesa")
+                                if novo_status_db == "aceito":
+                                    lanc.pop("devolutiva", None)
+                                    lanc["status_aprovacao"] = f"Verificado por {nome} em {data}"
 
-                                # Controle de estado da confirmação
-                                confirm_delete_key = f"confirm_delete_despesa_{id_despesa}"
+                                elif novo_status_db == "em_analise":
+                                    lanc.pop("status_aprovacao", None)
 
-                                if confirm_delete_key not in st.session_state:
-                                    st.session_state[confirm_delete_key] = False
+                                col_projetos.update_one(
+                                    {"codigo": projeto["codigo"]},
+                                    {"$set": {"financeiro.orcamento": projeto["financeiro"]["orcamento"]}}
+                                )
 
-                                # Só permite excluir se estiver aberto
-                                if status_despesa_db == "aberto":
+                                st.session_state.pop(status_key, None)
+                                st.rerun()
 
-                                    with st.container(horizontal=True, horizontal_alignment="right"):
-
-                                        # Botão inicial (ícone de lixeira)
-                                        if not st.session_state[confirm_delete_key]:
-                                            if st.button(
-                                                "",
-                                                key=f"btn_delete_{id_despesa}",
-                                                icon=":material/delete:",
-                                                type="secondary"
-                                            ):
-                                                # Ativa confirmação
-                                                st.session_state[confirm_delete_key] = True
-                                                st.rerun()
-
-                                        # ==================================================
-                                        # CONFIRMAÇÃO DE EXCLUSÃO
-                                        # ==================================================
-                                        else:
-
-                                            with st.container(horizontal=True):
-
-                                                st.warning("Deseja realmente excluir esta despesa?")
-
-                                                # col1, col2 = st.columns(2)
-
-                                                # Botão CONFIRMAR
-                                                if st.button(
-                                                    "Sim, excluir",
-                                                    key=f"btn_confirm_delete_{id_despesa}",
-                                                    type="primary",
-                                                    icon=":material/delete:"
-                                                ):
-                                                    with st.spinner("Excluindo despesa..."):
-
-                                                        # Remove o lançamento da estrutura
-                                                        for d in projeto["financeiro"]["orcamento"]:
-                                                            if str(d["categoria"]) == categoria_id and d["nome_despesa"] == nome_despesa:
-                                                                d["lancamentos"] = [
-                                                                    l for l in d.get("lancamentos", [])
-                                                                    if l.get("id_lanc_despesa") != id_despesa
-                                                                ]
-                                                                break
-
-                                                        # Salva no Mongo
-                                                        col_projetos.update_one(
-                                                            {"codigo": projeto["codigo"]},
-                                                            {"$set": {"financeiro.orcamento": projeto["financeiro"]["orcamento"]}}
-                                                        )
-
-                                                    # Limpa estados
-                                                    st.session_state["despesa_editando_id"] = None
-                                                    st.session_state.pop(confirm_delete_key, None)
-
-                                                    st.success("Despesa excluída com sucesso!", icon=":material/check:")
-                                                    time.sleep(3)
-                                                    st.rerun()
-
-                                                # Botão CANCELAR
-                                                if st.button(
-                                                    "Cancelar",
-                                                    key=f"btn_cancel_delete_{id_despesa}"
-                                                ):
-                                                    st.session_state[confirm_delete_key] = False
-                                                    st.rerun()
-
-
-
-
-
-
-
-
-
-                    # ==================================================
-                    # AVALIAÇÃO (ADMIN / EQUIPE) — MESMA REGRA DE ATIVIDADES
-                    # ==================================================
-                    if pode_avaliar_despesa:
-
-                        STATUS_DESPESA_LABEL = {
-                            "em_analise": "Em análise",
-                            "aberto": "Devolver",
-                            "aceito": "Aceito"
-                        }
-
-                        STATUS_DESPESA_LABEL_INV = {v: k for k, v in STATUS_DESPESA_LABEL.items()}
-
-                        status_despesa_db = lanc.get("status_despesa", "em_analise")
-                        status_label = STATUS_DESPESA_LABEL.get(status_despesa_db, "Em análise")
-
-                        status_key = f"status_despesa_ui_{id_despesa}"
-                        devolutiva_key = f"devolutiva_despesa_{id_despesa}"
-
-                        # --------------------------------------------------
-                        # Estado inicial do segmented_control
-                        # Regra igual à Atividades:
-                        # aberto sem devolutiva → Em análise
-                        # --------------------------------------------------
-                        if status_despesa_db == "aberto" and not lanc.get("devolutiva"):
-                            status_label = "Em análise"
-
-                        if status_key not in st.session_state:
-                            st.session_state[status_key] = status_label
-
-                        # --------------------------------------------------
-                        # SEGMENTED CONTROL
-                        # --------------------------------------------------
-                        with st.container(horizontal=True, horizontal_alignment="right"):
-                            novo_status_label = st.segmented_control(
-                                label="novo_status",
-                                label_visibility="collapsed",
-                                options=["Em análise", "Devolver", "Aceito"],
-                                key=status_key
-                            )
-
-                        novo_status_db = STATUS_DESPESA_LABEL_INV.get(novo_status_label)
-
-                        # --------------------------------------------------
-                        # TEXTO DE AUDITORIA
-                        # --------------------------------------------------
-                        status_aprovacao = lanc.get("status_aprovacao")
-                        if status_aprovacao:
-                            st.markdown(
-                                f"""
-                                <div style="
-                                    text-align: right;
-                                    color: rgba(0,0,0,0.55);
-                                    font-size: 0.8rem;
-                                    margin-top: 4px;
-                                ">
-                                    {status_aprovacao}
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
-                            st.write("")
 
                         # ==================================================
-                        # CASO DEVOLVER (ação, não mudança de status)
+                        # MOSTRA DEVOLUTIVA (MESMA REGRA DE ATIVIDADES)
                         # ==================================================
-                        if novo_status_label == "Devolver":
+                        status_despesa_db = lanc.get("status_despesa")
+                        devolutiva = lanc.get("devolutiva")
 
-                            if devolutiva_key not in st.session_state:
-                                st.session_state[devolutiva_key] = lanc.get("devolutiva", "")
+                        mostrar_devolutiva = False
 
-                            st.text_area(
-                                "**Devolutiva:**",
-                                key=devolutiva_key,
-                                placeholder="Explique o que precisa ser ajustado nesta despesa..."
-                            )
-
-                            tem_devolutiva = bool(st.session_state.get(devolutiva_key, "").strip())
-                            label_botao = "Atualizar" if tem_devolutiva else "Salvar devolutiva"
-
-                            with st.container(horizontal=True):
-                                if st.button(
-                                    label_botao,
-                                    key=f"btn_save_dev_{id_despesa}",
-                                    type="primary",
-                                    icon=":material/save:"
-                                ):
-                                    nome = st.session_state.get("nome", "Usuário")
-                                    data = data_hoje_br()
-
-                                    lanc["status_despesa"] = "aberto"
-                                    lanc["devolutiva"] = st.session_state.get(devolutiva_key, "")
-                                    lanc["status_aprovacao"] = f"Devolvido por {nome} em {data}"
-
-                                    col_projetos.update_one(
-                                        {"codigo": projeto["codigo"]},
-                                        {"$set": {"financeiro.orcamento": projeto["financeiro"]["orcamento"]}}
-                                    )
-
-                                    st.session_state.pop(status_key, None)
-                                    st.session_state.pop(devolutiva_key, None)
-
-                                    st.success("Devolutiva salva.", icon=":material/check:")
-                                    time.sleep(3)
-                                    st.rerun()
-
-                        # ==================================================
-                        # CASO EM ANÁLISE OU ACEITO (mudança real de status)
-                        # ==================================================
-                        elif novo_status_db != status_despesa_db:
-
-                            nome = st.session_state.get("nome", "Usuário")
-                            data = data_hoje_br()
-
-                            lanc["status_despesa"] = novo_status_db
-
-                            if novo_status_db == "aceito":
-                                lanc.pop("devolutiva", None)
-                                lanc["status_aprovacao"] = f"Verificado por {nome} em {data}"
-
-                            elif novo_status_db == "em_analise":
-                                lanc.pop("status_aprovacao", None)
-
-                            col_projetos.update_one(
-                                {"codigo": projeto["codigo"]},
-                                {"$set": {"financeiro.orcamento": projeto["financeiro"]["orcamento"]}}
-                            )
-
-                            st.session_state.pop(status_key, None)
-                            st.rerun()
-
-
-                    # ==================================================
-                    # MOSTRA DEVOLUTIVA (MESMA REGRA DE ATIVIDADES)
-                    # ==================================================
-                    status_despesa_db = lanc.get("status_despesa")
-                    devolutiva = lanc.get("devolutiva")
-
-                    mostrar_devolutiva = False
-
-                    # Regra 1: relatório em modo edição
-                    if status_atual_db == "modo_edicao":
-                        mostrar_devolutiva = bool(devolutiva)
-
-                    # Regra 2: relatório em análise
-                    elif status_atual_db == "em_analise":
-                        if (
-                            tipo_usuario in ["admin", "equipe"]
-                            and status_despesa_db == "aberto"
-                        ):
-                            mostrar_devolutiva = False
-                        else:
+                        # Regra 1: relatório em modo edição
+                        if status_atual_db == "modo_edicao":
                             mostrar_devolutiva = bool(devolutiva)
+
+                        # Regra 2: relatório em análise
+                        elif status_atual_db == "em_analise":
+                            if (
+                                tipo_usuario in ["admin", "equipe"]
+                                and status_despesa_db == "aberto"
+                            ):
+                                mostrar_devolutiva = False
+                            else:
+                                mostrar_devolutiva = bool(devolutiva)
 
 
             st.write('')
+
+
+
+
+
 
 
 # ==================================================
@@ -4586,6 +5578,17 @@ if step_selecionado == "Indicadores":
                     st.rerun()
 
         st.write("")
+
+
+
+
+
+
+
+
+
+
+
 
 
 # ---------- BENEFÍCIOS ----------
