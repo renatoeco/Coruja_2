@@ -393,8 +393,8 @@ if not editar_cadastro:
     st.write(f"**Duração:** {df_projeto['duracao'].values[0]} meses")
 
     cols = st.columns(3)
-    cols[0].write(f"**Início:** {df_projeto['data_inicio_contrato'].values[0]}")
-    cols[1].write(f"**Fim:** {df_projeto['data_fim_contrato'].values[0]}")
+    cols[0].write(f"**Data de início do contrato:** {df_projeto['data_inicio_contrato'].values[0]}")
+    cols[1].write(f"**Data de fim do contrato:** {df_projeto['data_fim_contrato'].values[0]}")
 
     # ---------- CONTRATOS ----------
 
@@ -1628,7 +1628,8 @@ else:
                     format="dd/MM/yyyy",
                     locale="pt_BR",
                     one_tap=True,
-                    key="data_inicio_contrato"
+                    key="data_inicio_contrato",
+                    placeholder="dd/mm/aaaa"
                 )
 
             # ---------- DATA DE FIM DO CONTRATO ----------
@@ -1644,7 +1645,8 @@ else:
                     format="dd/MM/yyyy",
                     locale="pt_BR",
                     one_tap=True,
-                    key="data_fim_contrato"
+                    key="data_fim_contrato",
+                    placeholder="dd/mm/aaaa"
                 )
 
 
@@ -1773,28 +1775,74 @@ else:
 
                     else:
                         with st.spinner("Salvando alterações..."):
-         
 
 
-                            # Atualizações na coleção de Projetos
+                            # =============================================================================
+                            # MONTA DADOS DO PROJETO
+                            # =============================================================================
+
+                            dados_projeto = {
+                                "edital": edital,
+                                "codigo": codigo,
+                                "sigla": sigla,
+                                "id_organizacao": id_organizacao,
+                                "nome_do_projeto": nome,
+                                "objetivo_geral": objetivo,
+                                "duracao": duracao,
+                            }
+
+                            # =============================================================================
+                            # DATA DE INÍCIO
+                            # =============================================================================
+
+                            if data_inicio:
+
+                                dados_projeto["data_inicio_contrato"] = (
+                                    data_inicio.strftime("%d/%m/%Y")
+                                )
+
+                            # =============================================================================
+                            # DATA DE FIM
+                            # =============================================================================
+
+                            if data_fim:
+
+                                dados_projeto["data_fim_contrato"] = (
+                                    data_fim.strftime("%d/%m/%Y")
+                                )
+
+                            # =============================================================================
+                            # ATUALIZA PROJETO
+                            # =============================================================================
+
                             col_projetos.update_one(
                                 {"_id": projeto_id},
                                 {
-                                    "$set": {
-                                        "edital": edital,
-                                        "codigo": codigo,
-                                        "sigla": sigla,
-                                        "id_organizacao": id_organizacao,
-                                        "nome_do_projeto": nome,
-                                        "objetivo_geral": objetivo,
-                                        "duracao": duracao,
-                                        "data_inicio_contrato": data_inicio.strftime("%d/%m/%Y"),
-                                        "data_fim_contrato": data_fim.strftime("%d/%m/%Y"),
-                   
-    
-                                    }
+                                    "$set": dados_projeto
                                 }
                             )
+
+
+
+                            # # Atualizações na coleção de Projetos
+                            # col_projetos.update_one(
+                            #     {"_id": projeto_id},
+                            #     {
+                            #         "$set": {
+                            #             "edital": edital,
+                            #             "codigo": codigo,
+                            #             "sigla": sigla,
+                            #             "id_organizacao": id_organizacao,
+                            #             "nome_do_projeto": nome,
+                            #             "objetivo_geral": objetivo,
+                            #             "duracao": duracao,
+                            #             "data_inicio_contrato": data_inicio.strftime("%d/%m/%Y"),
+                            #             "data_fim_contrato": data_fim.strftime("%d/%m/%Y"),
+
+    
+                            #         }
+                            #     }
+                            # )
 
 
 
