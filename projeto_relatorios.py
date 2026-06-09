@@ -770,7 +770,7 @@ def render_registro_despesa(
         )
 
         cpf_cnpj = col2.text_input(
-            "CPF / CNPJ *",
+            "CPF / CNPJ",
             key=f"desp_doc_{form_key}"
         )
 
@@ -831,8 +831,8 @@ def render_registro_despesa(
             if not fornecedor or not fornecedor.strip():
                 erros_campos.append("Fornecedor")
 
-            if not cpf_cnpj or not cpf_cnpj.strip():
-                erros_campos.append("CPF / CNPJ")
+            # if not cpf_cnpj or not cpf_cnpj.strip():
+            #     erros_campos.append("CPF / CNPJ")
 
             # --------------------------------------------------
             # Validação dos anexos
@@ -3440,7 +3440,7 @@ if step_selecionado == "Despesas":
                         )
 
                         cpf_cnpj = col2.text_input(
-                            "CPF/CNPJ *",
+                            "CPF/CNPJ",
                             value=lanc.get("cpf_cnpj", ""),
                             key=f"edit_doc_{id_despesa}"
                         )
@@ -3534,8 +3534,8 @@ if step_selecionado == "Despesas":
                                     if not fornecedor or not fornecedor.strip():
                                         erros_campos.append("Fornecedor")
 
-                                    if not cpf_cnpj or not cpf_cnpj.strip():
-                                        erros_campos.append("CPF / CNPJ")
+                                    # if not cpf_cnpj or not cpf_cnpj.strip():
+                                    #     erros_campos.append("CPF / CNPJ")
 
 
                                     # ==================================================
