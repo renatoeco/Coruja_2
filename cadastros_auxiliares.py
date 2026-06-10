@@ -1925,90 +1925,92 @@ with aba_publicos:
 
         if st.button("Salvar alterações", icon=":material/save:", type="primary", key="salvar_publicos"):
 
-            if "publico" not in df_editado.columns:
-                st.error("Nenhum dado válido para salvar.")
-                st.stop()
+            with st.spinner("Salvando..."):
 
-            # Normaliza e remove vazios
-            df_editado["publico"] = df_editado["publico"].astype(str).str.strip()
-            df_editado = df_editado[df_editado["publico"] != ""]
+                if "publico" not in df_editado.columns:
+                    st.error("Nenhum dado válido para salvar.")
+                    st.stop()
 
-            if df_editado.empty:
-                st.warning("Nenhum público informado.")
-                st.stop()
+                # Normaliza e remove vazios
+                df_editado["publico"] = df_editado["publico"].astype(str).str.strip()
+                df_editado = df_editado[df_editado["publico"] != ""]
 
-            df_editado = df_editado.sort_values("publico")
+                if df_editado.empty:
+                    st.warning("Nenhum público informado.")
+                    st.stop()
 
-            # ===========================
-            # VERIFICAÇÃO DE DUPLICADOS
-            # ===========================
-            lista_editada = df_editado["publico"].tolist()
-            duplicados_local = {
-                x for x in lista_editada if lista_editada.count(x) > 1
-            }
+                df_editado = df_editado.sort_values("publico")
 
-            if duplicados_local:
-                st.error(
-                    f"Existem valores duplicados na lista: {', '.join(duplicados_local)}"
-                )
-                st.stop()
+                # ===========================
+                # VERIFICAÇÃO DE DUPLICADOS
+                # ===========================
+                lista_editada = df_editado["publico"].tolist()
+                duplicados_local = {
+                    x for x in lista_editada if lista_editada.count(x) > 1
+                }
 
-            # Normaliza categoria
-            df_editado["categoria"] = (
-                df_editado["categoria"]
-                .fillna("Geral")
-                .astype(str)
-                .str.strip()
-            )
+                if duplicados_local:
+                    st.error(
+                        f"Existem valores duplicados na lista: {', '.join(duplicados_local)}"
+                    )
+                    st.stop()
 
-            # IDs existentes
-            ids_banco = set(df_publicos["_id"].astype(str))
-
-            ids_editor = set(
-                df_editado["_id"]
-                .fillna("")
-                .astype(str)
-            )
-
-            # Remove excluídos
-            for id_remover in ids_banco - ids_editor:
-                col_publicos.delete_one(
-                    {"_id": ObjectId(id_remover)}
+                # Normaliza categoria
+                df_editado["categoria"] = (
+                    df_editado["categoria"]
+                    .fillna("Geral")
+                    .astype(str)
+                    .str.strip()
                 )
 
-            # Atualiza ou cria
-            for _, row in df_editado.iterrows():
+                # IDs existentes
+                ids_banco = set(df_publicos["_id"].astype(str))
 
-                publico = row["publico"]
-                categoria = row["categoria"]
-                id_publico = row.get("_id")
+                ids_editor = set(
+                    df_editado["_id"]
+                    .fillna("")
+                    .astype(str)
+                )
 
-                # Atualização
-                if id_publico and str(id_publico).strip():
+                # Remove excluídos
+                for id_remover in ids_banco - ids_editor:
+                    col_publicos.delete_one(
+                        {"_id": ObjectId(id_remover)}
+                    )
 
-                    col_publicos.update_one(
-                        {"_id": ObjectId(id_publico)},
-                        {
-                            "$set": {
+                # Atualiza ou cria
+                for _, row in df_editado.iterrows():
+
+                    publico = row["publico"]
+                    categoria = row["categoria"]
+                    id_publico = row.get("_id")
+
+                    # Atualização
+                    if id_publico and str(id_publico).strip():
+
+                        col_publicos.update_one(
+                            {"_id": ObjectId(id_publico)},
+                            {
+                                "$set": {
+                                    "publico": publico,
+                                    "categoria": categoria
+                                }
+                            }
+                        )
+
+                    # Novo registro
+                    else:
+
+                        col_publicos.insert_one(
+                            {
                                 "publico": publico,
                                 "categoria": categoria
                             }
-                        }
-                    )
+                        )
 
-                # Novo registro
-                else:
-
-                    col_publicos.insert_one(
-                        {
-                            "publico": publico,
-                            "categoria": categoria
-                        }
-                    )
-
-            st.success("Beneficiários atualizados com sucesso!")
-            time.sleep(3)
-            st.rerun()
+                st.success("Beneficiários atualizados com sucesso!")
+                time.sleep(3)
+                st.rerun()
 
 
 
