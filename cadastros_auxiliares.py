@@ -84,7 +84,7 @@ def buscar_edital_seguro(codigo):
 
 
 @st.fragment
-def formulario_nova_pergunta(perguntas, edital_selecionado, campo_perguntas="perguntas_relatorio", prefixo="relatorio"):
+def formulario_nova_pergunta(perguntas, edital_selecionado, campo_perguntas="perguntas_relatorio", prefixo="relatorio", permitir_upload=True):
 
     # ------------------------------------------------------
     # ESPAÇAMENTO VISUAL
@@ -99,19 +99,23 @@ def formulario_nova_pergunta(perguntas, edital_selecionado, campo_perguntas="per
     # ------------------------------------------------------
     # TIPO DE PERGUNTA
     # ------------------------------------------------------
+    tipos_pergunta = [
+        "Resposta curta",
+        "Resposta longa",
+        "Número",
+        "Múltipla escolha",
+        "Escolha única",
+        "Título",
+        "Subtítulo",
+        "Parágrafo",
+    ]
+
+    if permitir_upload:
+        tipos_pergunta.insert(5, "Upload de arquivos")
+
     tipo = st.selectbox(
         "Tipo de pergunta",
-        [
-            "Resposta curta",
-            "Resposta longa",
-            "Número",
-            "Múltipla escolha",
-            "Escolha única",
-            "Upload de arquivos",  # NOVO
-            "Título",
-            "Subtítulo",
-            "Parágrafo",
-        ],
+        tipos_pergunta,
         key=f"tipo_pergunta_nova_{prefixo}"
     )
 
@@ -403,7 +407,7 @@ with aba_perguntas:
                         "numero": "Número",
                         "multipla_escolha": "Múltipla escolha",
                         "escolha_unica": "Escolha única",
-                        "upload_arquivo": "Upload de arquivos",  # 👈
+                        "upload_arquivo": "Upload de arquivos", 
                         "titulo": "Título",
                         "subtitulo": "Subtítulo",
                         "paragrafo": "Parágrafo"
@@ -431,7 +435,7 @@ with aba_perguntas:
         # ======================================================
 
         with aba_nova:
-            formulario_nova_pergunta(perguntas, edital_selecionado_perguntas, "perguntas_relatorio", "relatorio")
+            formulario_nova_pergunta(perguntas, edital_selecionado_perguntas, "perguntas_relatorio", "relatorio", permitir_upload=True)
 
 
 
@@ -762,20 +766,10 @@ with aba_monitoramento:
                         "numero": "Número",
                         "multipla_escolha": "Múltipla escolha",
                         "escolha_unica": "Escolha única",
-                        "upload_arquivo": "Upload de arquivos", 
                         "titulo": "Título",
                         "subtitulo": "Subtítulo",
                         "paragrafo": "Parágrafo"
                     }.get(p["tipo"], p["tipo"])
-
-
-                    # tipo_legivel = {
-                    #     "texto_curto": "Resposta curta",
-                    #     "texto_longo": "Resposta longa",
-                    #     "numero": "Número",
-                    #     "multipla_escolha": "Múltipla escolha",
-                    #     "escolha_unica": "Escolha única"
-                    # }.get(p["tipo"], p["tipo"])
 
                     st.caption(f"Tipo: {tipo_legivel}")
 
@@ -790,9 +784,7 @@ with aba_monitoramento:
         # ======================================================
 
         with aba_nova:
-            formulario_nova_pergunta(perguntas_monitoramento, edital_selecionado_perguntas_monitoramento, "perguntas_monitoramento", "monitoramento")
-
-
+            formulario_nova_pergunta(perguntas_monitoramento, edital_selecionado_perguntas_monitoramento, "perguntas_monitoramento", "monitoramento", permitir_upload=False)
 
         # ======================================================
         # ABA 3 — EDITAR / EXCLUIR
@@ -836,26 +828,10 @@ with aba_monitoramento:
                         "numero": "Número",
                         "multipla_escolha": "Múltipla escolha",
                         "escolha_unica": "Escolha única",
-                        "upload_arquivo": "Upload de arquivos",
                         "titulo": "Título",
                         "subtitulo": "Subtítulo",
                         "paragrafo": "Parágrafo"
                     }
-
-
-
-
-                    # mapa_tipo_inv = {
-                    #     "texto_curto": "Resposta curta",
-                    #     "texto_longo": "Resposta longa",
-                    #     "numero": "Número",
-                    #     "multipla_escolha": "Múltipla escolha",
-                    #     "escolha_unica": "Escolha única",
-                    #     "titulo": "Título",
-                    #     "subtitulo": "Subtítulo",
-                    #     # "divisoria": "Linha divisória",
-                    #     "paragrafo": "Parágrafo"
-                    # }
 
                     tipo_atual = mapa_tipo_inv.get(pergunta_atual["tipo"])
 
@@ -865,8 +841,6 @@ with aba_monitoramento:
                         index=list(mapa_tipo_inv.values()).index(tipo_atual),
                         key=f"selectbox_tipo_monitoramento_{pergunta_atual['ordem']}"
                     )
-
-
 
                     # ----------------------------------------------
                     # CAMPOS DINÂMICOS
@@ -888,7 +862,6 @@ with aba_monitoramento:
                         "Resposta curta",
                         "Resposta longa",
                         "Número",
-                        "Upload de arquivos",
                         "Título",
                         "Subtítulo"
                     ]:
@@ -896,20 +869,6 @@ with aba_monitoramento:
                             label_texto,
                             value=pergunta_atual.get("pergunta", "")
                         )
-
-
-
-                    # if tipo in [
-                    #     "Resposta curta",
-                    #     "Resposta longa",
-                    #     "Número",
-                    #     "Título",
-                    #     "Subtítulo"
-                    # ]:
-                    #     texto = st.text_input(
-                    #         label_texto,
-                    #         value=pergunta_atual.get("pergunta", "")
-                    #     )
 
                     elif tipo == "Parágrafo":
                         texto = st.text_area(
@@ -927,9 +886,6 @@ with aba_monitoramento:
                             "Opções (uma por linha)",
                             value="\n".join(pergunta_atual.get("opcoes", [])),
                         ).split("\n")
-
-                    # if tipo == "Linha divisória":
-                    #     st.write("Este tipo não possui texto editável.")
 
                     st.write("")
 
@@ -956,7 +912,6 @@ with aba_monitoramento:
                                     "Escolha única": "escolha_unica",
                                     "Título": "titulo",
                                     "Subtítulo": "subtitulo",
-                                    "Upload de arquivos": "upload_arquivo",
                                     "Parágrafo": "paragrafo"
                                 }
 

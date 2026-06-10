@@ -7668,82 +7668,6 @@ if step_selecionado == "Avaliação":
                 else:
                     renderizar_visualizacao(texto, ", ".join(resposta_atual))
 
-
-
-            # ---------------------------------------------------------------------
-            # UPLOAD DE ARQUIVOS
-            # ---------------------------------------------------------------------
-            elif tipo == "upload_arquivo":
-
-                MAX_MB = 10
-                MAX_BYTES = MAX_MB * 1024 * 1024
-
-                resposta_atual = (
-                    st.session_state.respostas_monitoramento
-                    .get(chave, {})
-                    .get("resposta", [])
-                )
-
-                if pode_editar_monitoramento:
-
-                    arquivos = st.file_uploader(
-                        label=f"{texto} (máx. 10 MB por arquivo)",
-                        accept_multiple_files=True,
-                        key=f"monitoramento_{chave}"
-                    )
-
-                    # ---------------------------------------------------------
-                    # Validação 
-                    # ---------------------------------------------------------
-                    if arquivos:
-                        validos = [
-                            arq for arq in arquivos
-                            if arq.size <= MAX_BYTES
-                        ]
-
-                        for arq in arquivos:
-                            if arq.size > MAX_BYTES:
-                                st.warning(
-                                    f"O arquivo '{arq.name}' excede 10 MB e não será enviado."
-                                )
-
-                        # substitui (não acumula)
-                        st.session_state.temp_uploads_monitoramento[chave] = validos
-                    else:
-                        # se remover seleção, limpa também
-                        st.session_state.temp_uploads_monitoramento.pop(chave, None)
-
-                    # ---------------------------------------------------------
-                    # Lista de arquivos já salvos (após uploader)
-                    # ---------------------------------------------------------
-                    if resposta_atual:
-                        st.caption("Arquivos já enviados:")
-                        for arq in resposta_atual:
-                            link = gerar_link_drive(arq["id"])
-                            st.markdown(
-                                f":material/attach_file: [{arq['nome']}]({link})"
-                            )
-
-                    st.session_state.respostas_monitoramento[chave] = {
-                        "tipo": tipo,
-                        "ordem": ordem,
-                        "pergunta": texto,
-                        "resposta": resposta_atual
-                    }
-
-                else:
-                    st.markdown(f"**{texto}**")
-
-                    if resposta_atual:
-                        for arq in resposta_atual:
-                            link = gerar_link_drive(arq["id"])
-                            st.markdown(
-                                f":material/attach_file: [{arq['nome']}]({link})"
-                            )
-                    else:
-                        st.caption("Nenhum arquivo enviado")
-
-
             # ---------------------------------------------------------------------
             # TIPO NÃO SUPORTADO
             # ---------------------------------------------------------------------
@@ -7762,51 +7686,6 @@ if step_selecionado == "Avaliação":
 
                     servico = None
 
-                    # ---------------------------------------------------------
-                    # Upload incremental (somente se houver novos arquivos)
-                    # ---------------------------------------------------------
-                    for chave, arquivos in list(st.session_state.temp_uploads_monitoramento.items()):
-
-                        if not arquivos:
-                            continue
-
-                        if not servico:
-                            servico = obter_servico_drive()
-
-                        pasta_projeto_id = obter_pasta_projeto(
-                            servico,
-                            projeto["codigo"],
-                            projeto["sigla"]
-                        )
-
-                        pasta_relatorios_id = obter_pasta_relatorios(
-                            servico,
-                            pasta_projeto_id
-                        )
-
-                        novos_arquivos = []
-
-                        for arquivo in arquivos:
-                            arquivo_id = enviar_arquivo_drive(
-                                servico,
-                                pasta_relatorios_id,
-                                arquivo
-                            )
-
-                            if arquivo_id:
-                                novos_arquivos.append({
-                                    "id": arquivo_id,
-                                    "nome": arquivo.name
-                                })
-
-                        existentes = (
-                            st.session_state.respostas_monitoramento[chave]
-                            .get("resposta", [])
-                        )
-
-                        st.session_state.respostas_monitoramento[chave]["resposta"] = (
-                            existentes + novos_arquivos
-                        )
 
                     # ---------------------------------------------------------
                     # LIMPEZA CRÍTICA (evita duplicação no rerun)
