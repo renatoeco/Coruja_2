@@ -793,6 +793,8 @@ if not editar_cadastro:
                 key="tipo_anotacao_nova"
             )
 
+            st.caption("**As anotações externas podem ser visualizadas pelos parceiros. As anotações internas são acessíveis apenas à equipe do Fundo Ecos.**")
+
 
             texto_anotacao = st.text_area(
                 "Escreva aqui a anotação",
