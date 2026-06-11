@@ -677,18 +677,15 @@ with aba_perguntas:
                     }
                 """
 
-                # Mapa id -> pergunta
+                # Mapa texto exibido -> pergunta
                 mapa_perguntas = {
-                    p["id_pergunta"]: p
+                    p["pergunta"]: p
                     for p in perguntas
                 }
 
-                # Itens exibidos no sortable
+                # Apenas o texto da pergunta será exibido
                 itens_sortable = [
-                    {
-                        "id": p["id_pergunta"],
-                        "name": p["pergunta"]
-                    }
+                    p["pergunta"]
                     for p in perguntas
                 ]
 
@@ -709,7 +706,7 @@ with aba_perguntas:
 
                     for i, item in enumerate(nova_ordem, start=1):
 
-                        pergunta = mapa_perguntas[item["id"]]
+                        pergunta = mapa_perguntas[item]
 
                         pergunta["ordem"] = i
 
@@ -1015,15 +1012,12 @@ with aba_monitoramento:
                 """
 
                 mapa_perguntas_monitoramento = {
-                    p["id_pergunta"]: p
+                    p["pergunta"]: p
                     for p in perguntas_monitoramento
                 }
 
                 itens_sortable = [
-                    {
-                        "id": p["id_pergunta"],
-                        "name": p["pergunta"]
-                    }
+                    p["pergunta"]
                     for p in perguntas_monitoramento
                 ]
 
@@ -1039,7 +1033,7 @@ with aba_monitoramento:
 
                     for i, item in enumerate(nova_ordem, start=1):
 
-                        pergunta = mapa_perguntas_monitoramento[item["id"]]
+                        pergunta = mapa_perguntas_monitoramento[item]
 
                         pergunta["ordem"] = i
 
