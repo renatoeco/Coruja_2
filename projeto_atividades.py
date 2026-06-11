@@ -3289,7 +3289,7 @@ with indicadores:
 
                     with col_valor:
                         valor = st.number_input(
-                            "**Contribuição esperada**",
+                            "**Meta**",
                             step=1.0,
                             value=float(
                                 dados_atual.get("valor", 0)
