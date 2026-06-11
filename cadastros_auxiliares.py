@@ -207,6 +207,7 @@ def formulario_nova_pergunta(perguntas, edital_selecionado, campo_perguntas="per
         # MONTA OBJETO FINAL
         # --------------------------------------------------
         nova_pergunta = {
+            "id_pergunta": str(ObjectId()),
             "tipo": mapa_tipo[tipo],
             "ordem": len(perguntas) + 1
         }
@@ -285,7 +286,8 @@ def confirmar_exclusao_pergunta(pergunta_atual, perguntas, edital_selecionado, c
         if st.button(":material/delete: Excluir pergunta", type="primary", key=f"confirmar_exclusao_{campo_perguntas}"):
 
             # Remove a pergunta
-            novas = [p for p in perguntas if p != pergunta_atual]
+            novas = [p for p in perguntas if p["id_pergunta"] != pergunta_atual["id_pergunta"]
+]
 
             # Reorganiza a ordem
             for i, p in enumerate(novas, start=1):
@@ -578,6 +580,8 @@ with aba_perguntas:
 
                     st.write("")
 
+                   
+
                     # ----------------------------------------------
                     # BOTÕES DE AÇÃO
                     # ----------------------------------------------
@@ -606,6 +610,10 @@ with aba_perguntas:
                                 }
 
                                 nova = {
+                                    "id_pergunta": pergunta_atual.get(
+                                        "id_pergunta",
+                                        str(ObjectId())
+                                    ),
                                     "tipo": mapa_tipo[tipo],
                                     "ordem": pergunta_atual["ordem"]
                                 }
@@ -621,7 +629,7 @@ with aba_perguntas:
                                     nova["opcoes"] = [o.strip() for o in opcoes if o.strip()]
 
                                 perguntas_atualizadas = [
-                                    nova if p == pergunta_atual else p
+                                    nova if p["id_pergunta"] == pergunta_atual["id_pergunta"] else p
                                     for p in perguntas
                                 ]
 
@@ -669,19 +677,42 @@ with aba_perguntas:
                     }
                 """
 
+                # Mapa id -> pergunta
+                mapa_perguntas = {
+                    p["id_pergunta"]: p
+                    for p in perguntas
+                }
+
+                # Itens exibidos no sortable
+                itens_sortable = [
+                    {
+                        "id": p["id_pergunta"],
+                        "name": p["pergunta"]
+                    }
+                    for p in perguntas
+                ]
+
                 nova_ordem = sort_items(
-                    items=[p["pergunta"] for p in perguntas],
+                    items=itens_sortable,
                     direction="vertical",
                     custom_style=estilo
                 )
 
-                if st.button("Salvar nova ordem", type="primary", icon=":material/save:", key="salvar_ordem_relatorio"):
+                if st.button(
+                    "Salvar nova ordem",
+                    type="primary",
+                    icon=":material/save:",
+                    key="salvar_ordem_relatorio"
+                ):
 
                     novas_perguntas = []
 
-                    for i, texto in enumerate(nova_ordem, start=1):
-                        pergunta = next(p for p in perguntas if p["pergunta"] == texto)
+                    for i, item in enumerate(nova_ordem, start=1):
+
+                        pergunta = mapa_perguntas[item["id"]]
+
                         pergunta["ordem"] = i
+
                         novas_perguntas.append(pergunta)
 
                     col_editais.update_one(
@@ -916,6 +947,10 @@ with aba_monitoramento:
                                 }
 
                                 nova = {
+                                    "id_pergunta": pergunta_atual.get(
+                                        "id_pergunta",
+                                        str(ObjectId())
+                                    ),
                                     "tipo": mapa_tipo[tipo],
                                     "ordem": pergunta_atual["ordem"]
                                 }
@@ -931,7 +966,7 @@ with aba_monitoramento:
                                     nova["opcoes"] = [o.strip() for o in opcoes if o.strip()]
 
                                 perguntas_monitoramento_atualizadas = [
-                                    nova if p == pergunta_atual else p
+                                    nova if p["id_pergunta"] == pergunta_atual["id_pergunta"] else p
                                     for p in perguntas_monitoramento
                                 ]
 
@@ -979,8 +1014,21 @@ with aba_monitoramento:
                     }
                 """
 
+                mapa_perguntas_monitoramento = {
+                    p["id_pergunta"]: p
+                    for p in perguntas_monitoramento
+                }
+
+                itens_sortable = [
+                    {
+                        "id": p["id_pergunta"],
+                        "name": p["pergunta"]
+                    }
+                    for p in perguntas_monitoramento
+                ]
+
                 nova_ordem = sort_items(
-                    items=[p["pergunta"] for p in perguntas_monitoramento],
+                    items=itens_sortable,
                     direction="vertical",
                     custom_style=estilo
                 )
@@ -989,9 +1037,12 @@ with aba_monitoramento:
 
                     novas_perguntas_monitoramento = []
 
-                    for i, texto in enumerate(nova_ordem, start=1):
-                        pergunta = next(p for p in perguntas_monitoramento if p["pergunta"] == texto)
+                    for i, item in enumerate(nova_ordem, start=1):
+
+                        pergunta = mapa_perguntas_monitoramento[item["id"]]
+
                         pergunta["ordem"] = i
+
                         novas_perguntas_monitoramento.append(pergunta)
 
                     col_editais.update_one(
