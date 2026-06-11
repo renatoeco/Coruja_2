@@ -7824,7 +7824,7 @@ if step_selecionado == "Avaliação":
 
             st.warning(
                 "Você tem certeza que deseja reprovar o relatório?\n\n"
-                "Os responsáveis pelo projeto serão notificados por e-mail."
+                "Os(as) responsáveis pelo projeto serão notificados por e-mail."
             )
 
             if st.button(
@@ -7925,7 +7925,7 @@ if step_selecionado == "Avaliação":
 
             st.warning(
                 "Você tem certeza que deseja aprovar o relatório? \n\n"
-                "Os responsáveis serão notificados por e-mail."
+                "Os(as) responsáveis pelo projeto serão notificados por e-mail."
             )
 
             if st.button(
