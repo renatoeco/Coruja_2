@@ -6585,9 +6585,9 @@ if step_selecionado == "Formulário":
         texto = pergunta.get("pergunta")
         opcoes = pergunta.get("opcoes", [])
         ordem = pergunta.get("ordem")
+        id_pergunta = pergunta.get("id_pergunta")
 
-        # Chave única da pergunta dentro do relatório
-        chave = f"pergunta_{ordem}"
+        chave = id_pergunta
 
 
         # ---------------------------------------------------------------------
@@ -6636,6 +6636,7 @@ if step_selecionado == "Formulário":
                 )
 
                 st.session_state.respostas_formulario[chave] = {
+                    "id_pergunta": id_pergunta,
                     "tipo": tipo,
                     "ordem": ordem,
                     "pergunta": texto,
@@ -6665,6 +6666,7 @@ if step_selecionado == "Formulário":
                 )
 
                 st.session_state.respostas_formulario[chave] = {
+                    "id_pergunta": id_pergunta,
                     "tipo": tipo,
                     "ordem": ordem,
                     "pergunta": texto,
@@ -6695,6 +6697,7 @@ if step_selecionado == "Formulário":
                 )
 
                 st.session_state.respostas_formulario[chave] = {
+                    "id_pergunta": id_pergunta,
                     "tipo": tipo,
                     "ordem": ordem,
                     "pergunta": texto,
@@ -6727,6 +6730,7 @@ if step_selecionado == "Formulário":
                 )
 
                 st.session_state.respostas_formulario[chave] = {
+                    "id_pergunta": id_pergunta,
                     "tipo": tipo,
                     "ordem": ordem,
                     "pergunta": texto,
@@ -6756,6 +6760,7 @@ if step_selecionado == "Formulário":
                 )
 
                 st.session_state.respostas_formulario[chave] = {
+                    "id_pergunta": id_pergunta,
                     "tipo": tipo,
                     "ordem": ordem,
                     "pergunta": texto,
@@ -6821,10 +6826,11 @@ if step_selecionado == "Formulário":
                         )
 
                 st.session_state.respostas_formulario[chave] = {
+                    "id_pergunta": id_pergunta,
                     "tipo": tipo,
                     "ordem": ordem,
                     "pergunta": texto,
-                    "resposta": resposta_atual
+                    "resposta": resposta
                 }
 
             else:
@@ -7019,8 +7025,9 @@ if step_selecionado == "Enviar":
                         tipo = pergunta.get("tipo")
                         texto = pergunta.get("pergunta")
                         ordem = pergunta.get("ordem")
+                        id_pergunta = pergunta.get("id_pergunta")
 
-                        chave = f"pergunta_{ordem}"
+                        chave = id_pergunta
 
                         resposta = (
                             respostas_monitoramento
@@ -7315,8 +7322,9 @@ if step_selecionado == "Enviar":
                         tipo = pergunta.get("tipo")
                         texto = pergunta.get("pergunta")
                         ordem = pergunta.get("ordem")
+                        id_pergunta = pergunta.get("id_pergunta")
 
-                        chave = f"pergunta_{ordem}"
+                        chave = id_pergunta
 
                         resposta = (
                             respostas_monitoramento
@@ -7479,9 +7487,9 @@ if step_selecionado == "Avaliação":
             texto = pergunta.get("pergunta")
             opcoes = pergunta.get("opcoes", [])
             ordem = pergunta.get("ordem")
+            id_pergunta = pergunta.get("id_pergunta")
 
-            # Chave única da pergunta dentro do relatório
-            chave = f"pergunta_{ordem}"
+            chave = id_pergunta
 
 
             # ---------------------------------------------------------------------
@@ -7530,6 +7538,7 @@ if step_selecionado == "Avaliação":
                     )
 
                     st.session_state.respostas_monitoramento[chave] = {
+                        "id_pergunta": id_pergunta,
                         "tipo": tipo,
                         "ordem": ordem,
                         "pergunta": texto,
@@ -7559,6 +7568,7 @@ if step_selecionado == "Avaliação":
                     )
 
                     st.session_state.respostas_monitoramento[chave] = {
+                        "id_pergunta": id_pergunta,
                         "tipo": tipo,
                         "ordem": ordem,
                         "pergunta": texto,
@@ -7589,6 +7599,7 @@ if step_selecionado == "Avaliação":
                     )
 
                     st.session_state.respostas_monitoramento[chave] = {
+                        "id_pergunta": id_pergunta,
                         "tipo": tipo,
                         "ordem": ordem,
                         "pergunta": texto,
@@ -7621,6 +7632,7 @@ if step_selecionado == "Avaliação":
                     )
 
                     st.session_state.respostas_monitoramento[chave] = {
+                        "id_pergunta": id_pergunta,
                         "tipo": tipo,
                         "ordem": ordem,
                         "pergunta": texto,
@@ -7660,6 +7672,7 @@ if step_selecionado == "Avaliação":
                     )
 
                     st.session_state.respostas_monitoramento[chave] = {
+                        "id_pergunta": id_pergunta,
                         "tipo": tipo,
                         "ordem": ordem,
                         "pergunta": texto,
