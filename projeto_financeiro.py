@@ -2202,16 +2202,17 @@ with cron_desemb:
                         "numero": st.column_config.NumberColumn(
                             "Número",
                             disabled=True,
-                            width=60
+                            width=100
                         ),
                         "data_prevista": st.column_config.DateColumn(
                             "Data prevista",
                             format="DD/MM/YYYY",
-                            width=20
+                            width=200
                         ),
                     },
                     key="editor_relatorios",
-                    hide_index=True
+                    hide_index=True,
+                    width='content'
                 )
 
                 st.write("")
