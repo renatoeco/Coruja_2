@@ -1519,10 +1519,11 @@ else:
 
     st.subheader("Editar")
 
-    aba_info, aba_direcoes_publico, aba_contratos = st.tabs([
+    aba_info, aba_direcoes_publico, aba_contratos, aba_perguntas_relatorio = st.tabs([
         "Informações cadastrais",
         "Linhas temáticas e Público",
-        "Contrato e Emendas"
+        "Contrato e Emendas",
+        "Perguntas do Relatório"
     ])
 
     with aba_info:
@@ -2252,7 +2253,74 @@ else:
                     time.sleep(3)
                     st.rerun()
 
+    with aba_perguntas_relatorio:
 
+        st.write("")
+        st.markdown("##### Perguntas do relatório")
+        st.write("")
+
+        # --------------------------------------------------
+        # RECUPERA EDITAL DO PROJETO
+        # --------------------------------------------------
+
+        edital_codigo = projeto.get("edital")
+
+        edital = col_editais.find_one({
+            "codigo_edital": edital_codigo
+        })
+
+        perguntas_edital = edital.get(
+            "perguntas_relatorio",
+            []
+        ) if edital else []
+
+        # --------------------------------------------------
+        # IDS EXCLUÍDOS NO PROJETO
+        # --------------------------------------------------
+
+        perguntas_excluidas = projeto.get(
+            "perguntas_relat_excluidas",
+            []
+        )
+
+        perguntas_edital = sorted(
+            perguntas_edital,
+            key=lambda x: x.get("ordem", 9999)
+        )
+
+        perguntas_excluidas_novas = []
+
+        # --------------------------------------------------
+        # LISTAGEM DAS PERGUNTAS
+        # --------------------------------------------------
+
+        for pergunta in perguntas_edital:
+
+            id_pergunta = pergunta.get("id_pergunta")
+
+            selecionada = st.checkbox(
+                pergunta.get("pergunta", ""),
+                value=id_pergunta not in perguntas_excluidas,
+                key=f"pergunta_relatorio_{id_pergunta}"
+            )
+
+            if not selecionada:
+                perguntas_excluidas_novas.append(id_pergunta)
+
+        # --------------------------------------------------
+        # SALVA AUTOMATICAMENTE SE HOUVER ALTERAÇÃO
+        # --------------------------------------------------
+
+        if set(perguntas_excluidas_novas) != set(perguntas_excluidas):
+
+            col_projetos.update_one(
+                {"_id": projeto["_id"]},
+                {
+                    "$set": {
+                        "perguntas_relat_excluidas": perguntas_excluidas_novas
+                    }
+                }
+            )
 
 
 

@@ -6529,6 +6529,21 @@ if step_selecionado == "Formulário":
         st.error("O edital não possui perguntas cadastradas.")
         st.stop()
 
+    # ------------------------------------------------------------------
+    # REMOVE PERGUNTAS EXCLUÍDAS PARA ESTE PROJETO
+    # ------------------------------------------------------------------
+
+    perguntas_excluidas = projeto.get(
+        "perguntas_relat_excluidas",
+        []
+    )
+
+    perguntas = [
+        pergunta
+        for pergunta in perguntas
+        if pergunta.get("id_pergunta") not in perguntas_excluidas
+    ]
+
     # Ordena as perguntas pela ordem definida no edital
     perguntas = sorted(perguntas, key=lambda x: x.get("ordem", 0))
 
