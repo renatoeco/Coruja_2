@@ -1293,12 +1293,12 @@ if not editar_cadastro:
             contatos_editaveis = contatos_usuario + beneficiarios
 
             if not contatos_editaveis:
-                st.write("Não há contatos ou beneficiários disponíveis.")
+                st.write("Não há contatos ou parceiros disponíveis.")
                 return
 
             # Mapa amigável para seleção
             mapa_contatos = {
-                f"{c.get('nome', c.get('nome_completo'))} — {c.get('funcao', 'Beneficiário')}": c
+                f"{c.get('nome', c.get('nome_completo'))} — {c.get('funcao', 'Parceiro')}": c
                 for c in contatos_editaveis
             }
 
@@ -1320,7 +1320,7 @@ if not editar_cadastro:
 
             funcao = st.text_input(
                 "Função no projeto",
-                value=contato_selecionado.get("funcao", "Beneficiário"),
+                value=contato_selecionado.get("funcao", "Parceiro"),
                 key=f"edit_funcao_{id_contato}"
             )
 
@@ -1471,7 +1471,7 @@ if not editar_cadastro:
     for _, row in df_beneficiarios.iterrows():
         beneficiarios_formatados.append({
             "nome": row.get("nome_completo"),
-            "funcao": "Beneficiário",
+            "funcao": "Parceiro",
             "telefone": row.get("telefone", ""),
             "email": row.get("e_mail", ""),
             "origem": "beneficiario",   # IMPORTANTE

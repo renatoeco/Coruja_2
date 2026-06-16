@@ -8,7 +8,7 @@ from io import BytesIO
 
 
 
-st.set_page_config(page_title="Beneficiários", page_icon=":material/group:")
+st.set_page_config(page_title="Parceiros", page_icon=":material/group:")
 
 
 
@@ -235,7 +235,7 @@ def editar_pessoa(_id: str):
 # Logo do sidebar
 st.logo("images/logo_fundo_ecos.png", size='large')
 
-st.header('Beneficiários(as)')
+st.header('Parceiros(as)')
 
 # Separando só os beneficiários
 if "Tipo de usuário" in df_pessoas.columns:
