@@ -7082,6 +7082,13 @@ if step_selecionado == "Enviar":
                             if isinstance(resposta, list):
                                 resposta = ", ".join(resposta)
 
+                            elif tipo == "numero":
+                                resposta = (
+                                    formatar_numero_br_dinamico(resposta)
+                                    if resposta not in [None, ""]
+                                    else "—"
+                                )
+
                             renderizar_visualizacao(
                                 texto,
                                 resposta if resposta not in [None, ""] else "—"
@@ -7378,6 +7385,13 @@ if step_selecionado == "Enviar":
 
                             if isinstance(resposta, list):
                                 resposta = ", ".join(resposta)
+
+                            elif tipo == "numero":
+                                resposta = (
+                                    formatar_numero_br_dinamico(resposta)
+                                    if resposta not in [None, ""]
+                                    else "—"
+                                )
 
                             renderizar_visualizacao(
                                 texto,
