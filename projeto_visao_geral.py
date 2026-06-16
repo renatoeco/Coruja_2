@@ -512,7 +512,7 @@ if not editar_cadastro:
 
     if publicos:
 
-        with col2.popover("**Beneficiários**", type="tertiary", width="content"):
+        with col2.popover("**Público**", type="tertiary", width="content"):
 
             ids_publicos = [
                 str(p)
@@ -561,7 +561,7 @@ if not editar_cadastro:
 
     else:
         st.markdown(
-            "**Beneficiários:** <span style='color:#c46a00; font-style:italic;'>não cadastrados</span>",
+            "**Público:** <span style='color:#c46a00; font-style:italic;'>não cadastrados</span>",
             unsafe_allow_html=True
         )
 
