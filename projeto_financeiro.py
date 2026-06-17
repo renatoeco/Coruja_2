@@ -2797,12 +2797,12 @@ with orcamento:
             col1, col2 = st.columns(2)
 
             col1.metric(
-                "Valor",
+                "Valor previsto",
                 fmt_moeda(total_contrapartida_financeira)
             )
 
             col2.metric(
-                "Gasto",
+                "Valor realizado",
                 fmt_moeda(gasto_contrapartida_financeira)
             )
 
@@ -2815,7 +2815,7 @@ with orcamento:
             df_contr_fin = df_contr_fin.rename(columns={
                 "nome_despesa": "Despesa",
                 "descricao_despesa": "Descrição",
-                "Contrapartida financeira": "Valor"
+                "Contrapartida financeira": "Valor previsto"
             })
 
             st.dataframe(
@@ -2823,7 +2823,7 @@ with orcamento:
                     [
                         "Despesa",
                         "Descrição",
-                        "Valor",
+                        "Valor previsto",
                         "Gasto contrapartida financeira",
                     ]
                 ],
@@ -2831,9 +2831,9 @@ with orcamento:
                 column_config={
                     "Despesa": st.column_config.TextColumn(width=220),
                     "Descrição": st.column_config.TextColumn(width=420),
-                    "Valor": st.column_config.TextColumn(width=120),
+                    "Valor previsto": st.column_config.TextColumn(width=120),
                     "Gasto contrapartida financeira": st.column_config.ProgressColumn(
-                        "Gasto",
+                        "Valor realizado",
                         width=140,
                         min_value=0,
                         max_value=float(df_contr_fin["contrapartida_financeira"].max()),
@@ -2861,12 +2861,12 @@ with orcamento:
             col1, col2 = st.columns(2)
 
             col1.metric(
-                "Valor",
+                "Valor previsto",
                 fmt_moeda(total_contrapartida_nao_financeira)
             )
 
             col2.metric(
-                "Gasto",
+                "Valor realizado",
                 fmt_moeda(gasto_contrapartida_nao_financeira)
             )
 
@@ -2879,7 +2879,7 @@ with orcamento:
             df_contr_nao_fin = df_contr_nao_fin.rename(columns={
                 "nome_despesa": "Despesa",
                 "descricao_despesa": "Descrição",
-                "Contrapartida não-financeira": "Valor"
+                "Contrapartida não-financeira": "Valor previsto"
             })
 
             st.dataframe(
@@ -2887,7 +2887,7 @@ with orcamento:
                     [
                         "Despesa",
                         "Descrição",
-                        "Valor",
+                        "Valor previsto",
                         "Gasto contrapartida não-financeira",
                     ]
                 ],
@@ -2895,9 +2895,9 @@ with orcamento:
                 column_config={
                     "Despesa": st.column_config.TextColumn(width=220),
                     "Descrição": st.column_config.TextColumn(width=420),
-                    "Valor": st.column_config.TextColumn(width=120),
+                    "Valor previsto": st.column_config.TextColumn(width=120),
                     "Gasto contrapartida não-financeira": st.column_config.ProgressColumn(
-                        "Gasto",
+                        "Valor realizado",
                         width=140,
                         min_value=0,
                         max_value=float(df_contr_nao_fin["contrapartida_nao_financeira"].max()),
