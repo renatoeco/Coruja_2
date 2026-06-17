@@ -355,6 +355,62 @@ st.logo("images/logo_fundo_ecos.png", size='large')
 # Código e Sigla do projeto
 st.header(f"{df_projeto['sigla'].values[0]} - {df_projeto['codigo'].values[0]}")
 
+# ==========================================================
+# PENDÊNCIAS DE CADASTRO
+# ==========================================================
+
+pendencias = []
+
+# Linhas temáticas
+direcoes = projeto.get("direcoes_estrategicas", [])
+if not direcoes:
+    pendencias.append("Linhas temáticas não cadastradas")
+
+# Públicos
+publicos = projeto.get("publicos", [])
+if not publicos:
+    pendencias.append("Públicos não cadastrados")
+
+# Contratos
+contratos = projeto.get("contratos", [])
+if not contratos:
+    pendencias.append("Contrato não cadastrado")
+
+# Perguntas do relatório
+edital_codigo = projeto.get("edital")
+
+edital = col_editais.find_one({
+    "codigo_edital": edital_codigo
+})
+
+perguntas_edital = edital.get(
+    "perguntas_relatorio",
+    []
+) if edital else []
+
+perguntas_excluidas = projeto.get(
+    "perguntas_relat_excluidas",
+    [p.get("id_pergunta") for p in perguntas_edital]
+)
+
+perguntas_ativas = [
+    p for p in perguntas_edital
+    if p.get("id_pergunta") not in perguntas_excluidas
+]
+
+if not perguntas_ativas:
+    pendencias.append("Nenhuma pergunta do relatório foi selecionada")
+
+# Exibe aviso
+if pendencias:
+
+    mensagem = "  \n".join(
+        [f"• {pendencia}" for pendencia in pendencias]
+    )
+
+    st.warning(
+        f"Este projeto possui as seguintes pendências de cadastro:\n\n{mensagem}"
+    )
 
 # Toggle do modo de edição
 with st.container(horizontal=True, horizontal_alignment="right"):
