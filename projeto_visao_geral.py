@@ -2280,7 +2280,10 @@ else:
 
         perguntas_excluidas = projeto.get(
             "perguntas_relat_excluidas",
-            []
+            [
+                p.get("id_pergunta")
+                for p in perguntas_edital
+            ]
         )
 
         perguntas_edital = sorted(
@@ -2290,6 +2293,10 @@ else:
 
         perguntas_excluidas_novas = []
 
+        st.caption(
+            "**Marque as perguntas que devem aparecer no relatório.**"
+        )
+
         # --------------------------------------------------
         # LISTAGEM DAS PERGUNTAS
         # --------------------------------------------------
@@ -2298,17 +2305,18 @@ else:
 
             id_pergunta = pergunta.get("id_pergunta")
 
-            selecionada = st.checkbox(
+            mostrar = st.checkbox(
                 pergunta.get("pergunta", ""),
                 value=id_pergunta not in perguntas_excluidas,
                 key=f"pergunta_relatorio_{id_pergunta}"
             )
 
-            if not selecionada:
+            # Se NÃO estiver marcada, salva na lista de excluídas
+            if not mostrar:
                 perguntas_excluidas_novas.append(id_pergunta)
 
         # --------------------------------------------------
-        # SALVA AUTOMATICAMENTE SE HOUVER ALTERAÇÃO
+        # SALVA AUTOMATICAMENTE
         # --------------------------------------------------
 
         if set(perguntas_excluidas_novas) != set(perguntas_excluidas):
