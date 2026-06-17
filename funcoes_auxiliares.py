@@ -403,16 +403,6 @@ def enviar_email(corpo_html: str, destinatarios: list[str], assunto: str):
         return False
 
 
-
-
-
-
-
-
-
-
-
-
 ###########################################################################################################
 # CONEXÃO COM GOOGLE DRIVE
 ###########################################################################################################
@@ -438,13 +428,7 @@ def obter_servico_drive():
     return build("drive", "v3", credentials=credenciais)
 
 
-
-
-
-
-
 # Função para conceder permissão de leitura na pasta do projeto para o contato que está sendo salvo.
-
 def add_permissao_drive(servico, pasta_id, contato):
     """
     Concede permissão de leitura na pasta do projeto
@@ -481,15 +465,10 @@ def add_permissao_drive(servico, pasta_id, contato):
         pass
 
 
-
-
-
-
-
-
 ###########################################################################################################
 # FUNÇÕES DE PASTAS NO GOOGLE DRIVE
 ###########################################################################################################
+
 
 def obter_ou_criar_pasta(servico, nome_pasta, id_pasta_pai):
     """
@@ -554,7 +533,6 @@ def obter_pasta_projeto(servico, codigo, sigla):
 
 
 # Função para obter o ID da pasta 'Locais' no Drive, para salvar os anexos dos locais.
-
 def obter_pasta_locais(servico, pasta_projeto_id):
     """
     Retorna o ID da subpasta 'Locais' dentro da pasta do projeto.
@@ -573,8 +551,6 @@ def obter_pasta_locais(servico, pasta_projeto_id):
 
     st.session_state["pasta_locais_id"] = pasta_id
     return pasta_id
-
-
 
 
 # Função para obter o ID da pasta 'Pesquisas' no Drive, para salvar os anexos das pesquisas.
@@ -606,6 +582,7 @@ def obter_pasta_pesquisas(servico, pasta_projeto_id, codigo_projeto):
     st.session_state[chave] = pasta_id
     return pasta_id
 
+
 # Função para obter o ID da pasta 'Relatos_atividades' no Drive, para salvar os anexos das atividades.
 def obter_pasta_relatos_atividades(servico, pasta_projeto_id):
     """
@@ -634,6 +611,7 @@ def obter_pasta_relatos_financeiros(servico, pasta_projeto_id):
         "Relatos_financeiros",
         pasta_projeto_id
     )
+
 
 def obter_pasta_relatorios(servico, pasta_projeto_id):
     """
@@ -677,12 +655,10 @@ def obter_pasta_recibos(servico, pasta_projeto_id):
     return pasta_id
 
 
-
-
-
 ###########################################################################################################
 # UPLOAD E LINK DE ARQUIVOS
 ###########################################################################################################
+
 
 def enviar_arquivo_drive(servico, id_pasta, arquivo):
     """
@@ -723,16 +699,11 @@ def enviar_arquivo_drive(servico, id_pasta, arquivo):
         return None
 
 
-
 def gerar_link_drive(id_arquivo):
     """
     Gera o link público padrão de visualização do Google Drive.
     """
     return f"https://drive.google.com/file/d/{id_arquivo}/view"
-
-
-
-
 
 
 def gerar_cronograma_financeiro(parcelas: list, relatorios: list) -> pd.DataFrame:
@@ -807,18 +778,12 @@ def gerar_cronograma_financeiro(parcelas: list, relatorios: list) -> pd.DataFram
     return df_cronograma.sort_values(by="Data prevista", ascending=True)
 
 
-
-
-
-
 @st.cache_resource
 def conectar_mongo_coruja():
     # CONEXÃO LOCAL
     cliente = MongoClient(st.secrets["senhas"]["senha_mongo_coruja"])
     db_coruja_mongo = cliente["Coruja"] 
     return db_coruja_mongo
-
-
 
 
 def ajustar_altura_dataframe(
@@ -861,7 +826,6 @@ def ajustar_altura_dataframe(
     )
 
 
-
 def ajustar_altura_data_editor(df, linhas_adicionais=1):
     """
     Calcula a altura ideal para st.data_editor,
@@ -896,7 +860,6 @@ def notificar(mensagem: str):
         st.session_state.notificacoes = []
         
     st.session_state.notificacoes.append(mensagem)
-
 
 
 def calcular_status_projetos(df_projetos: pd.DataFrame) -> pd.DataFrame:
@@ -1037,14 +1000,10 @@ def calcular_status_projetos(df_projetos: pd.DataFrame) -> pd.DataFrame:
     return df_projetos
 
 
-
-
-
-
-
 # ###################################################################################################
 # SIDEBAR DA PÁGINA DO PROJETO
 # ###################################################################################################
+
 
 def sidebar_projeto():
 
