@@ -3003,20 +3003,46 @@ with orcamento:
         )
 
         # -----------------------------------
+        # Formatação das contrapartidas
+        # -----------------------------------
+        df_orcamento["contrapartida_financeira_fmt"] = (
+            df_orcamento["contrapartida_financeira"]
+            .apply(format_brl)
+            .astype(str)
+        )
+
+        df_orcamento["contrapartida_nao_financeira_fmt"] = (
+            df_orcamento["contrapartida_nao_financeira"]
+            .apply(format_brl)
+            .astype(str)
+        )
+
+
+        # -----------------------------------
         # Ordenar
         # -----------------------------------
         df_orcamento = df_orcamento.sort_values(
             "categoria_nome",
             ignore_index=True
         )
-        # df_orcamento = df_orcamento.sort_values("categoria", ignore_index=True)
 
         # Garantir tipo string para compatibilidade com TextColumn
-        df_orcamento["valor_total_fmt"] = (
-            df_orcamento["valor_total_fmt"]
-            .fillna("")
-            .astype(str)
-        )
+        for coluna in [
+            "valor_total_fmt",
+            "contrapartida_financeira_fmt",
+            "contrapartida_nao_financeira_fmt",
+        ]:
+            df_orcamento[coluna] = (
+                df_orcamento[coluna]
+                .fillna("")
+                .astype(str)
+            )
+
+        # df_orcamento["valor_total_fmt"] = (
+        #     df_orcamento["valor_total_fmt"]
+        #     .fillna("")
+        #     .astype(str)
+        # )
 
         # Se o estado antigo tiver dtype incorreto, recria
         if "df_orcamento_editor" in st.session_state:
@@ -3045,8 +3071,8 @@ with orcamento:
                     "nome_despesa",
                     "descricao_despesa",
                     "valor_total_fmt",
-                    "contrapartida_financeira",
-                    "contrapartida_nao_financeira",
+                    "contrapartida_financeira_fmt",
+                    "contrapartida_nao_financeira_fmt",
                 ]
             ],
             num_rows="dynamic",
@@ -3067,18 +3093,12 @@ with orcamento:
                     "Valor solicitado",
                     required=False
                 ),
-                "contrapartida_financeira": st.column_config.NumberColumn(
-                    "Contrapartida financeira",
-                    min_value=0.0,
-                    step=100.0,
-                    format="%.2f"
+                "contrapartida_financeira_fmt": st.column_config.TextColumn(
+                    "Contrapartida financeira"
                 ),
 
-                "contrapartida_nao_financeira": st.column_config.NumberColumn(
-                    "Contrapartida não-financeira",
-                    min_value=0.0,
-                    step=100.0,
-                    format="%.2f"
+                "contrapartida_nao_financeira_fmt": st.column_config.TextColumn(
+                    "Contrapartida não-financeira"
                 ),
             },
             key="editor_orcamento",
@@ -3135,17 +3155,30 @@ with orcamento:
 
         df_temp["valor_total"] = df_temp["valor_total_fmt"].apply(parse_brl)
 
-        for col in [
-            "contrapartida_financeira",
-            "contrapartida_nao_financeira",
-        ]:
-            if col not in df_temp.columns:
-                df_temp[col] = 0.0
 
-            df_temp[col] = pd.to_numeric(
-                df_temp[col],
-                errors="coerce"
-            ).fillna(0.0)
+        df_temp["contrapartida_financeira"] = (
+            df_temp["contrapartida_financeira_fmt"]
+            .apply(parse_brl)
+            .fillna(0.0)
+        )
+
+        df_temp["contrapartida_nao_financeira"] = (
+            df_temp["contrapartida_nao_financeira_fmt"]
+            .apply(parse_brl)
+            .fillna(0.0)
+        )
+
+        # for col in [
+        #     "contrapartida_financeira",
+        #     "contrapartida_nao_financeira",
+        # ]:
+        #     if col not in df_temp.columns:
+        #         df_temp[col] = 0.0
+
+        #     df_temp[col] = pd.to_numeric(
+        #         df_temp[col],
+        #         errors="coerce"
+        #     ).fillna(0.0)
 
         soma_despesas = df_temp["valor_total"].sum()
 
@@ -3314,6 +3347,16 @@ with orcamento:
             # -----------------------------------
 
             df_salvar["valor_total"] = df_salvar["valor_total_fmt"].apply(parse_brl)
+
+            df_salvar["contrapartida_financeira"] = (
+                df_salvar["contrapartida_financeira_fmt"]
+                .apply(parse_brl)
+            )
+
+            df_salvar["contrapartida_nao_financeira"] = (
+                df_salvar["contrapartida_nao_financeira_fmt"]
+                .apply(parse_brl)
+            )
 
             # Soma apenas valores solicitados preenchidos
             soma_despesas = pd.to_numeric(
