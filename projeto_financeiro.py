@@ -3371,14 +3371,15 @@ with orcamento:
 
             valor_total_projeto = valor_total_base + valor_aditivo - valor_devolucao
 
-            # Comparação com tolerância de centavos
-            if round(soma_despesas, 2) != round(valor_total_projeto, 2):
+            # Validação: as despesas não podem ultrapassar o valor total do projeto
+            if round(soma_despesas, 2) > round(valor_total_projeto, 2):
 
                 soma_fmt = format_brl(soma_despesas).replace('$', '\\$')
                 total_fmt = format_brl(valor_total_projeto).replace('$', '\\$')
 
                 st.error(
-                    f"A soma das despesas ({soma_fmt}) deve ser igual ao valor do projeto ({total_fmt}). **O orçamento não foi salvo**.",
+                    f"A soma das despesas ({soma_fmt}) não pode ser maior que o valor do projeto ({total_fmt}). "
+                    "**O orçamento não foi salvo.**",
                     icon=":material/error:"
                 )
 
