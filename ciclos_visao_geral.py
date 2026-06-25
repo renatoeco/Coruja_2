@@ -29,6 +29,22 @@ df_editais = pd.DataFrame(list(col_editais.find()))
 col_doadores = db["doadores"]
 df_doadores = pd.DataFrame(list(col_doadores.find()))
 
+# ==========================================================
+# MAPAS DE CONVERSÃO
+# ==========================================================
+
+# Doadores
+mapa_id_para_sigla_doador = {
+    str(row["_id"]): row["sigla_doador"]
+    for _, row in df_doadores.iterrows()
+}
+
+# Fases Operacionais
+mapa_id_para_codigo_ciclo = {
+    str(row["_id"]): row["codigo_ciclo"]
+    for _, row in df_ciclos.iterrows()
+}
+
 col_projetos = db["projetos"]
 df_projetos = pd.DataFrame(list(col_projetos.find()))
 
@@ -39,6 +55,25 @@ df_projetos = pd.DataFrame(list(col_projetos.find()))
 ###########################################################################################################
 # TRATAMENTO DOS DADOS
 ###########################################################################################################
+
+
+# Converte ids dos doadores para siglas
+if "doadores" in df_ciclos.columns:
+    df_ciclos["doadores"] = df_ciclos["doadores"].apply(
+        lambda lista: [
+            mapa_id_para_sigla_doador.get(str(x), str(x))
+            for x in lista
+        ] if isinstance(lista, list) else []
+    )
+
+# Converte ids das fases operacionais para códigos
+if "ciclo_investimento" in df_editais.columns:
+    df_editais["ciclo_investimento"] = df_editais["ciclo_investimento"].apply(
+        lambda lista: [
+            mapa_id_para_codigo_ciclo.get(str(x), str(x))
+            for x in lista
+        ] if isinstance(lista, list) else []
+    )
 
 # Renomear as colunas de df_ciclos
 df_ciclos = df_ciclos.rename(columns={
@@ -242,10 +277,29 @@ st.logo("images/logo_fundo_ecos.png", size='large')
 st.header("Visão geral")
 st.write('')
 
+df_editais_metricas = pd.DataFrame(list(col_editais.find()))
+df_ciclos_metricas = pd.DataFrame(list(col_ciclos.find()))
+
+# Converte ids das fases para códigos
+df_editais_metricas["ciclo_investimento"] = df_editais_metricas["ciclo_investimento"].apply(
+    lambda lista: [
+        mapa_id_para_codigo_ciclo.get(str(x), str(x))
+        for x in lista
+    ] if isinstance(lista, list) else []
+)
+
+# Converte ids dos doadores para siglas
+df_ciclos_metricas["doadores"] = df_ciclos_metricas["doadores"].apply(
+    lambda lista: [
+        mapa_id_para_sigla_doador.get(str(x), str(x))
+        for x in lista
+    ] if isinstance(lista, list) else []
+)
+
 metricas_fases, metricas_editais, metricas_doadores = agregar_metricas_projetos(
     df_projetos,
-    pd.DataFrame(list(col_editais.find())),
-    pd.DataFrame(list(col_ciclos.find()))
+    df_editais_metricas,
+    df_ciclos_metricas
 )
 
 # Merge com fases

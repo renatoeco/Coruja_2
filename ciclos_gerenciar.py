@@ -21,6 +21,16 @@ db = conectar_mongo_coruja()
 col_ciclos = db["ciclos_investimento"]
 df_ciclos = pd.DataFrame(list(col_ciclos.find()))
 
+mapa_codigo_ciclo_para_id = {
+    row["codigo_ciclo"]: str(row["_id"])
+    for _, row in df_ciclos.iterrows()
+}
+
+mapa_id_para_codigo_ciclo = {
+    str(row["_id"]): row["codigo_ciclo"]
+    for _, row in df_ciclos.iterrows()
+}
+
 col_editais = db["editais"]
 df_editais = pd.DataFrame(list(col_editais.find()))
 
@@ -29,6 +39,17 @@ df_editais = pd.DataFrame(list(col_editais.find()))
 
 col_doadores = db["doadores"]
 df_doadores = pd.DataFrame(list(col_doadores.find()))
+
+# Mapas para conversão entre sigla e id
+mapa_sigla_para_id = {
+    row["sigla_doador"]: str(row["_id"])
+    for _, row in df_doadores.iterrows()
+}
+
+mapa_id_para_sigla = {
+    str(row["_id"]): row["sigla_doador"]
+    for _, row in df_doadores.iterrows()
+}
 
 # Define as coleções específicas que serão utilizadas a partir do banco
 # col_pessoas = db["pessoas"]
@@ -362,11 +383,17 @@ with tab2:
 
                     else:
                         # Inserir no MongoDB
+                        # Converte as siglas selecionadas para os respectivos ids
+                        doadores_ids = [
+                            mapa_sigla_para_id[sigla]
+                            for sigla in doador
+                        ]
+
                         novo_ciclo = {
                             "codigo_ciclo": codigo_ciclo,
                             "nome_ciclo": nome_ciclo,
-                            "doadores": doador,
-                            }
+                            "doadores": doadores_ids,
+                        }
                         col_ciclos.insert_one(novo_ciclo)
                         st.success("Fase Operacional cadastrada com sucesso!", icon=":material/check:")
 
@@ -413,7 +440,11 @@ with tab2:
                     # Doadores
                     siglas_doadores = sorted(col_doadores.distinct("sigla_doador"))
                     siglas_doadores.insert(0, "")
-                    doadores_selecionados = ciclo.get("doadores", [])
+                    # Converte ids salvos para siglas para exibir no multiselect
+                    doadores_selecionados = [
+                        mapa_id_para_sigla.get(id_doador, id_doador)
+                        for id_doador in ciclo.get("doadores", [])
+                    ]
 
                     doador = st.multiselect(
                         "Doador(es):",
@@ -437,11 +468,15 @@ with tab2:
                             st.error("Todos os campos devem ser preenchidos.")
                         else:
                             # Atualizar no MongoDB (sem verificar duplicidade de código)
+                            doadores_ids = [
+                                mapa_sigla_para_id[sigla]
+                                for sigla in doador
+                            ]
                             col_ciclos.update_one(
                                 {"_id": ciclo["_id"]},
                                 {"$set": {
                                     "nome_ciclo": nome_ciclo,
-                                    "doadores": doador
+                                    "doadores": doadores_ids
                                 }}
                             )
 
@@ -500,12 +535,17 @@ with tab3:
                         st.error(f"O codigo '{codigo_edital}' já está cadastrada.")
 
                     else:
+                        # Converte os códigos selecionados para ids
+                        ciclos_ids = [
+                            mapa_codigo_ciclo_para_id[codigo]
+                            for codigo in ciclos
+                        ]
                         # Inserir no MongoDB
                         novo_edital = {
                             "codigo_edital": codigo_edital,
                             "nome_edital": nome_edital,
                             "data_lancamento": data_lancamento_dt,
-                            "ciclo_investimento": ciclos 
+                            "ciclo_investimento": ciclos_ids
                         }
                         col_editais.insert_one(novo_edital)
                         st.success("Edital cadastrado com sucesso!", icon=":material/check:")
@@ -566,7 +606,7 @@ with tab3:
                         format="DD/MM/YYYY"
                     )
 
-                    # Fase Operacional vinculado
+                    # Fase Operacional vinculada
                     codigos_ciclos = sorted(col_ciclos.distinct("codigo_ciclo"))
 
                     ciclos_atuais = edital.get("ciclo_investimento", [])
@@ -574,6 +614,12 @@ with tab3:
                     # Compatibilidade com registros antigos
                     if isinstance(ciclos_atuais, str):
                         ciclos_atuais = [ciclos_atuais]
+
+                    # Converte ids para códigos
+                    ciclos_atuais = [
+                        mapa_id_para_codigo_ciclo.get(str(id_ciclo), str(id_ciclo))
+                        for id_ciclo in ciclos_atuais
+                    ]
 
                     ciclos = st.multiselect(
                         "Fases Operacionais:",
@@ -594,14 +640,17 @@ with tab3:
                         if not nome_edital or not ciclos:
                             st.error("Todos os campos obrigatórios devem ser preenchidos.")
                         else:
+                            ciclos_ids = [
+                                mapa_codigo_ciclo_para_id[codigo]
+                                for codigo in ciclos
+                            ]
                             # Atualizar no MongoDB
                             col_editais.update_one(
                                 {"_id": edital["_id"]},
                                 {"$set": {
                                     "nome_edital": nome_edital,
                                     "data_lancamento": data_lancamento.strftime("%d/%m/%Y") if data_lancamento else None,
-                                    "ciclo_investimento": ciclos,
-                                    "doadores": doador
+                                    "ciclo_investimento": ciclos_ids,
                                 }}
                             )
 
