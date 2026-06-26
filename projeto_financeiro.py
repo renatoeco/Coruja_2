@@ -1419,12 +1419,6 @@ def dialog_relatos_fin():
                 )
 
 
-            # ==================================================
-            # DESCRIÇÃO
-            # ==================================================
-            st.write(lanc.get("descricao_despesa", ""))
-
-
             # Status do lançamento
             st.write(f"**Status:** {lanc.get('status_despesa', '')}")
 
@@ -1559,11 +1553,6 @@ def dialog_contrapartida_fin():
                     """,
                     unsafe_allow_html=True
                 )
-
-            # ==================================================
-            # DESCRIÇÃO
-            # ==================================================
-            st.write(lanc.get("descricao_despesa", ""))
 
             st.write(f"**Status:** {lanc.get('status_despesa', '')}")
 
@@ -1709,11 +1698,6 @@ def dialog_contrapartida_nao_fin():
                     """,
                     unsafe_allow_html=True
                 )
-
-            # ==================================================
-            # DESCRIÇÃO
-            # ==================================================
-            st.write(lanc.get("descricao_despesa", ""))
 
             st.write(f"**Status:** {lanc.get('status_despesa', '')}")
 
@@ -2923,7 +2907,6 @@ with orcamento:
         for col in [
             "categoria",
             "nome_despesa",
-            "descricao_despesa",
             "valor_total",
             "contrapartida_financeira",
             "contrapartida_nao_financeira",
@@ -2986,7 +2969,6 @@ with orcamento:
                 despesa_escolhida = {
                     "categoria": linha.get("categoria", ""),
                     "nome_despesa": linha.get("nome_despesa", ""),
-                    "descricao_despesa": linha.get("descricao_despesa", ""),
                     "valor_total": linha.get("valor_total", 0),
                     "contrapartida_financeira": linha.get("contrapartida_financeira", 0),
                     "contrapartida_nao_financeira": linha.get("contrapartida_nao_financeira", 0),
@@ -3091,15 +3073,10 @@ with orcamento:
             # Renomeia colunas para exibição
             df_vis = df_cat.rename(columns={
                 "nome_despesa": "Despesa",
-                "descricao_despesa": "Descrição",
             })
-
-            df_vis["Descrição"] = df_vis["Descrição"].fillna("").astype(str)
-            df_vis["Descrição"] = df_vis["Descrição"].replace("None", "")
 
             colunas_vis = [
                 "Despesa",
-                "Descrição",
                 "Valor solicitado",
                 "Gasto",
                 "Saldo",
@@ -3141,7 +3118,6 @@ with orcamento:
                 on_select=callback_selecao,
                 column_config={
                     "Despesa": st.column_config.TextColumn(width=220),
-                    "Descrição": st.column_config.TextColumn(width=420),
                     "Valor solicitado": st.column_config.TextColumn(width=120),
                     "Gasto": st.column_config.ProgressColumn(
                         "Gasto",
@@ -3197,7 +3173,6 @@ with orcamento:
 
                 linhas_contr_fin.append({
                     "Despesa": item.get("nome_despesa", ""),
-                    "Descrição": item.get("descricao_despesa", ""),
                     "valor_previsto": valor_previsto,
                     "valor_realizado": gasto_realizado,
 
@@ -3266,7 +3241,6 @@ with orcamento:
                 df_contr_fin[
                     [
                         "Despesa",
-                        "Descrição",
                         "Valor previsto",
                         "valor_realizado",
                     ]
@@ -3274,8 +3248,6 @@ with orcamento:
                 hide_index=True,
                 column_config={
                     "Despesa": st.column_config.TextColumn(width=220),
-
-                    "Descrição": st.column_config.TextColumn(width=420),
 
                     "Valor previsto": st.column_config.TextColumn(width=120),
 
@@ -3329,7 +3301,6 @@ with orcamento:
                 linhas_contr_nao_fin.append({
 
                     "Despesa": item.get("nome_despesa", ""),
-                    "Descrição": item.get("descricao_despesa", ""),
                     "valor_previsto": valor_previsto,
                     "valor_realizado": gasto_realizado,
 
@@ -3390,7 +3361,6 @@ with orcamento:
                 df_contr_nao_fin[
                     [
                         "Despesa",
-                        "Descrição",
                         "Valor previsto",
                         "valor_realizado",
                     ]
@@ -3398,8 +3368,6 @@ with orcamento:
                 hide_index=True,
                 column_config={
                     "Despesa": st.column_config.TextColumn(width=220),
-
-                    "Descrição": st.column_config.TextColumn(width=420),
 
                     "Valor previsto": st.column_config.TextColumn(width=120),
 
@@ -3464,7 +3432,6 @@ with orcamento:
                 columns=[
                     "categoria",
                     "nome_despesa",
-                    "descricao_despesa",
                     "id_despesa"
                 ]
             )
@@ -3475,7 +3442,6 @@ with orcamento:
         for col in [
             "categoria",
             "nome_despesa",
-            "descricao_despesa",
             "id_despesa",
             "valor_total",
             "contrapartida_financeira",
@@ -3585,7 +3551,6 @@ with orcamento:
                     "id_despesa",
                     "categoria_nome",
                     "nome_despesa",
-                    "descricao_despesa",
                     "valor_total_fmt",
                     "contrapartida_financeira_fmt",
                     "contrapartida_nao_financeira_fmt",
@@ -3604,7 +3569,6 @@ with orcamento:
                     "Despesa",
                     required=True
                 ),
-                "descricao_despesa": st.column_config.TextColumn("Descrição"),
                 "valor_total_fmt": st.column_config.TextColumn(
                     "Valor solicitado",
                     required=False
@@ -3817,7 +3781,7 @@ with orcamento:
             df_salvar = df_editado_orc.copy()
 
             # normalizar strings vazias
-            for col in ["categoria_nome", "nome_despesa", "descricao_despesa"]:
+            for col in ["categoria_nome", "nome_despesa"]:
                 df_salvar[col] = df_salvar[col].fillna("").astype(str).str.strip()
 
             # remover linhas realmente vazias
@@ -3825,7 +3789,6 @@ with orcamento:
                 ~(
                     (df_salvar["categoria_nome"] == "") &
                     (df_salvar["nome_despesa"] == "") &
-                    (df_salvar["descricao_despesa"] == "") &
                     (df_salvar["valor_total_fmt"].fillna("") == "")
                 )
             ].copy()
@@ -3841,7 +3804,6 @@ with orcamento:
             nomes_legiveis = {
                 "categoria_nome": "Categoria",
                 "nome_despesa": "Despesa",
-                "descricao_despesa": "Descrição",
             }
 
             erros = []
@@ -3941,7 +3903,6 @@ with orcamento:
                     "id_despesa": id_despesa,
                     "categoria": id_categoria,
                     "nome_despesa": row["nome_despesa"],
-                    "descricao_despesa": row.get("descricao_despesa") or "",
                     "valor_total": (
                         None
                         if pd.isna(row["valor_total"])
