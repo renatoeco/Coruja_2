@@ -2898,15 +2898,64 @@ with orcamento:
             )
 
 
+
+
         # ==================================================
         # CONTRAPARTIDA NÃO-FINANCEIRA
         # ==================================================
-        
-        total_contrapartida_nao_financeira = df_orcamento["contrapartida_nao_financeira"].sum()
-        gasto_contrapartida_nao_financeira = df_orcamento["gasto_contrapartida_nao_financeira"].sum()
 
-        if total_contrapartida_nao_financeira > 0:
-            
+        # --------------------------------------------------
+        # Consolidar as contrapartidas não-financeiras registradas
+        # --------------------------------------------------
+        linhas_contr_nao_fin = []
+
+        for item in financeiro.get("orcamento", []):
+
+            valor_previsto = item.get("contrapartida_nao_financeira", 0)
+
+            # Trata valores inexistentes ou NaN
+            if pd.isna(valor_previsto):
+                valor_previsto = 0.0
+
+            gasto_realizado = sum(
+                (lanc.get("valor_despesa", 0) or 0)
+                for lanc in item.get("lancamentos", [])
+                if lanc.get("tipo_despesa") == "CPNFin"
+            )
+
+            # Inclui despesas que possuam valor previsto ou
+            # lançamentos de contrapartida não-financeira
+            if valor_previsto > 0 or gasto_realizado > 0:
+
+                linhas_contr_nao_fin.append({
+                    "Despesa": item.get("nome_despesa", ""),
+                    "Descrição": item.get("descricao_despesa", ""),
+                    "valor_previsto": valor_previsto,
+                    "valor_realizado": gasto_realizado,
+                })
+
+        df_contr_nao_fin = pd.DataFrame(linhas_contr_nao_fin)
+
+        if not df_contr_nao_fin.empty:
+
+            df_contr_nao_fin = df_contr_nao_fin.sort_values(
+                "Despesa",
+                ignore_index=True
+            )
+
+            total_contrapartida_nao_financeira = (
+                df_contr_nao_fin["valor_previsto"].sum()
+            )
+
+            gasto_contrapartida_nao_financeira = (
+                df_contr_nao_fin["valor_realizado"].sum()
+            )
+
+            df_contr_nao_fin["Valor previsto"] = (
+                df_contr_nao_fin["valor_previsto"]
+                .apply(fmt_moeda)
+            )
+
             st.divider()
 
             st.write("")
@@ -2927,39 +2976,33 @@ with orcamento:
 
             st.write("")
 
-            df_contr_nao_fin = df_orcamento[
-                df_orcamento["contrapartida_nao_financeira"] > 0
-            ].copy()
-
-            df_contr_nao_fin = df_contr_nao_fin.rename(columns={
-                "nome_despesa": "Despesa",
-                "descricao_despesa": "Descrição",
-                "Contrapartida não-financeira": "Valor previsto"
-            })
-
             st.dataframe(
                 df_contr_nao_fin[
                     [
                         "Despesa",
                         "Descrição",
                         "Valor previsto",
-                        "Gasto contrapartida não-financeira",
+                        "valor_realizado",
                     ]
                 ],
                 hide_index=True,
                 column_config={
                     "Despesa": st.column_config.TextColumn(width=220),
+
                     "Descrição": st.column_config.TextColumn(width=420),
+
                     "Valor previsto": st.column_config.TextColumn(width=120),
-                    "Gasto contrapartida não-financeira": st.column_config.ProgressColumn(
+
+                    "valor_realizado": st.column_config.ProgressColumn(
                         "Valor realizado",
                         width=140,
                         min_value=0,
-                        max_value=float(df_contr_nao_fin["contrapartida_nao_financeira"].max()),
+                        max_value=float(df_contr_nao_fin["valor_previsto"].max()),
                         format="R$ %.2f",
                     ),
                 }
             )
+
 
 
 
