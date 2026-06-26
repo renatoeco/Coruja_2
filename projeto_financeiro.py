@@ -2778,13 +2778,72 @@ with orcamento:
             dialog_relatos_fin()
             st.session_state["abrir_dialogo_despesa"] = False
             
+
+
+
+
+
         # ==================================================
         # CONTRAPARTIDA FINANCEIRA
         # ==================================================
         
+        # --------------------------------------------------
+        # Consolidar as contrapartidas financeiras registradas
+        # --------------------------------------------------
+        linhas_contr_fin = []
 
-        total_contrapartida_financeira = df_orcamento["contrapartida_financeira"].sum()
-        gasto_contrapartida_financeira = df_orcamento["gasto_contrapartida_financeira"].sum()
+        for item in financeiro.get("orcamento", []):
+
+            valor_previsto = item.get("contrapartida_financeira", 0)
+
+            # Trata valores inexistentes ou NaN
+            if pd.isna(valor_previsto):
+                valor_previsto = 0.0
+
+            gasto_realizado = sum(
+                (lanc.get("valor_despesa", 0) or 0)
+                for lanc in item.get("lancamentos", [])
+                if lanc.get("tipo_despesa") == "CPFin"
+            )
+
+
+
+            # Inclui despesas que possuam valor previsto ou
+            # lançamentos de contrapartida financeira
+            if valor_previsto > 0 or gasto_realizado > 0:
+
+                linhas_contr_fin.append({
+                    "Despesa": item.get("nome_despesa", ""),
+                    "Descrição": item.get("descricao_despesa", ""),
+                    "valor_previsto": valor_previsto,
+                    "valor_realizado": gasto_realizado,
+                })
+
+
+
+        df_contr_fin = pd.DataFrame(linhas_contr_fin)
+
+        if not df_contr_fin.empty:
+
+            df_contr_fin = df_contr_fin.sort_values(
+                "Despesa",
+                ignore_index=True
+            )
+
+            total_contrapartida_financeira = (
+                df_contr_fin["valor_previsto"].sum()
+            )
+
+            gasto_contrapartida_financeira = (
+                df_contr_fin["valor_realizado"].sum()
+            )
+
+            df_contr_fin["Valor previsto"] = (
+                df_contr_fin["valor_previsto"]
+                .apply(fmt_moeda)
+            )
+
+
 
         if total_contrapartida_financeira > 0:
             
@@ -2808,38 +2867,34 @@ with orcamento:
 
             st.write("")
 
-            df_contr_fin = df_orcamento[
-                df_orcamento["contrapartida_financeira"] > 0
-            ].copy()
 
-            df_contr_fin = df_contr_fin.rename(columns={
-                "nome_despesa": "Despesa",
-                "descricao_despesa": "Descrição",
-                "Contrapartida financeira": "Valor previsto"
-            })
 
             st.dataframe(
+
                 df_contr_fin[
                     [
                         "Despesa",
                         "Descrição",
                         "Valor previsto",
-                        "Gasto contrapartida financeira",
+                        "valor_realizado",
                     ]
                 ],
                 hide_index=True,
                 column_config={
                     "Despesa": st.column_config.TextColumn(width=220),
+
                     "Descrição": st.column_config.TextColumn(width=420),
+
                     "Valor previsto": st.column_config.TextColumn(width=120),
-                    "Gasto contrapartida financeira": st.column_config.ProgressColumn(
+
+                    "valor_realizado": st.column_config.ProgressColumn(
                         "Valor realizado",
                         width=140,
                         min_value=0,
-                        max_value=float(df_contr_fin["contrapartida_financeira"].max()),
+                        max_value=float(df_contr_fin["valor_previsto"].max()),
                         format="R$ %.2f",
                     ),
-                }
+                },
             )
 
 
@@ -3456,6 +3511,10 @@ with orcamento:
             st.success("Orçamento salvo com sucesso!", icon=":material/check:")
             time.sleep(3)
             st.rerun()
+
+
+
+
 
 
 # --------------------------------------------------
