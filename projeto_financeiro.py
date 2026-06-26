@@ -1435,15 +1435,18 @@ def dialog_relatos_fin():
             c1.write("**Data:**")
             c2.write(lanc.get("data_despesa", "-"))
 
+            c1, c2 = col1.columns([1, 3])
             c1.write("**Fornecedor:**")
             c2.write(lanc.get("fornecedor", "-"))
 
+            c1, c2 = col1.columns([1, 3])
             c1.write("**CPF/CNPJ:**")
             c2.write(lanc.get("cpf_cnpj", "-"))
 
             valor = lanc.get("valor_despesa", 0)
             valor_br = f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
+            c1, c2 = col1.columns([1, 3])
             c1.write("**Valor (R$):**")
             c2.write(valor_br)
 
