@@ -1455,8 +1455,303 @@ def dialog_relatos_fin():
                     col2.markdown(f"[{a['nome_arquivo']}]({link})")
 
 
+# ==========================================================================================
+# DIÁLOGO: LANÇAMENTOS DA CONTRAPARTIDA FINANCEIRA
+# ==========================================================================================
+@st.dialog("Lançamentos da contrapartida financeira", width="large")
+def dialog_contrapartida_fin():
+
+    despesa = st.session_state.get("contrapartida_fin_selecionada")
+
+    if not isinstance(despesa, dict):
+        st.warning("Nenhuma despesa selecionada.")
+        return
+
+    item = despesa.get("item_orcamento")
+
+    if not item:
+        st.warning("Despesa não encontrada.")
+        return
+
+    st.markdown(f"### {item.get('nome_despesa', 'Despesa sem nome')}")
+    st.write("")
+
+    # ==========================================================
+    # BUSCA DOS LANÇAMENTOS DA CONTRAPARTIDA FINANCEIRA
+    # ==========================================================
+    lancamentos = [
+        lanc
+        for lanc in item.get("lancamentos", [])
+        if lanc.get("tipo_despesa") == "CPFin"
+    ]
+
+    if not lancamentos:
+        st.caption("Esta despesa ainda não possui lançamentos de contrapartida financeira.")
+        return
+
+    # ==========================================================
+    # RENDERIZAÇÃO DOS LANÇAMENTOS
+    # ==========================================================
+    for lanc in lancamentos:
+
+        with st.container(border=True):
+
+            id_despesa = lanc.get("id_lanc_despesa", "").upper()
+            num_relatorio = lanc.get("relatorio_numero")
+
+            # ==================================================
+            # BADGE DE STATUS
+            # ==================================================
+            status_despesa_db = lanc.get("status_despesa", "em_analise")
+            tem_devolutiva = bool(lanc.get("devolutiva"))
+
+            if status_despesa_db == "aberto" and tem_devolutiva:
+                badge = {
+                    "label": "Pendente",
+                    "bg": "#F8D7DA",
+                    "color": "#721C24"
+                }
+            elif status_despesa_db == "aberto":
+                badge = {
+                    "label": "Aberto",
+                    "bg": "#FFF3CD",
+                    "color": "#856404"
+                }
+            elif status_despesa_db == "aceito":
+                badge = {
+                    "label": "Aceito",
+                    "bg": "#D4EDDA",
+                    "color": "#155724"
+                }
+            else:
+                badge = {
+                    "label": "Em análise",
+                    "bg": "#D1ECF1",
+                    "color": "#0C5460"
+                }
+
+            # ==================================================
+            # CABEÇALHO COM BADGE
+            # ==================================================
+            col_header1, col_header2 = st.columns([9, 1])
+
+            with col_header1:
+                st.markdown(f"**{id_despesa}** (R{num_relatorio})")
+
+            with col_header2:
+                st.markdown(
+                    f"""
+                    <div style="margin-top:6px;">
+                        <span style="
+                            background:{badge['bg']};
+                            color:{badge['color']};
+                            padding:4px 10px;
+                            border-radius:20px;
+                            font-size:12px;
+                            font-weight:600;
+                        ">
+                            {badge['label']}
+                        </span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+            # ==================================================
+            # DESCRIÇÃO
+            # ==================================================
+            st.write(lanc.get("descricao_despesa", ""))
+
+            st.write(f"**Status:** {lanc.get('status_despesa', '')}")
+
+            col1, col2 = st.columns([1, 2])
+
+            c1, c2 = col1.columns([1, 3])
+
+            c1.write("**Data:**")
+            c2.write(lanc.get("data_despesa", "-"))
+
+            c1, c2 = col1.columns([1, 3])
+
+            c1.write("**Fornecedor:**")
+            c2.write(lanc.get("fornecedor", "-"))
+
+            c1, c2 = col1.columns([1, 3])
+
+            c1.write("**CPF/CNPJ:**")
+            c2.write(lanc.get("cpf_cnpj", "-"))
+
+            valor = lanc.get("valor_despesa", 0)
+            valor_br = (
+                f"{valor:,.2f}"
+                .replace(",", "X")
+                .replace(".", ",")
+                .replace("X", ".")
+            )
+
+            c1, c2 = col1.columns([1, 3])
+
+            c1.write("**Valor (R$):**")
+            c2.write(valor_br)
+
+            anexos = lanc.get("anexos", [])
+
+            if anexos:
+
+                col2.markdown("**Anexos:**")
+
+                for a in anexos:
+                    link = gerar_link_drive(a["id_arquivo"])
+                    col2.markdown(f"[{a['nome_arquivo']}]({link})")
 
 
+# ==========================================================================================
+# DIÁLOGO: LANÇAMENTOS DA CONTRAPARTIDA NÃO-FINANCEIRA
+# ==========================================================================================
+@st.dialog("Lançamentos da contrapartida não-financeira", width="large")
+def dialog_contrapartida_nao_fin():
+
+    despesa = st.session_state.get("contrapartida_nao_fin_selecionada")
+
+    if not isinstance(despesa, dict):
+        st.warning("Nenhuma despesa selecionada.")
+        return
+
+    item = despesa.get("item_orcamento")
+
+    if not item:
+        st.warning("Despesa não encontrada.")
+        return
+
+    st.markdown(f"### {item.get('nome_despesa', 'Despesa sem nome')}")
+    st.write("")
+
+    # ==========================================================
+    # BUSCA DOS LANÇAMENTOS DA CONTRAPARTIDA NÃO-FINANCEIRA
+    # ==========================================================
+    lancamentos = [
+        lanc
+        for lanc in item.get("lancamentos", [])
+        if lanc.get("tipo_despesa") == "CPNFin"
+    ]
+
+    if not lancamentos:
+        st.caption("Esta despesa ainda não possui lançamentos de contrapartida não-financeira.")
+        return
+
+    # ==========================================================
+    # RENDERIZAÇÃO DOS LANÇAMENTOS
+    # ==========================================================
+    for lanc in lancamentos:
+
+        with st.container(border=True):
+
+            id_despesa = lanc.get("id_lanc_despesa", "").upper()
+            num_relatorio = lanc.get("relatorio_numero")
+
+            # ==================================================
+            # BADGE DE STATUS
+            # ==================================================
+            status_despesa_db = lanc.get("status_despesa", "em_analise")
+            tem_devolutiva = bool(lanc.get("devolutiva"))
+
+            if status_despesa_db == "aberto" and tem_devolutiva:
+                badge = {
+                    "label": "Pendente",
+                    "bg": "#F8D7DA",
+                    "color": "#721C24"
+                }
+            elif status_despesa_db == "aberto":
+                badge = {
+                    "label": "Aberto",
+                    "bg": "#FFF3CD",
+                    "color": "#856404"
+                }
+            elif status_despesa_db == "aceito":
+                badge = {
+                    "label": "Aceito",
+                    "bg": "#D4EDDA",
+                    "color": "#155724"
+                }
+            else:
+                badge = {
+                    "label": "Em análise",
+                    "bg": "#D1ECF1",
+                    "color": "#0C5460"
+                }
+
+            # ==================================================
+            # CABEÇALHO COM BADGE
+            # ==================================================
+            col_header1, col_header2 = st.columns([9, 1])
+
+            with col_header1:
+                st.markdown(f"**{id_despesa}** (R{num_relatorio})")
+
+            with col_header2:
+                st.markdown(
+                    f"""
+                    <div style="margin-top:6px;">
+                        <span style="
+                            background:{badge['bg']};
+                            color:{badge['color']};
+                            padding:4px 10px;
+                            border-radius:20px;
+                            font-size:12px;
+                            font-weight:600;
+                        ">
+                            {badge['label']}
+                        </span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+            # ==================================================
+            # DESCRIÇÃO
+            # ==================================================
+            st.write(lanc.get("descricao_despesa", ""))
+
+            st.write(f"**Status:** {lanc.get('status_despesa', '')}")
+
+            col1, col2 = st.columns([1, 2])
+
+            c1, c2 = col1.columns([1, 3])
+
+            c1.write("**Data:**")
+            c2.write(lanc.get("data_despesa", "-"))
+
+            c1, c2 = col1.columns([1, 3])
+
+            c1.write("**Fornecedor:**")
+            c2.write(lanc.get("fornecedor", "-"))
+
+            c1, c2 = col1.columns([1, 3])
+
+            c1.write("**CPF/CNPJ:**")
+            c2.write(lanc.get("cpf_cnpj", "-"))
+
+            valor = lanc.get("valor_despesa", 0)
+            valor_br = (
+                f"{valor:,.2f}"
+                .replace(",", "X")
+                .replace(".", ",")
+                .replace("X", ".")
+            )
+
+            c1, c2 = col1.columns([1, 3])
+
+            c1.write("**Valor (R$):**")
+            c2.write(valor_br)
+
+            anexos = lanc.get("anexos", [])
+
+            if anexos:
+                col2.markdown("**Anexos:**")
+
+                for a in anexos:
+                    link = gerar_link_drive(a["id_arquivo"])
+                    col2.markdown(f"[{a['nome_arquivo']}]({link})")
 
 
 ###########################################################################################################
@@ -2526,7 +2821,7 @@ with orcamento:
         st.write("")
 
         # --------------------------------------------------
-        # ESTADOS DO DIÁLOGO (mantidos como no seu código)
+        # ESTADOS DO DIÁLOGO
         # --------------------------------------------------
         if "despesa_selecionada" not in st.session_state:
             st.session_state["despesa_selecionada"] = None
@@ -2536,6 +2831,28 @@ with orcamento:
 
         if "abrir_dialogo_despesa" not in st.session_state:
             st.session_state["abrir_dialogo_despesa"] = False
+
+
+        # --------------------------------------------------
+        # Estados do diálogo da contrapartida financeira
+        # --------------------------------------------------
+        if "contrapartida_fin_selecionada" not in st.session_state:
+            st.session_state["contrapartida_fin_selecionada"] = None
+
+        if "abrir_dialogo_contrapartida_fin" not in st.session_state:
+            st.session_state["abrir_dialogo_contrapartida_fin"] = False
+
+
+        # --------------------------------------------------
+        # Estados do diálogo da contrapartida não-financeira
+        # --------------------------------------------------
+        if "contrapartida_nao_fin_selecionada" not in st.session_state:
+            st.session_state["contrapartida_nao_fin_selecionada"] = None
+
+        if "abrir_dialogo_contrapartida_nao_fin" not in st.session_state:
+            st.session_state["abrir_dialogo_contrapartida_nao_fin"] = False        
+
+
 
         # --------------------------------------------------
         # Dados do orçamento
@@ -2648,7 +2965,6 @@ with orcamento:
 
         # --------------------------------------------------
         # CALLBACK - Seleção de despesa
-
         # --------------------------------------------------
         def criar_callback_selecao_orcamento(dataframe_orc, chave_tabela):
 
@@ -2683,6 +2999,70 @@ with orcamento:
                 st.session_state["abrir_dialogo_despesa"] = True
 
             return handle_selecao
+
+
+        # --------------------------------------------------
+        # CALLBACK - Seleção da contrapartida financeira
+        # --------------------------------------------------
+        def criar_callback_contrapartida_fin(df):
+
+            def handle_selecao():
+
+                estado = st.session_state.get(
+                    "df_contrapartida_fin",
+                    {}
+                )
+
+                linhas = (
+                    estado.get("selection", {})
+                    .get("rows", [])
+                )
+
+                if not linhas:
+                    return
+
+                idx = linhas[0]
+
+                st.session_state["contrapartida_fin_selecionada"] = (
+                    df.iloc[idx].to_dict()
+                )
+
+                st.session_state["abrir_dialogo_contrapartida_fin"] = True
+
+            return handle_selecao
+
+
+        # --------------------------------------------------
+        # CALLBACK - Seleção da contrapartida não-financeira
+        # --------------------------------------------------
+        def criar_callback_contrapartida_nao_fin(df):
+
+            def handle_selecao():
+
+                estado = st.session_state.get(
+                    "df_contrapartida_nao_fin",
+                    {}
+                )
+
+                linhas = (
+                    estado.get("selection", {})
+                    .get("rows", [])
+                )
+
+                if not linhas:
+                    return
+
+                idx = linhas[0]
+
+                st.session_state["contrapartida_nao_fin_selecionada"] = (
+                    df.iloc[idx].to_dict()
+                )
+
+                st.session_state["abrir_dialogo_contrapartida_nao_fin"] = True
+
+            return handle_selecao
+
+
 
         # --------------------------------------------------
         # RENDERIZAÇÃO POR CATEGORIA
@@ -2817,6 +3197,9 @@ with orcamento:
                     "Descrição": item.get("descricao_despesa", ""),
                     "valor_previsto": valor_previsto,
                     "valor_realizado": gasto_realizado,
+
+                    # Referência ao item do orçamento
+                    "item_orcamento": item,
                 })
 
 
@@ -2867,7 +3250,9 @@ with orcamento:
 
             st.write("")
 
-
+            callback_contr_fin = criar_callback_contrapartida_fin(
+                df_contr_fin
+            )
 
             st.dataframe(
 
@@ -2895,9 +3280,16 @@ with orcamento:
                         format="R$ %.2f",
                     ),
                 },
+                selection_mode="single-row",
+                key="df_contrapartida_fin",
+                on_select=callback_contr_fin,
             )
 
+            if st.session_state.get("abrir_dialogo_contrapartida_fin"):
 
+                dialog_contrapartida_fin()
+
+                st.session_state["abrir_dialogo_contrapartida_fin"] = False
 
 
         # ==================================================
@@ -2928,10 +3320,13 @@ with orcamento:
             if valor_previsto > 0 or gasto_realizado > 0:
 
                 linhas_contr_nao_fin.append({
+
                     "Despesa": item.get("nome_despesa", ""),
                     "Descrição": item.get("descricao_despesa", ""),
                     "valor_previsto": valor_previsto,
                     "valor_realizado": gasto_realizado,
+
+                    "item_orcamento": item,
                 })
 
         df_contr_nao_fin = pd.DataFrame(linhas_contr_nao_fin)
@@ -2976,6 +3371,11 @@ with orcamento:
 
             st.write("")
 
+            callback_contr_nao_fin = criar_callback_contrapartida_nao_fin(
+                df_contr_nao_fin
+            )
+
+
             st.dataframe(
                 df_contr_nao_fin[
                     [
@@ -3000,10 +3400,18 @@ with orcamento:
                         max_value=float(df_contr_nao_fin["valor_previsto"].max()),
                         format="R$ %.2f",
                     ),
-                }
+                },
+                selection_mode="single-row",
+                key="df_contrapartida_nao_fin",
+                on_select=callback_contr_nao_fin,
             )
 
 
+            if st.session_state.get("abrir_dialogo_contrapartida_nao_fin"):
+
+                dialog_contrapartida_nao_fin()
+
+                st.session_state["abrir_dialogo_contrapartida_nao_fin"] = False
 
 
 
