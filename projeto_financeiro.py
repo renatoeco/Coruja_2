@@ -3209,6 +3209,10 @@ with orcamento:
 
         df_contr_fin = pd.DataFrame(linhas_contr_fin)
 
+        # Valores padrão caso não exista nenhuma contrapartida financeira
+        total_contrapartida_financeira = 0.0
+        gasto_contrapartida_financeira = 0.0
+
         if not df_contr_fin.empty:
 
             df_contr_fin = df_contr_fin.sort_values(
@@ -3333,6 +3337,9 @@ with orcamento:
                 })
 
         df_contr_nao_fin = pd.DataFrame(linhas_contr_nao_fin)
+
+        total_contrapartida_nao_financeira = 0.0
+        gasto_contrapartida_nao_financeira = 0.0
 
         if not df_contr_nao_fin.empty:
 
