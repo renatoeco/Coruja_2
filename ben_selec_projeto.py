@@ -22,7 +22,20 @@ db = conectar_mongo_coruja()
 
 # Projetos
 col_projetos = db["projetos"]
-df_projetos = col_projetos.find()
+
+# Carrega os projetos em memória
+lista_projetos = list(col_projetos.find())
+
+# Compatibilidade entre ObjectId e código
+mapa_id_para_codigo = {
+    str(p["_id"]): p["codigo"]
+    for p in lista_projetos
+}
+
+codigos_validos = {
+    p["codigo"]
+    for p in lista_projetos
+}
 
 
 
@@ -41,6 +54,28 @@ registrar_estatistica_sessao(db)
 ###########################################################################################################
 
 
+def converter_para_codigo(lista):
+
+    if not isinstance(lista, list):
+        return []
+
+    resultado = []
+
+    for valor in lista:
+
+        valor = str(valor)
+
+        # Nova estrutura (ObjectId)
+        if valor in mapa_id_para_codigo:
+            resultado.append(
+                mapa_id_para_codigo[valor]
+            )
+
+        # Estrutura antiga
+        elif valor in codigos_validos:
+            resultado.append(valor)
+
+    return resultado
 
 
 ###########################################################################################################
@@ -64,8 +99,9 @@ st.write('')
 # =====================================================================
 # OBTÉM OS PROJETOS DO BENEFICIÁRIO LOGADO
 # =====================================================================
-projetos_raw = st.session_state.get("projetos")
-projetos_usuario = projetos_raw if isinstance(projetos_raw, list) else []
+projetos_usuario = converter_para_codigo(
+    st.session_state.get("projetos", [])
+)
 
 nome_usuario = st.session_state.get("nome", "Usuário")
 nome_usuario_split = nome_usuario.split(" ")

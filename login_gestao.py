@@ -24,6 +24,30 @@ db = conectar_mongo_coruja()
 # Define a coleção a ser utilizada
 col_pessoas = db["pessoas"]
 
+col_projetos = db["projetos"]
+# Carrega apenas os campos necessários
+projetos_db = list(
+    col_projetos.find(
+        {},
+        {
+            "_id": 1,
+            "codigo": 1
+        }
+    )
+)
+
+# ObjectId (string) -> código
+mapa_id_para_codigo = {
+    str(p["_id"]): p["codigo"]
+    for p in projetos_db
+}
+
+# Códigos existentes (compatibilidade)
+codigos_validos = {
+    p["codigo"]
+    for p in projetos_db
+}
+
 
 
 
@@ -82,6 +106,33 @@ def enviar_email(destinatario, codigo):
     except Exception as e:
         st.error(f"Erro ao enviar e-mail: {e}")
         return False
+
+def converter_projetos_para_codigo(lista_projetos):
+    """
+    Recebe uma lista contendo ObjectIds (string) ou códigos
+    e devolve sempre uma lista de códigos.
+    """
+
+    if not isinstance(lista_projetos, list):
+        return []
+
+    resultado = []
+
+    for projeto in lista_projetos:
+
+        projeto = str(projeto)
+
+        # Nova estrutura
+        if projeto in mapa_id_para_codigo:
+            resultado.append(
+                mapa_id_para_codigo[projeto]
+            )
+
+        # Estrutura antiga
+        elif projeto in codigos_validos:
+            resultado.append(projeto)
+
+    return resultado
 
 
 ##############################################################################################################
@@ -265,7 +316,9 @@ def recuperar_senha_dialog():
 
                                 # mantém compatibilidade com outras partes do sistema
                                 st.session_state["email"] = usuario.get("e_mail", "")
-                                st.session_state["projetos"] = usuario.get("projetos", [])
+                                st.session_state["projetos"] = converter_projetos_para_codigo(
+                                    usuario.get("projetos", [])
+                                )
 
                                 # reseta navegação para forçar fluxo correto
                                 st.session_state["pagina_atual"] = None
@@ -366,7 +419,9 @@ def login():
                         st.session_state["tipo_usuario"] = tipo_usuario
                         st.session_state["nome"] = usuario_encontrado.get("nome_completo")
                         st.session_state["id_usuario"] = usuario_encontrado.get("_id")
-                        st.session_state["projetos"] = usuario_encontrado.get("projetos", [])
+                        st.session_state["projetos"] = converter_projetos_para_codigo(
+                            usuario_encontrado.get("projetos", [])
+                        )
                         st.rerun()
                     else:
                         # Senha inválida ou não hashada corretamente
