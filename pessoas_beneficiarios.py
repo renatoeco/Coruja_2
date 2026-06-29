@@ -64,11 +64,43 @@ if "_id" in df_projetos.columns:
 else:
     st.warning("Projetos sem campo '_id'.")
 
+# Mapa ObjectId -> código
+mapa_id_para_codigo = dict(
+    zip(df_projetos["_id"], df_projetos["codigo"])
+)
+
+# Mapa código -> ObjectId
+mapa_codigo_para_id = dict(
+    zip(df_projetos["codigo"], df_projetos["_id"])
+)
+
 
 ###########################################################################################################
 # Funções
 ###########################################################################################################
 
+
+def projetos_para_codigos(lista_projetos):
+    """
+    Recebe uma lista contendo códigos e/ou ObjectIds
+    e devolve sempre uma lista de códigos.
+    """
+
+    if not isinstance(lista_projetos, list):
+        lista_projetos = [lista_projetos]
+
+    codigos = []
+
+    for projeto in lista_projetos:
+
+        projeto = str(projeto)
+
+        if projeto in mapa_id_para_codigo:
+            codigos.append(mapa_id_para_codigo[projeto])
+        else:
+            codigos.append(projeto)
+
+    return sorted(set(codigos))
 
 # Diálogo para editar uma pessoa
 @st.dialog("Editar Pessoa", width="medium")
@@ -110,17 +142,27 @@ def editar_pessoa(_id: str):
         opcoes_projetos = []
         st.warning("Projetos sem coluna 'codigo'.")
 
-    # Projetos
+    projetos_atuais = projetos_para_codigos(
+        pessoa.get("projetos", [])
+    )
+
     projetos = st.multiselect(
         "Projetos",
         options=opcoes_projetos,
-        default=pessoa.get("projetos", []),
+        default=projetos_atuais,
     )
 
     st.write("")
 
     # Botão de salvar
     if st.button("Salvar alterações", icon=":material/save:"):
+        
+        projetos_ids = [
+            ObjectId(mapa_codigo_para_id[codigo])
+            for codigo in projetos
+            if codigo in mapa_codigo_para_id
+        ]
+        
         # Documento base
         update_data = {
             "nome_completo": nome,
@@ -128,7 +170,7 @@ def editar_pessoa(_id: str):
             "telefone": telefone,
             "tipo_usuario": tipo_usuario,
             "status": status,
-            "projetos": projetos
+            "projetos": projetos_ids
         }
 
         # Atualiza o registro
@@ -372,7 +414,9 @@ for _, row in df_benef.iterrows():
     # PROJETOS -----------------
 
     # Tratando a coluna projetos, que pode ter múltiplos valores------
-    projetos = row.get("Projetos", [])
+    projetos = projetos_para_codigos(
+        row.get("Projetos", [])
+    )
     # Garante que 'projetos' seja uma lista
     if isinstance(projetos, str):
         projetos = [projetos]

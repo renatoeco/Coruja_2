@@ -28,6 +28,14 @@ df_pessoas = pd.DataFrame(list(col_pessoas.find()))
 col_projetos = db["projetos"]
 df_projetos = pd.DataFrame(list(col_projetos.find()))
 
+# Converte ObjectId para string
+if "_id" in df_projetos.columns:
+    df_projetos["_id"] = df_projetos["_id"].astype(str)
+
+# Mapeamentos
+mapa_id_para_codigo = dict(zip(df_projetos["_id"], df_projetos["codigo"]))
+codigos_validos = set(df_projetos["codigo"].astype(str))
+
 # Editais
 col_editais = db["editais"]
 df_editais = pd.DataFrame(list(col_editais.find()))
@@ -98,24 +106,39 @@ if not df_projetos.empty:
     # Seleciona apenas colunas necessárias
     df_pessoas_proj = df_pessoas[["nome_completo", "projetos"]].copy()
 
-    # Garante que "projetos" seja sempre uma lista
+    # Garante lista
     df_pessoas_proj["projetos"] = df_pessoas_proj["projetos"].apply(
         lambda x: x if isinstance(x, list) else []
     )
 
-    # Cria uma linha por projeto (explode)
+    # Uma linha por projeto
     df_pessoas_proj = df_pessoas_proj.explode("projetos")
 
-    # Remove registros sem código de projeto
     df_pessoas_proj = df_pessoas_proj.dropna(subset=["projetos"])
 
-    # Renomeia colunas para facilitar o merge
+    # Converte IDs para códigos e mantém compatibilidade com registros antigos
+    def converter_para_codigo(valor):
+        valor = str(valor)
+
+        # Estrutura nova (ID)
+        if valor in mapa_id_para_codigo:
+            return mapa_id_para_codigo[valor]
+
+        # Estrutura antiga (código)
+        if valor in codigos_validos:
+            return valor
+
+        # Projeto inexistente
+        return None
+
+    df_pessoas_proj["codigo"] = df_pessoas_proj["projetos"].apply(converter_para_codigo)
+
+    df_pessoas_proj = df_pessoas_proj.dropna(subset=["codigo"])
+
     df_pessoas_proj = df_pessoas_proj.rename(columns={
-        "projetos": "codigo",
         "nome_completo": "padrinho"
     })
 
-    # Agrupa padrinhos por projeto (caso haja mais de um)
     df_padrinhos = (
         df_pessoas_proj
         .groupby("codigo")["padrinho"]

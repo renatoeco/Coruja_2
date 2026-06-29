@@ -209,6 +209,29 @@ df_projeto = pd.DataFrame(
     list(col_projetos.find({"codigo": codigo_projeto_atual}))
 )
 
+# Converte _id para string
+if "_id" in df_projeto.columns:
+    df_projeto["_id"] = df_projeto["_id"].astype(str)
+
+# Carrega todos os projetos para montar os mapas
+df_todos_projetos = pd.DataFrame(list(col_projetos.find({}, {
+    "_id": 1,
+    "codigo": 1
+})))
+
+df_todos_projetos["_id"] = df_todos_projetos["_id"].astype(str)
+
+# Mapas de conversão
+mapa_id_para_codigo = dict(
+    zip(df_todos_projetos["_id"], df_todos_projetos["codigo"])
+)
+
+mapa_codigo_para_id = dict(
+    zip(df_todos_projetos["codigo"], df_todos_projetos["_id"])
+)
+
+codigos_validos = set(df_todos_projetos["codigo"])
+
 if df_projeto.empty:
     st.error("Projeto não encontrado no banco de dados.")
     st.stop()
@@ -219,6 +242,7 @@ projeto = df_projeto.iloc[0].to_dict()
 
 # Pessoas
 df_pessoas = pd.DataFrame(list(col_pessoas.find()))
+
 
 # Editais
 df_editais = pd.DataFrame(list(col_editais.find()))
@@ -303,6 +327,33 @@ df_projeto = calcular_status_projetos(df_projeto)
 # RELACIONAMENTO: PADRINHOS DO PROJETO
 ###########################################################################################################
 
+
+def pessoa_pertence_ao_projeto(projetos_pessoa, codigo_projeto):
+    """
+    Retorna True caso a pessoa esteja vinculada ao projeto,
+    independentemente de o vínculo estar salvo como:
+
+    - código do projeto (string)
+    - ObjectId
+    - string contendo um ObjectId antigo
+    """
+
+    if not isinstance(projetos_pessoa, list):
+        projetos_pessoa = [projetos_pessoa]
+
+    for projeto in projetos_pessoa:
+
+        # Projeto salvo diretamente pelo código
+        if projeto == codigo_projeto:
+            return True
+
+        # ObjectId ou string do ObjectId
+        codigo = mapa_id_para_codigo.get(str(projeto))
+        if codigo == codigo_projeto:
+            return True
+
+    return False
+
 # Filtra apenas usuários internos (admin e equipe)
 df_pessoas_internos = df_pessoas[
     df_pessoas["tipo_usuario"].isin(["admin", "equipe"])
@@ -311,24 +362,34 @@ df_pessoas_internos = df_pessoas[
 # Seleciona apenas colunas necessárias
 df_pessoas_proj = df_pessoas_internos[["nome_completo", "projetos"]].copy()
 
-# Garante que "projetos" seja lista
 df_pessoas_proj["projetos"] = df_pessoas_proj["projetos"].apply(
     lambda x: x if isinstance(x, list) else []
 )
 
-# Explode para uma linha por projeto
 df_pessoas_proj = df_pessoas_proj.explode("projetos")
-
-# Remove registros inválidos
 df_pessoas_proj = df_pessoas_proj.dropna(subset=["projetos"])
 
-# Renomeia colunas
+
+def converter_para_codigo(valor):
+    valor = str(valor)
+
+    if valor in mapa_id_para_codigo:
+        return mapa_id_para_codigo[valor]
+
+    if valor in codigos_validos:
+        return valor
+
+    return None
+
+
+df_pessoas_proj["codigo"] = df_pessoas_proj["projetos"].apply(converter_para_codigo)
+
+df_pessoas_proj = df_pessoas_proj.dropna(subset=["codigo"])
+
 df_pessoas_proj = df_pessoas_proj.rename(columns={
-    "projetos": "codigo",
     "nome_completo": "padrinho"
 })
 
-# Agrupa padrinhos por projeto
 df_padrinhos = (
     df_pessoas_proj
     .groupby("codigo")["padrinho"]
@@ -481,7 +542,7 @@ if not editar_cadastro:
         (df_pessoas["tipo_usuario"] == "beneficiario") &   # filtra tipo
         (
             df_pessoas["projetos"].apply(
-                lambda x: codigo_projeto in (x if isinstance(x, list) else [x])
+                lambda x: pessoa_pertence_ao_projeto(x, codigo_projeto)
             )
         )
     ]
@@ -1337,7 +1398,7 @@ if not editar_cadastro:
                 (df_pessoas["tipo_usuario"] == "beneficiario") &
                 (
                     df_pessoas["projetos"].apply(
-                        lambda x: codigo_projeto in (x if isinstance(x, list) else [x])
+                        lambda x: pessoa_pertence_ao_projeto(x, codigo_projeto)
                     )
                 )
             ].to_dict("records")
@@ -1516,7 +1577,7 @@ if not editar_cadastro:
         (df_pessoas["tipo_usuario"] == "beneficiario") &
         (
             df_pessoas["projetos"].apply(
-                lambda x: codigo_projeto in (x if isinstance(x, list) else [x])
+                lambda x: pessoa_pertence_ao_projeto(x, codigo_projeto)
             )
         )
     ].copy()
@@ -1723,7 +1784,7 @@ else:
             # Responsáveis atuais = pessoas que já têm o projeto no array
             responsaveis_atuais = df_pessoas_benef[
                 df_pessoas_benef["projetos"].apply(
-                    lambda x: codigo_projeto in (x if isinstance(x, list) else [x])
+                    lambda x: pessoa_pertence_ao_projeto(x, codigo_projeto)
                 )
             ]["nome_completo"].tolist()
 
@@ -1743,7 +1804,7 @@ else:
 
             padrinhos_atuais = df_pessoas_internos[
                 df_pessoas_internos["projetos"].apply(
-                    lambda x: codigo_projeto in (x if isinstance(x, list) else [x])
+                    lambda x: pessoa_pertence_ao_projeto(x, codigo_projeto)
                 )
             ]["nome_completo"].tolist()
 
@@ -1814,7 +1875,7 @@ else:
                     # VALIDAÇÃO DE UNICIDADE (ignorando o próprio projeto)
                     # --------------------------------------------------
 
-                    projeto_id = projeto["_id"]
+                    projeto_id = ObjectId(projeto["_id"])
 
                     sigla_existente = col_projetos.find_one({
                         "sigla": sigla,
@@ -1920,6 +1981,8 @@ else:
 
                             # Atualizações na coleção de Pessoas
                             # ATUALIZA PADRINHOS DO PROJETO
+                            
+                            id_projeto = ObjectId(projeto["_id"])
 
                             # Pessoas que eram padrinhos antes
                             padrinhos_antes = set(padrinhos_atuais)
@@ -1937,14 +2000,20 @@ else:
                             for nome in remover:
                                 col_pessoas.update_one(
                                     {"nome_completo": nome},
-                                    {"$pull": {"projetos": codigo}}
+                                    {
+                                        "$pull": {
+                                            "projetos": {
+                                                "$in": [id_projeto, codigo]
+                                            }
+                                        }
+                                    }
                                 )
 
                             # Adiciona projeto às pessoas novas
                             for nome in adicionar:
                                 col_pessoas.update_one(
                                     {"nome_completo": nome},
-                                    {"$addToSet": {"projetos": codigo}}
+                                    {"$addToSet": {"projetos": id_projeto}}
                                 )
 
                             # --------------------------------------------------
@@ -1967,14 +2036,20 @@ else:
                             for nome in remover:
                                 col_pessoas.update_one(
                                     {"nome_completo": nome},
-                                    {"$pull": {"projetos": codigo}}
+                                    {
+                                        "$pull": {
+                                            "projetos": {
+                                                "$in": [id_projeto, codigo]
+                                            }
+                                        }
+                                    }
                                 )
 
                             # Adiciona projeto às pessoas novas
                             for nome in adicionar:
                                 col_pessoas.update_one(
                                     {"nome_completo": nome},
-                                    {"$addToSet": {"projetos": codigo}}
+                                    {"$addToSet": {"projetos": id_projeto}}
                                 )
 
                 

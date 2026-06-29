@@ -58,6 +58,13 @@ if "Nome" in df_pessoas.columns:
 col_projetos = db["projetos"]
 df_projetos = pd.DataFrame(list(col_projetos.find()))
 
+# Mapeamentos para conversão entre id e código
+mapa_id_para_codigo = dict(zip(df_projetos["_id"], df_projetos["codigo"]))
+mapa_codigo_para_id = dict(zip(df_projetos["codigo"], df_projetos["_id"]))
+
+# Permite identificar quando o valor antigo já era o código do projeto
+codigos_validos = set(df_projetos["codigo"].astype(str))
+
 # Converte ObjectId para string (somente se existir)
 if "_id" in df_projetos.columns:
     df_projetos["_id"] = df_projetos["_id"].astype(str)
@@ -158,27 +165,36 @@ def editar_pessoa(_id: str):
         opcoes_projetos = []
         st.warning("Projetos sem coluna 'codigo'.")
 
-    # Projetos cadastrados na pessoa (podem conter inválidos)
+    # Projetos salvos na pessoa (agora são IDs)
     projetos_pessoa = pessoa.get("projetos", [])
     if not isinstance(projetos_pessoa, list):
         projetos_pessoa = []
 
-    # Filtra somente projetos que ainda existem
-    projetos_default_validos = [
-        p for p in projetos_pessoa if p in opcoes_projetos
-    ]
+    # Converte IDs em códigos para exibição
+    projetos_default_validos = []
 
-    # Detecta projetos removidos
-    projetos_invalidos = sorted(set(projetos_pessoa) - set(opcoes_projetos))
+    for projeto in projetos_pessoa:
 
-    # Aviso ao usuário
-    if projetos_invalidos:
-        st.warning(
-            "Os seguintes projetos não existem no banco de dados e serão removidos desse usuário: "
-            + ", ".join(projetos_invalidos)
-        )
+        # Formato novo: ID
+        if projeto in mapa_id_para_codigo:
+            projetos_default_validos.append(mapa_id_para_codigo[projeto])
 
-    # Multiselect protegido
+        # Formato antigo: já era o código do projeto
+        elif projeto in codigos_validos:
+            projetos_default_validos.append(projeto)
+
+    # Detecta IDs inexistentes
+    # projetos_invalidos = [
+    #     p for p in projetos_pessoa
+    #     if p not in mapa_id_para_codigo
+    # ]
+
+    # if projetos_invalidos:
+    #     st.warning(
+    #         "Alguns projetos associados não existem mais e serão removidos."
+    #     )
+
+    # Usuário continua vendo apenas os códigos
     projetos = st.multiselect(
         "Projetos",
         options=opcoes_projetos,
@@ -191,13 +207,21 @@ def editar_pessoa(_id: str):
     # Salvar alterações
     # ===============================
     if st.button("Salvar alterações", icon=":material/save:"):
+        
+        # Converte os códigos selecionados para IDs
+        projetos_ids = [
+            mapa_codigo_para_id[codigo]
+            for codigo in projetos
+            if codigo in mapa_codigo_para_id
+        ]
+        
         update_data = {
             "nome_completo": nome,
             "e_mail": email,
             "telefone": telefone,
             "tipo_usuario": tipo_usuario,
             "status": status,
-            "projetos": projetos,  # já higienizados
+            "projetos": projetos_ids,
         }
 
         # Tipo beneficiário (somente se for beneficiário)
@@ -283,12 +307,27 @@ for _, row in df_equipe.iterrows():
 
     # Tratando a coluna projetos, que pode ter múltiplos valores------
     projetos = row.get("Projetos", [])
-    # Garante que 'projetos' seja uma lista
+
     if isinstance(projetos, str):
         projetos = [projetos]
     elif not isinstance(projetos, list):
         projetos = []
-    # Exibe de forma amigável
+
+    # Converte IDs em códigos
+    projetos_convertidos = []
+
+    for projeto in projetos:
+
+        # Formato novo (ID)
+        if projeto in mapa_id_para_codigo:
+            projetos_convertidos.append(mapa_id_para_codigo[projeto])
+
+        # Formato antigo (código)
+        else:
+            projetos_convertidos.append(projeto)
+
+    projetos = projetos_convertidos
+
     if len(projetos) == 0:
         col2.write("")
     elif len(projetos) == 1:

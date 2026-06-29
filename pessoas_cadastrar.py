@@ -3,6 +3,7 @@ from funcoes_auxiliares import conectar_mongo_coruja, obter_servico_drive, obter
 
 import pandas as pd
 import locale
+from bson import ObjectId
 import re
 import time
 import uuid
@@ -31,6 +32,19 @@ df_pessoas = pd.DataFrame(list(col_pessoas.find()))
 
 col_projetos = db["projetos"]
 df_projetos = pd.DataFrame(list(col_projetos.find()))
+
+# Converte ObjectId para string
+df_projetos["_id"] = df_projetos["_id"].astype(str)
+
+# Código -> ObjectId
+mapa_codigo_para_id = dict(
+    zip(df_projetos["codigo"], df_projetos["_id"])
+)
+
+# ObjectId -> código
+mapa_id_para_codigo = dict(
+    zip(df_projetos["_id"], df_projetos["codigo"])
+)
 
 
 
@@ -293,6 +307,14 @@ if st.button(":material/save: Convidar pessoas", type="primary"):
             # -----------------------------
             # DOCUMENTO FINAL
             # -----------------------------
+            
+            # Converte os códigos selecionados em ObjectIds
+            projetos_ids = [
+                ObjectId(mapa_codigo_para_id[codigo])
+                for codigo in projetos_lista
+                if codigo in mapa_codigo_para_id
+            ]
+            
             doc = {
                 "nome_completo": nome,
                 "tipo_usuario": tipo,
@@ -306,8 +328,8 @@ if st.button(":material/save: Convidar pessoas", type="primary"):
             if telefone:
                 doc["telefone"] = telefone
 
-            if projetos_lista:
-                doc["projetos"] = projetos_lista
+            if projetos_ids:
+                doc["projetos"] = projetos_ids
 
             registros_validos.append(doc)
 
@@ -363,34 +385,37 @@ if st.button(":material/save: Convidar pessoas", type="primary"):
                 # Permissão apenas para beneficiário ou visitante
                 if email and tipo_usuario in ["beneficiario", "visitante"]:
 
-                    for codigo_projeto in pessoa.get("projetos", []):
+                    for id_projeto in pessoa.get("projetos", []):
 
                         try:
-                            # Busca o projeto para obter a sigla
-                            projeto = col_projetos.find_one({"codigo": codigo_projeto})
+
+                            projeto = col_projetos.find_one({
+                                "_id": id_projeto
+                            })
 
                             if not projeto:
                                 continue
 
+                            codigo_projeto = projeto.get("codigo")
                             sigla = projeto.get("sigla", "")
 
-                            # Obtém (ou cria) a pasta do projeto
                             pasta_id = obter_pasta_projeto(
                                 servico_drive,
                                 codigo_projeto,
                                 sigla
                             )
 
-                            # Estrutura mínima esperada pela função
                             contato_drive = {
                                 "email": email
                             }
 
-                            # Aplica permissão de leitura
-                            add_permissao_drive(servico_drive, pasta_id, contato_drive)
+                            add_permissao_drive(
+                                servico_drive,
+                                pasta_id,
+                                contato_drive
+                            )
 
                         except Exception:
-                            # Falhas individuais não interrompem o fluxo
                             continue
 
 
