@@ -5680,7 +5680,7 @@ if step_selecionado == "Beneficiários":
 
         with col_nb:
             st.session_state[key_benef_quant]["nao_binarios"]["jovens"] = st.number_input(
-                "Não-binários – Jovens (até 24 anos)",
+                "Outro gênero – Jovens (até 24 anos)",
                 min_value=0,
                 step=1,
                 value=st.session_state[key_benef_quant]["nao_binarios"]["jovens"],
@@ -5712,7 +5712,7 @@ if step_selecionado == "Beneficiários":
 
         with col_nb:
             st.session_state[key_benef_quant]["nao_binarios"]["adultos"] = st.number_input(
-                "Não-binários – Adultos",
+                "Outro gênero – Adultos",
                 min_value=0,
                 step=1,
                 value=st.session_state[key_benef_quant]["nao_binarios"]["adultos"],
@@ -5744,7 +5744,7 @@ if step_selecionado == "Beneficiários":
 
         with col_nb:
             st.session_state[key_benef_quant]["nao_binarios"]["idosos"] = st.number_input(
-                "Não-binários – Idosos (60+ anos)",
+                "Outro gênero – Idosos (60+ anos)",
                 min_value=0,
                 step=1,
                 value=st.session_state[key_benef_quant]["nao_binarios"]["idosos"],
@@ -5881,19 +5881,19 @@ if step_selecionado == "Beneficiários":
             l, v = st.columns(2)
             l.markdown("**Total de homens**"); v.markdown(f"**{total_homens}**")
 
-        # -------- NÃO-BINÁRIOS --------
+        # -------- Outro gênero --------
         with col_nb:
             l, v = st.columns(2)
-            l.write("Não-binários jovens"); v.write(str(dados["nao_binarios"]["jovens"]))
+            l.write("Outro gênero jovens"); v.write(str(dados["nao_binarios"]["jovens"]))
 
             l, v = st.columns(2)
-            l.write("Não-binários adultos"); v.write(str(dados["nao_binarios"]["adultos"]))
+            l.write("Outro gênero adultos"); v.write(str(dados["nao_binarios"]["adultos"]))
 
             l, v = st.columns(2)
-            l.write("Não-binários idosos"); v.write(str(dados["nao_binarios"]["idosos"]))
+            l.write("Outro gênero idosos"); v.write(str(dados["nao_binarios"]["idosos"]))
 
             l, v = st.columns(2)
-            l.markdown("**Total de não-binários**"); v.markdown(f"**{total_nb}**")
+            l.markdown("**Total de Outro gênero**"); v.markdown(f"**{total_nb}**")
 
         # -------- TOTAIS GERAIS (NEGRITO) --------
         with col_totais:
