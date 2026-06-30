@@ -7,6 +7,10 @@ import bson
 from collections import defaultdict
 import uuid
 from st_rsuite import date_picker
+from io import BytesIO
+from docx import Document
+from docx.shared import Pt, Inches
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 
 from zoneinfo import ZoneInfo 
@@ -149,6 +153,7 @@ tipo_usuario = st.session_state.get("tipo_usuario")
 # FUNÇÕES
 ###########################################################################################################
 
+
 def calcular_saldo_parcela():
     # ==================================================
     # CÁLCULO DO SALDO DA PARCELA
@@ -185,8 +190,6 @@ def calcular_saldo_parcela():
         # Exibição 
 
         return saldo_pct
-
-
 
 
 # Texto do status da avaliação de Relatos de Atividades ou de Despesas de relatório
@@ -398,8 +401,6 @@ def gerar_email_relatorio_aprovado(
 """
 
 
-
-
 def gerar_email_relatorio_reprovado(
     nome_do_contato: str,
     relatorio_numero: int,
@@ -495,11 +496,6 @@ def gerar_email_relatorio_reprovado(
 """
 
 
-
-
-
-
-
 def notificar_padrinhos_relatorio(
     col_pessoas,
     numero_relatorio,
@@ -527,11 +523,6 @@ def notificar_padrinhos_relatorio(
         )
 
     return True
-
-
-
-
-
 
 
 def montar_email_relatorio_envio(
@@ -615,9 +606,6 @@ def montar_email_relatorio_envio(
 """
 
 
-
-
-
 def buscar_padrinhos_do_projeto(col_pessoas, codigo_projeto: str):
     """
     Retorna lista de pessoas (dict) que são padrinhos do projeto.
@@ -644,8 +632,6 @@ def buscar_padrinhos_do_projeto(col_pessoas, codigo_projeto: str):
     return padrinhos
 
 
-
-
 def gerar_id_lanc_despesa(projeto):
     """
     Gera id sequencial no formato despesa_001, despesa_002...
@@ -664,791 +650,6 @@ def gerar_id_lanc_despesa(projeto):
 
     proximo = max(numeros, default=0) + 1
     return f"despesa_{str(proximo).zfill(3)}"
-
-
-
-
-# # ==================================================
-# # REGISTRO DE DESPESA (EXPANDER)
-# # ==================================================
-# def render_registro_despesa(
-#     relatorio_numero,
-#     projeto,
-#     col_projetos,
-#     categorias_map
-# ):
-
-#     # --------------------------------------------------
-#     # Controle de reset do formulário
-#     # --------------------------------------------------
-#     if "form_despesa_key" not in st.session_state:
-#         st.session_state["form_despesa_key"] = 0
-
-#     form_key = st.session_state["form_despesa_key"]
-
-#     with st.expander("Registrar despesa", expanded=False):
-
-#         # Carregamento do orçamento e preparação do selectbox de despesas
-
-#         orcamento = projeto["financeiro"]["orcamento"]
-
-#         opcoes = []
-#         mapa_opcoes = {}
-
-#         for o in orcamento:
-
-#             categoria_id = str(o["categoria"])
-
-#             nome_categoria = categorias_map.get(
-#                 categoria_id,
-#                 "Categoria não encontrada"
-#             )
-
-#             label = f"{nome_categoria} | {o['nome_despesa']}"
-
-#             opcoes.append(label)
-
-#             # Mapeamento da opção selecionada
-#             mapa_opcoes[label] = {
-#                 "categoria_id": categoria_id,
-#                 "nome_despesa": o["nome_despesa"],
-#                 "nome_categoria": nome_categoria
-#             }
-
-#         opcoes = sorted(opcoes, key=lambda x: x.lower())
-
-
-
-
-
-#         # ==================================================
-#         # Qual tipo de despesa será registrada
-#         # ==================================================
-
-#         tipo_despesa = st.radio(
-#             "Qual tipo de despesa deseja cadastrar?",
-#             options=["Despesa do Orçamento", "Contrapartida Financeira", "Contrapartida Não-Financeira"],
-#             horizontal=True,
-#             key=f"tipo_despesa_{form_key}",
-            
-#         )
-
-#         st.write('')
-
-
-
-#         # ==================================================
-#         # OPÇÕES DE DESPESA DO ORÇAMENTO
-#         # ==================================================
-#         if tipo_despesa == "Despesa do Orçamento":
-
-#             escolha = st.selectbox(
-#                 "Categoria / Despesa *",
-#                 options=opcoes,
-#                 key=f"desp_categoria_{form_key}"
-#             )
-
-#             categoria = mapa_opcoes[escolha]["categoria_id"]
-
-#             nome_despesa = mapa_opcoes[escolha]["nome_despesa"]
-
-#             nome_categoria = mapa_opcoes[escolha]["nome_categoria"]
-
-#             # ==================================================
-#             # DADOS DO LANÇAMENTO
-#             # ==================================================
-#             id_despesa = gerar_id_lanc_despesa(projeto)
-
-#             col1, col2 = st.columns(2)
-
-#             with col1:
-
-#                 data_despesa = date_picker(
-#                     label="Data da despesa *",
-#                     key=f"desp_data_{form_key}",
-#                     format="dd/MM/yyyy",
-#                     locale="pt_BR",
-#                     one_tap=True,
-#                     placeholder="dd/mm/aaaa"
-#                 )
-
-#             with col2:
-
-#                 valor = st.number_input(
-#                     "Valor (reais) *",
-#                     min_value=0.0,
-#                     format="%.2f",
-#                     key=f"desp_valor_{form_key}"
-#                 )
-
-#             descricao = st.text_area(
-#                 "Descrição da despesa *",
-#                 key=f"desp_desc_{form_key}"
-#             )
-
-#             col1, col2 = st.columns([2, 1])
-
-#             fornecedor = col1.text_input(
-#                 "Fornecedor *",
-#                 key=f"desp_forn_{form_key}"
-#             )
-
-#             cpf_cnpj = col2.text_input(
-#                 "CPF / CNPJ",
-#                 key=f"desp_doc_{form_key}"
-#             )
-
-#             # ==================================================
-#             # ANEXOS
-#             # ==================================================
-#             categoria_nome_lower = nome_categoria.lower()
-
-
-#             anexos = st.file_uploader(
-#                 "Anexos *",
-#                 accept_multiple_files=True,
-#                 key=f"desp_anexos_{form_key}"
-#             )
-
-#             # ==================================================
-#             # AÇÕES
-#             # ==================================================
-#             with st.container(horizontal=True):
-
-#                 botao_salvar_despesa = st.button(
-#                     "Salvar Despesa do Orçamento",
-#                     type="primary",
-#                     icon=":material/save:"
-#                 )
-
-#                 area_notif_despesas = st.container()
-
-#             # ==================================================
-#             # AÇÃO: SALVAR
-#             # ==================================================
-#             if botao_salvar_despesa:
-
-#                 erros_campos = []
-#                 erro_consistencia = None
-
-#                 # --------------------------------------------------
-#                 # Validação dos campos obrigatórios
-#                 # --------------------------------------------------
-#                 if not data_despesa:
-#                     erros_campos.append("Data da despesa")
-
-#                 if not valor or valor <= 0:
-#                     erros_campos.append("Valor (reais)")
-
-#                 if not descricao or not descricao.strip():
-#                     erros_campos.append("Descrição da despesa")
-
-#                 if not fornecedor or not fornecedor.strip():
-#                     erros_campos.append("Fornecedor")
-
-#                 # if not cpf_cnpj or not cpf_cnpj.strip():
-#                 #     erros_campos.append("CPF / CNPJ")
-
-#                 # --------------------------------------------------
-#                 # Validação dos anexos
-#                 # --------------------------------------------------
-#                 if not is_taxa_bancaria:
-
-#                     if not anexos or len(anexos) == 0:
-#                         erros_campos.append("Anexos")
-
-#                 # --------------------------------------------------
-#                 # Exibição de mensagens
-#                 # --------------------------------------------------
-#                 if erros_campos:
-
-#                     campos = ", ".join(erros_campos)
-
-#                     area_notif_despesas.warning(
-#                         f"Preencha os seguintes campos obrigatórios: {campos}"
-#                     )
-
-#                 if erro_consistencia:
-#                     area_notif_despesas.warning(
-#                         erro_consistencia
-#                     )
-
-
-
-#                 # ==================================================
-#                 # SALVAMENTO
-#                 # ==================================================
-#                 with area_notif_despesas.spinner(
-#                     "Salvando despesa..."
-#                 ):
-
-#                     novo_lancamento = {
-#                         "id_lanc_despesa": id_despesa,
-#                         "relatorio_numero": relatorio_numero,
-#                         "data_despesa": data_despesa.strftime("%d/%m/%Y"),
-#                         "descricao_despesa": descricao,
-#                         "fornecedor": fornecedor,
-#                         "cpf_cnpj": cpf_cnpj,
-#                         "valor_despesa": valor,
-#                         "status_despesa": "aberto",
-#                         "anexos": [],
-#                         "tipo_despesa": "orçamento"
-
-#                     }
-
-#                     # --------------------------------------------------
-#                     # Upload dos anexos no Google Drive
-#                     # --------------------------------------------------
-#                     servico = obter_servico_drive()
-
-#                     pasta_projeto = obter_pasta_projeto(
-#                         servico,
-#                         projeto["codigo"],
-#                         projeto["sigla"]
-#                     )
-
-#                     pasta_financeiro = (
-#                         obter_pasta_relatos_financeiros(
-#                             servico,
-#                             pasta_projeto
-#                         )
-#                     )
-
-#                     pasta_lanc = obter_ou_criar_pasta(
-#                         servico,
-#                         id_despesa,
-#                         pasta_financeiro
-#                     )
-
-#                     for arq in anexos:
-
-#                         id_drive = enviar_arquivo_drive(
-#                             servico,
-#                             pasta_lanc,
-#                             arq
-#                         )
-
-#                         novo_lancamento["anexos"].append({
-#                             "nome_arquivo": arq.name,
-#                             "id_arquivo": id_drive
-#                         })
-
-#                     # --------------------------------------------------
-#                     # Inserção do lançamento no orçamento
-#                     # --------------------------------------------------
-#                     for d in projeto["financeiro"]["orcamento"]:
-
-#                         if (
-#                             d["categoria"] == categoria
-#                             and d["nome_despesa"] == nome_despesa
-#                         ):
-
-#                             d.setdefault(
-#                                 "lancamentos",
-#                                 []
-#                             ).append(novo_lancamento)
-
-#                             break
-
-#                     # --------------------------------------------------
-#                     # Persistência no MongoDB
-#                     # --------------------------------------------------
-#                     col_projetos.update_one(
-#                         {"codigo": projeto["codigo"]},
-#                         {
-#                             "$set": {
-#                                 "financeiro.orcamento":
-#                                 projeto["financeiro"]["orcamento"]
-#                             }
-#                         }
-#                     )
-
-#                 # --------------------------------------------------
-#                 # Reset do formulário
-#                 # --------------------------------------------------
-#                 st.session_state["form_despesa_key"] += 1
-
-#                 area_notif_despesas.success(
-#                     "Despesa registrada com sucesso!",
-#                     icon=":material/check:"
-#                 )
-
-#                 time.sleep(3)
-
-#                 st.rerun()
-
-
-
-
-#         # ==================================================
-#         # OPÇÕES DE DESPESA DE CONTRAPARTIDA FINANCEIRA
-#         # ==================================================
-#         if tipo_despesa == "Contrapartida Financeira":
-
-#             escolha = st.selectbox(
-#                 "Categoria / Despesa *",
-#                 options=opcoes,
-#                 key=f"desp_categoria_{form_key}"
-#             )
-
-#             categoria = mapa_opcoes[escolha]["categoria_id"]
-
-#             nome_despesa = mapa_opcoes[escolha]["nome_despesa"]
-
-#             nome_categoria = mapa_opcoes[escolha]["nome_categoria"]
-
-#             # ==================================================
-#             # DADOS DO LANÇAMENTO
-#             # ==================================================
-#             id_despesa = gerar_id_lanc_despesa(projeto)
-
-#             col1, col2 = st.columns(2)
-
-#             with col1:
-
-#                 data_despesa = date_picker(
-#                     label="Data da despesa *",
-#                     key=f"desp_data_{form_key}",
-#                     format="dd/MM/yyyy",
-#                     locale="pt_BR",
-#                     one_tap=True,
-#                     placeholder="dd/mm/aaaa"
-#                 )
-
-#             with col2:
-
-#                 valor = st.number_input(
-#                     "Valor (reais) *",
-#                     min_value=0.0,
-#                     format="%.2f",
-#                     key=f"desp_valor_{form_key}"
-#                 )
-
-#             descricao = st.text_area(
-#                 "Descrição da despesa *",
-#                 key=f"desp_desc_{form_key}"
-#             )
-
-
-#             # ==================================================
-#             # ANEXOS
-#             # ==================================================
-
-#             anexos = st.file_uploader(
-#                 "Anexos *",
-#                 accept_multiple_files=True,
-#                 key=f"desp_anexos_{form_key}"
-#             )
-
-#             # ==================================================
-#             # AÇÕES
-#             # ==================================================
-#             with st.container(horizontal=True):
-
-#                 botao_salvar_CPFin = st.button(
-#                     "Salvar Contrapartida Financeira",
-#                     type="primary",
-#                     icon=":material/save:",
-#                     key=f"btn_save_CF_{form_key}"
-#                 )
-
-#                 area_notif_despesas = st.container()
-
-#             # ==================================================
-#             # AÇÃO: SALVAR
-#             # ==================================================
-#             if botao_salvar_CPFin:
-
-#                 erros_campos = []
-#                 erro_consistencia = None
-
-#                 # --------------------------------------------------
-#                 # Validação dos campos obrigatórios
-#                 # --------------------------------------------------
-#                 if not data_despesa:
-#                     erros_campos.append("Data da despesa")
-
-#                 if not valor or valor <= 0:
-#                     erros_campos.append("Valor (reais)")
-
-#                 if not descricao or not descricao.strip():
-#                     erros_campos.append("Descrição da despesa")
-
-#                 if not fornecedor or not fornecedor.strip():
-#                     erros_campos.append("Fornecedor")
-
-#                 # if not cpf_cnpj or not cpf_cnpj.strip():
-#                 #     erros_campos.append("CPF / CNPJ")
-
-#                 # --------------------------------------------------
-#                 # Validação dos anexos
-#                 # --------------------------------------------------
-
-#                 if not anexos or len(anexos) == 0:
-#                     erros_campos.append("Anexos")
-
-#                 # --------------------------------------------------
-#                 # Exibição de mensagens
-#                 # --------------------------------------------------
-#                 if erros_campos:
-
-#                     campos = ", ".join(erros_campos)
-
-#                     area_notif_despesas.warning(
-#                         f"Preencha os seguintes campos obrigatórios: {campos}"
-#                     )
-
-#                 if erro_consistencia:
-#                     area_notif_despesas.warning(
-#                         erro_consistencia
-#                     )
-
-
-
-#                 # ==================================================
-#                 # SALVAMENTO
-#                 # ==================================================
-#                 with area_notif_despesas.spinner(
-#                     "Salvando despesa..."
-#                 ):
-
-#                     novo_lancamento = {
-#                         "id_lanc_despesa": id_despesa,
-#                         "relatorio_numero": relatorio_numero,
-#                         "data_despesa": data_despesa.strftime("%d/%m/%Y"),
-#                         "descricao_despesa": descricao,
-#                         "fornecedor": fornecedor,
-#                         "cpf_cnpj": cpf_cnpj,
-#                         "valor_despesa": valor,
-#                         "status_despesa": "aberto",
-#                         "anexos": [],
-#                         "tipo_despesa": "CPFin"
-#                     }
-
-#                     # --------------------------------------------------
-#                     # Upload dos anexos no Google Drive
-#                     # --------------------------------------------------
-#                     servico = obter_servico_drive()
-
-#                     pasta_projeto = obter_pasta_projeto(
-#                         servico,
-#                         projeto["codigo"],
-#                         projeto["sigla"]
-#                     )
-
-#                     pasta_financeiro = (
-#                         obter_pasta_relatos_financeiros(
-#                             servico,
-#                             pasta_projeto
-#                         )
-#                     )
-
-#                     pasta_lanc = obter_ou_criar_pasta(
-#                         servico,
-#                         id_despesa,
-#                         pasta_financeiro
-#                     )
-
-#                     for arq in anexos:
-
-#                         id_drive = enviar_arquivo_drive(
-#                             servico,
-#                             pasta_lanc,
-#                             arq
-#                         )
-
-#                         novo_lancamento["anexos"].append({
-#                             "nome_arquivo": arq.name,
-#                             "id_arquivo": id_drive
-#                         })
-
-#                     # --------------------------------------------------
-#                     # Inserção do lançamento no orçamento
-#                     # --------------------------------------------------
-#                     for d in projeto["financeiro"]["orcamento"]:
-
-#                         if (
-#                             d["categoria"] == categoria
-#                             and d["nome_despesa"] == nome_despesa
-#                         ):
-
-#                             d.setdefault(
-#                                 "lancamentos",
-#                                 []
-#                             ).append(novo_lancamento)
-
-#                             break
-
-#                     # --------------------------------------------------
-#                     # Persistência no MongoDB
-#                     # --------------------------------------------------
-#                     col_projetos.update_one(
-#                         {"codigo": projeto["codigo"]},
-#                         {
-#                             "$set": {
-#                                 "financeiro.orcamento":
-#                                 projeto["financeiro"]["orcamento"]
-#                             }
-#                         }
-#                     )
-
-#                 # --------------------------------------------------
-#                 # Reset do formulário
-#                 # --------------------------------------------------
-#                 st.session_state["form_despesa_key"] += 1
-
-#                 area_notif_despesas.success(
-#                     "Despesa registrada com sucesso!",
-#                     icon=":material/check:"
-#                 )
-
-#                 time.sleep(3)
-
-#                 st.rerun()
-
-
-
-
-#         # ==================================================
-#         # OPÇÕES DE DESPESA DE CONTRAPARTIDA NÃO FINANCEIRA
-#         # ==================================================
-#         if tipo_despesa == "Contrapartida Não-Financeira":
-
-#             escolha = st.selectbox(
-#                 "Categoria / Despesa *",
-#                 options=opcoes,
-#                 key=f"desp_categoria_{form_key}"
-#             )
-
-#             categoria = mapa_opcoes[escolha]["categoria_id"]
-
-#             nome_despesa = mapa_opcoes[escolha]["nome_despesa"]
-
-#             nome_categoria = mapa_opcoes[escolha]["nome_categoria"]
-
-#             # ==================================================
-#             # DADOS DO LANÇAMENTO
-#             # ==================================================
-#             id_despesa = gerar_id_lanc_despesa(projeto)
-
-#             col1, col2 = st.columns(2)
-
-#             with col1:
-
-#                 data_despesa = date_picker(
-#                     label="Data da despesa *",
-#                     key=f"desp_data_{form_key}",
-#                     format="dd/MM/yyyy",
-#                     locale="pt_BR",
-#                     one_tap=True,
-#                     placeholder="dd/mm/aaaa"
-#                 )
-
-#             with col2:
-
-#                 valor = st.number_input(
-#                     "Valor (reais) *",
-#                     min_value=0.0,
-#                     format="%.2f",
-#                     key=f"desp_valor_{form_key}"
-#                 )
-
-#             descricao = st.text_area(
-#                 "Descrição da despesa *",
-#                 key=f"desp_desc_{form_key}"
-#             )
-
-#             # col1, col2 = st.columns([2, 1])
-
-#             # fornecedor = col1.text_input(
-#             #     "Fornecedor *",
-#             #     key=f"desp_forn_{form_key}"
-#             # )
-
-#             # cpf_cnpj = col2.text_input(
-#             #     "CPF / CNPJ",
-#             #     key=f"desp_doc_{form_key}"
-#             # )
-
-#             # # ==================================================
-#             # # ANEXOS
-#             # # ==================================================
-#             # categoria_nome_lower = nome_categoria.lower()
-
-
-#             # label_anexos = (
-#             # "Anexos *"
-#             # )
-
-#             # anexos = st.file_uploader(
-#             #     "Anexos *",
-#             #     accept_multiple_files=True,
-#             #     key=f"desp_anexos_{form_key}"
-#             # )
-
-#             # ==================================================
-#             # AÇÕES
-#             # ==================================================
-#             with st.container(horizontal=True):
-
-#                 botao_salvar_CPNFin = st.button(
-#                     "Salvar Contrapartida Não-Financeira",
-#                     type="primary",
-#                     icon=":material/save:",
-#                     key=f"btn_save_CPNF_{form_key}"
-#                 )
-
-#                 area_notif_despesas = st.container()
-
-#             # ==================================================
-#             # AÇÃO: SALVAR
-#             # ==================================================
-#             if botao_salvar_CPNFin:
-
-#                 erros_campos = []
-#                 erro_consistencia = None
-
-#                 # --------------------------------------------------
-#                 # Validação dos campos obrigatórios
-#                 # --------------------------------------------------
-#                 if not data_despesa:
-#                     erros_campos.append("Data da despesa")
-
-#                 if not valor or valor <= 0:
-#                     erros_campos.append("Valor (reais)")
-
-#                 if not descricao or not descricao.strip():
-#                     erros_campos.append("Descrição da despesa")
-
-#                 # if not fornecedor or not fornecedor.strip():
-#                 #     erros_campos.append("Fornecedor")
-
-#                 # if not cpf_cnpj or not cpf_cnpj.strip():
-#                 #     erros_campos.append("CPF / CNPJ")
-
-
-#                 # --------------------------------------------------
-#                 # Exibição de mensagens
-#                 # --------------------------------------------------
-#                 if erros_campos:
-
-#                     campos = ", ".join(erros_campos)
-
-#                     area_notif_despesas.warning(
-#                         f"Preencha os seguintes campos obrigatórios: {campos}"
-#                     )
-
-#                 if erro_consistencia:
-#                     area_notif_despesas.warning(
-#                         erro_consistencia
-#                     )
-
-#                 # --------------------------------------------------
-#                 # Interrupção do fluxo em caso de erro
-#                 # --------------------------------------------------
-#                 if erros_campos or erro_consistencia:
-#                     st.stop()
-
-#                 # ==================================================
-#                 # SALVAMENTO
-#                 # ==================================================
-#                 with area_notif_despesas.spinner(
-#                     "Salvando despesa..."
-#                 ):
-
-#                     novo_lancamento = {
-#                         "id_lanc_despesa": id_despesa,
-#                         "relatorio_numero": relatorio_numero,
-#                         "data_despesa": data_despesa.strftime("%d/%m/%Y"),
-#                         "descricao_despesa": descricao,
-#                         "fornecedor": fornecedor,
-#                         "cpf_cnpj": cpf_cnpj,
-#                         "valor_despesa": valor,
-#                         "status_despesa": "aberto",
-#                         "anexos": [],
-#                         "tipo_despesa": "CPNFin"
-#                     }
-
-#                     # --------------------------------------------------
-#                     # Upload dos anexos no Google Drive
-#                     # --------------------------------------------------
-#                     servico = obter_servico_drive()
-
-#                     pasta_projeto = obter_pasta_projeto(
-#                         servico,
-#                         projeto["codigo"],
-#                         projeto["sigla"]
-#                     )
-
-#                     pasta_financeiro = (
-#                         obter_pasta_relatos_financeiros(
-#                             servico,
-#                             pasta_projeto
-#                         )
-#                     )
-
-#                     pasta_lanc = obter_ou_criar_pasta(
-#                         servico,
-#                         id_despesa,
-#                         pasta_financeiro
-#                     )
-
-#                     for arq in anexos:
-
-#                         id_drive = enviar_arquivo_drive(
-#                             servico,
-#                             pasta_lanc,
-#                             arq
-#                         )
-
-#                         novo_lancamento["anexos"].append({
-#                             "nome_arquivo": arq.name,
-#                             "id_arquivo": id_drive
-#                         })
-
-#                     # --------------------------------------------------
-#                     # Inserção do lançamento no orçamento
-#                     # --------------------------------------------------
-#                     for d in projeto["financeiro"]["orcamento"]:
-
-#                         if (
-#                             d["categoria"] == categoria
-#                             and d["nome_despesa"] == nome_despesa
-#                         ):
-
-#                             d.setdefault(
-#                                 "lancamentos",
-#                                 []
-#                             ).append(novo_lancamento)
-
-#                             break
-
-#                     # --------------------------------------------------
-#                     # Persistência no MongoDB
-#                     # --------------------------------------------------
-#                     col_projetos.update_one(
-#                         {"codigo": projeto["codigo"]},
-#                         {
-#                             "$set": {
-#                                 "financeiro.orcamento":
-#                                 projeto["financeiro"]["orcamento"]
-#                             }
-#                         }
-#                     )
-
-#                 # --------------------------------------------------
-#                 # Reset do formulário
-#                 # --------------------------------------------------
-#                 st.session_state["form_despesa_key"] += 1
-
-#                 area_notif_despesas.success(
-#                     "Despesa registrada com sucesso!",
-#                     icon=":material/check:"
-#                 )
-
-#                 time.sleep(3)
-
-#                 st.rerun()
 
 
 # ==================================================
@@ -1835,7 +1036,6 @@ def render_registro_despesa(
             st.rerun()
 
 
-
 # ==========================================================
 # LOCALIZA UMA ATIVIDADE NO DOCUMENTO DO PROJETO
 # ==========================================================
@@ -1896,9 +1096,6 @@ def listar_relatos_atividade(atividade, relatorio_numero):
                         f"{f.get('descricao', '')} | "
                         f"{f.get('fotografo', '')}"
                     )
-
-
-
 
 
 # Função para salvar o relato
@@ -2224,13 +1421,9 @@ def garantir_permissao_publica_leitura(servico, pasta_id):
         raise
 
 
-
-
 # ==========================================================================================
 # DIÁLOGO: RELATAR ATIVIDADE
 # ==========================================================================================
-
-
 def renderizar_formulario_relato():
 
 # @st.dialog("Relatar atividade", width="medium")
@@ -2564,10 +1757,6 @@ def renderizar_formulario_relato():
     corpo_formulario()
 
 
-
-
-
-
 # Função para liberar o próximo relatório quando o relatório anterior for aprovado
 def liberar_proximo_relatorio(projeto_codigo, relatorios):
     """
@@ -2592,8 +1781,6 @@ def liberar_proximo_relatorio(projeto_codigo, relatorios):
             )
 
 
-
-
 # Renderiza as perguntas em modo visualização
 def renderizar_visualizacao(pergunta, resposta):
     """
@@ -2607,9 +1794,7 @@ def renderizar_visualizacao(pergunta, resposta):
     st.write("")
 
 
-
 # Atualiza o status do relatório no banco de dados, apoiando o segmented_control
-
 STATUS_UI_TO_DB = {
     "Modo edição": "modo_edicao",
     "Em análise": "em_analise",
@@ -2617,8 +1802,6 @@ STATUS_UI_TO_DB = {
 }
 
 STATUS_DB_TO_UI = {v: k for k, v in STATUS_UI_TO_DB.items()}
-
-
 
 
 def atualizar_status_relatorio(idx, relatorio_numero, projeto_codigo):
@@ -2775,11 +1958,6 @@ def atualizar_status_relatorio(idx, relatorio_numero, projeto_codigo):
         )
 
 
-
-
-
-
-
 def extrair_atividades(projeto):
     atividades = []
 
@@ -2797,7 +1975,6 @@ def extrair_atividades(projeto):
                 })
 
     return atividades
-
 
 
 # Função para formatar números no padrão brasileiro, com poucas casas decimais (dinamicamente)
@@ -2830,6 +2007,7 @@ def formatar_numero_br_dinamico(valor):
     # Converte para padrão pt-BR
     return texto.replace(",", "X").replace(".", ",").replace("X", ".")
 
+
 # Função para formatar números no padrão brasileiro na aba de Indicadores de Resultados
 def parse_numero_br(valor_str):
     """
@@ -2858,6 +2036,329 @@ def data_hoje_br():
     return datetime.datetime.now().strftime("%d/%m/%Y")
 
 
+def gerar_certificado_relatorio(relatorio, projeto):
+    """
+    Gera o certificado de aprovação do relatório.
+
+    Retorna:
+        BytesIO contendo o arquivo DOCX.
+    """
+
+    doc = Document()
+
+    # ------------------------------------------------------
+    # Cabeçalho
+    # ------------------------------------------------------
+    header = doc.sections[0].header
+    p_header = header.paragraphs[0]
+    p_header.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    run = p_header.add_run()
+    run.add_picture(
+        "images/logo_ISPN_2021.png",
+        width=Inches(2)
+    )
+
+    doc.add_paragraph()
+
+    titulo = doc.add_heading(
+        f"Certificado - Relatório {relatorio['numero']}",
+        level=1
+    )
+    titulo.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    doc.add_paragraph()
+
+    # ------------------------------------------------------
+    # Texto
+    # ------------------------------------------------------
+
+    texto = (
+        f"Certificamos que o Relatório {relatorio['numero']} do projeto "
+        f"{projeto['codigo']} - {projeto['nome_do_projeto']} "
+        f"foi analisado e aprovado pela equipe técnica do Fundo Ecos."
+    )
+
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+
+    run = p.add_run(texto)
+    run.font.name = "Arial"
+    run.font.size = Pt(12)
+
+    doc.add_paragraph()
+    doc.add_paragraph()
+
+    data = datetime.datetime.today().strftime("%d/%m/%Y")
+
+    p = doc.add_paragraph(f"Brasília, {data}")
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    doc.add_paragraph()
+
+    assinatura = doc.add_paragraph()
+    assinatura.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    assinatura.add_run("____________________________________\n")
+    assinatura.add_run("Rodrigo Almeida Noleto\n").bold = True
+    assinatura.add_run("Coordenador do Fundo Ecos\n")
+    assinatura.add_run(
+        "Instituto Sociedade, População e Natureza"
+    )
+
+    buffer = BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+
+    return buffer
+
+
+def gerar_relatorio_monitoramento_docx(
+    projeto,
+    relatorio
+):
+    """
+    Gera um documento Word contendo o relatório de monitoramento
+    preenchido para um determinado relatório.
+    """
+
+    # --------------------------------------------------
+    # Busca as perguntas de monitoramento do edital
+    # --------------------------------------------------
+    edital = col_editais.find_one(
+        {"codigo_edital": projeto["edital"]}
+    )
+
+    perguntas_monitoramento = sorted(
+        edital.get("perguntas_monitoramento", []),
+        key=lambda x: x.get("ordem", 0)
+    )
+    
+    doc = Document()
+
+    # ------------------------------------------------------------------
+    # Cabeçalho
+    # ------------------------------------------------------------------
+    header = doc.sections[0].header
+    p = header.paragraphs[0]
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    try:
+        p.add_run().add_picture(
+            "images/logo_ISPN_2021.png",
+            width=Inches(2)
+        )
+    except Exception:
+        # Caso a imagem não exista, continua normalmente.
+        pass
+
+    # ------------------------------------------------------------------
+    # Título
+    # ------------------------------------------------------------------
+    titulo = doc.add_heading(
+        "Relatório de Monitoramento",
+        level=1
+    )
+    titulo.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    doc.add_paragraph()
+
+    # ------------------------------------------------------------------
+    # Informações do projeto
+    # ------------------------------------------------------------------
+    p = doc.add_paragraph()
+
+    run = p.add_run("Projeto: ")
+    run.bold = True
+    run.font.name = "Arial"
+
+    p.add_run(
+        f"{projeto.get('codigo','')} - "
+        f"{projeto.get('titulo_projeto','')}"
+    )
+
+    p = doc.add_paragraph()
+
+    run = p.add_run("Relatório: ")
+    run.bold = True
+    run.font.name = "Arial"
+
+    p.add_run(str(relatorio.get("numero", "")))
+
+    if relatorio.get("data_aprovacao"):
+
+        p = doc.add_paragraph()
+
+        run = p.add_run("Data da aprovação: ")
+        run.bold = True
+        run.font.name = "Arial"
+
+        p.add_run(relatorio["data_aprovacao"])
+
+    if relatorio.get("aprovado_por"):
+
+        p = doc.add_paragraph()
+
+        run = p.add_run("Aprovado por: ")
+        run.bold = True
+        run.font.name = "Arial"
+
+        p.add_run(relatorio["aprovado_por"])
+        
+    # ------------------------------------------------------------------
+    # Separador
+    # ------------------------------------------------------------------
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    run = p.add_run("─" * 60)
+    run.bold = True
+
+    doc.add_paragraph()
+
+    # ------------------------------------------------------------------
+    # Recupera perguntas do edital
+    # ------------------------------------------------------------------
+
+    respostas = relatorio.get(
+        "respostas_monitoramento",
+        {}
+    )
+
+    # ------------------------------------------------------------------
+    # Percorre perguntas
+    # ------------------------------------------------------------------
+    for pergunta in perguntas_monitoramento:
+
+        tipo = pergunta.get("tipo")
+        texto = pergunta.get("pergunta")
+        chave = pergunta.get("id_pergunta")
+
+        resposta = (
+            respostas
+            .get(chave, {})
+            .get("resposta")
+        )
+
+        # --------------------------------------------------------------
+        # Título
+        # --------------------------------------------------------------
+        if tipo == "titulo":
+
+            doc.add_heading(texto, level=2)
+            continue
+
+        # --------------------------------------------------------------
+        # Subtítulo
+        # --------------------------------------------------------------
+        if tipo == "subtitulo":
+
+            doc.add_heading(texto, level=3)
+            continue
+
+        # --------------------------------------------------------------
+        # Parágrafo
+        # --------------------------------------------------------------
+        if tipo == "paragrafo":
+
+            doc.add_paragraph(texto)
+            continue
+
+        # --------------------------------------------------------------
+        # Pergunta
+        # --------------------------------------------------------------
+        p = doc.add_paragraph()
+
+        run = p.add_run(texto)
+        run.bold = True
+        run.font.name = "Arial"
+        run.font.size = Pt(11)
+
+        # --------------------------------------------------------------
+        # Upload
+        # --------------------------------------------------------------
+        if tipo == "upload_arquivo":
+
+            if resposta:
+
+                for arquivo in resposta:
+
+                    nome = arquivo.get("nome", "Arquivo")
+
+                    if arquivo.get("id"):
+                        link = gerar_link_drive(
+                            arquivo["id"]
+                        )
+
+                        p = doc.add_paragraph()
+
+                        run = p.add_run(f"• {nome}\n{link}")
+                        run.font.name = "Arial"
+                        run.font.size = Pt(11)
+
+                    else:
+
+                        p = doc.add_paragraph()
+
+                        run = p.add_run(f"• {nome}")
+                        run.font.name = "Arial"
+                        run.font.size = Pt(11)
+
+            else:
+
+                p = doc.add_paragraph()
+
+                run = p.add_run("Nenhum arquivo enviado.")
+                run.font.name = "Arial"
+                run.font.size = Pt(11)
+
+            doc.add_paragraph()
+
+            continue
+
+        # --------------------------------------------------------------
+        # Múltipla escolha
+        # --------------------------------------------------------------
+        if isinstance(resposta, list):
+
+            resposta = ", ".join(resposta)
+
+        # --------------------------------------------------------------
+        # Número
+        # --------------------------------------------------------------
+        elif tipo == "numero":
+
+            if resposta not in [None, ""]:
+
+                resposta = formatar_numero_br_dinamico(
+                    resposta
+                )
+
+        # --------------------------------------------------------------
+        # Resposta vazia
+        # --------------------------------------------------------------
+        if resposta in [None, ""]:
+
+            resposta = "—"
+
+        p = doc.add_paragraph()
+
+        run = p.add_run(str(resposta))
+        run.font.name = "Arial"
+        run.font.size = Pt(11)
+
+        p.paragraph_format.space_after = Pt(12)
+
+    # ------------------------------------------------------------------
+    # Salva em memória
+    # ------------------------------------------------------------------
+    buffer = BytesIO()
+
+    doc.save(buffer)
+
+    buffer.seek(0)
+
+    return buffer
 
 
 ###########################################################################################################
@@ -3039,8 +2540,10 @@ if tipo_usuario in ["beneficiario", "visitante"]:
         st.warning("Relatório em análise. Aguarde o retorno.", icon=":material/manage_search:")
 
     elif status_atual_db == "aprovado":
+        
         st.write("")
         st.success("Relatório aprovado", icon=":material/check:")
+        
 
 ###########################################################################################################
 # SINCRONIZA STATUS DO RELATÓRIO COM A UI
@@ -6976,6 +6479,23 @@ if step_selecionado == "Enviar":
     elif status_atual_db == "aprovado":
         #st.markdown("##### Relatório aprovado.")
         
+        relatorio_monitoramento = gerar_relatorio_monitoramento_docx(
+            projeto=projeto,
+            relatorio=relatorio,
+        )
+        with st.container(horizontal=True, horizontal_alignment="right"):
+
+            st.download_button(
+                "Baixar relatório de monitoramento",
+                data=relatorio_monitoramento,
+                file_name=f"Relatorio_Monitoramento_{relatorio_numero}_{projeto['codigo']}.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                icon=":material/description:",
+                type="tertiary"
+            )
+        
+        st.write("")
+        
         # ==================================================
         # RELATÓRIO DE MONITORAMENTO E DEVOLUTIVAS (SOMENTE LEITURA)
         # ==================================================
@@ -7442,6 +6962,44 @@ if step_selecionado == "Avaliação":
         r for r in projeto["relatorios"]
         if r["numero"] == relatorio_numero
     )
+    
+    # --------------------------------------------------
+    # CERTIFICADO DE APROVAÇÃO
+    # --------------------------------------------------
+    if relatorio_db.get("status_relatorio") == "aprovado":
+
+        certificado = gerar_certificado_relatorio(
+            relatorio=relatorio_db,
+            projeto=projeto
+        )
+        
+        relatorio_monitoramento = gerar_relatorio_monitoramento_docx(
+            projeto=projeto,
+            relatorio=relatorio_db,
+        )
+        
+        with st.container(horizontal=True, horizontal_alignment="right"):
+
+            st.download_button(
+                "Baixar relatório de monitoramento",
+                data=relatorio_monitoramento,
+                file_name=f"Relatorio_Monitoramento_{relatorio_numero}_{projeto['codigo']}.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                icon=":material/description:",
+                type="tertiary"
+            )
+
+            st.download_button(
+                "Baixar certificado",
+                data=certificado,
+                file_name=f"Certificado_Relatorio_{relatorio_numero}_{projeto['codigo']}.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                icon=":material/download:",
+                type="tertiary"
+            )
+
+        st.write("")
+        st.write("")
     
     edital = col_editais.find_one(
         {"codigo_edital": projeto["edital"]}
