@@ -349,7 +349,7 @@ if st.button(":material/save: Convidar pessoas", type="primary"):
 
             resultado = col_pessoas.insert_many(registros_validos)
 
-            st.success(f"{len(resultado.inserted_ids)} pessoas cadastradas com sucesso!")
+            #st.success(f"{len(resultado.inserted_ids)} pessoas cadastradas com sucesso!")
 
             # -------------------------------------------------------------------------------------
             # ENVIO DE E-MAILS
@@ -426,7 +426,7 @@ if st.button(":material/save: Convidar pessoas", type="primary"):
 
             status.empty()
 
-            st.success("Convites enviados com sucesso!")
+            st.success(f"{len(resultado.inserted_ids)} Convites enviados com sucesso!")
 
             time.sleep(3)
             st.rerun()
