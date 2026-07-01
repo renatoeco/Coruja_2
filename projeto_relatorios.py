@@ -391,7 +391,7 @@ def gerar_email_relatorio_aprovado(
 
             <p>
                 Atenciosamente,<br>
-                <strong>Sistema de Gestão de Projetos do IEB</strong>
+                <strong>Sistema de Gestão de Projetos do Fundo Ecos</strong>
             </p>
         </div>
 
@@ -477,7 +477,7 @@ def gerar_email_relatorio_reprovado(
             </p>
 
             <p>
-                Acesse o sistema Veredas para ver em detalhes os ajustes necessários no Relatório.
+                Acesse o sistema Coruja 2 para ver em detalhes os ajustes necessários no Relatório.
             </p>
 
             <p>
@@ -486,7 +486,7 @@ def gerar_email_relatorio_reprovado(
 
             <p>
                 Atenciosamente,<br>
-                <strong>Sistema Veredas</strong>
+                <strong>Sistema Coruja 2</strong>
             </p>
         </div>
 
@@ -7450,10 +7450,13 @@ if step_selecionado == "Avaliação":
                 }
 
                 # E-mails dos beneficiários vinculados ao projeto
-                beneficiarios = db["pessoas"].find({
+                beneficiarios = col_pessoas.find({
                     "tipo_usuario": "beneficiario",
                     "status": "ativo",
-                    "projetos": projeto["codigo"]
+                    "$or": [
+                        {"projetos": projeto["_id"]},
+                        {"projetos": projeto["codigo"]}
+                    ]
                 })
 
                 for beneficiario in beneficiarios:
@@ -7573,10 +7576,13 @@ if step_selecionado == "Avaliação":
                 }
 
                 # E-mails dos beneficiários vinculados ao projeto
-                beneficiarios = db["pessoas"].find({
+                beneficiarios = col_pessoas.find({
                     "tipo_usuario": "beneficiario",
                     "status": "ativo",
-                    "projetos": projeto["codigo"]
+                    "$or": [
+                        {"projetos": projeto["_id"]},
+                        {"projetos": projeto["codigo"]}
+                    ]
                 })
 
                 for beneficiario in beneficiarios:
@@ -7596,13 +7602,13 @@ if step_selecionado == "Avaliação":
                         organizacao=nome_org,
                         logo_url=logo_cepf
                     )
-
+                    
                     enviar_email(
                         email_html,
                         emails_destino,
                         f"Relatório {relatorio_numero} aprovado"
                     )
-
+                    
                 st.success("Relatório aprovado com sucesso.", icon=":material/check:")
                 time.sleep(3)
 
