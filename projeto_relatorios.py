@@ -807,6 +807,14 @@ def render_registro_despesa(
                 format="%.2f",
                 key=f"desp_valor_{tipo_salvo}_{form_key}"
             )
+            
+        # --------------------------------------------------
+        # DESCRIÇÃO
+        # --------------------------------------------------
+        descricao = st.text_area(
+            "Descrição da despesa *",
+            key=f"desp_desc_{tipo_salvo}_{form_key}"
+        )
 
         # ==================================================
         # FORNECEDOR / CPF
@@ -870,6 +878,9 @@ def render_registro_despesa(
 
             if not valor or valor <= 0:
                 erros_campos.append("Valor (reais)")
+                
+            if not descricao or not descricao.strip():
+                erros_campos.append("Descrição da despesa")
 
             # --------------------------------------------------
             # FORNECEDOR
@@ -949,6 +960,7 @@ def render_registro_despesa(
                     "id_lanc_despesa": id_despesa,
                     "relatorio_numero": relatorio_numero,
                     "data_despesa": data_despesa.strftime("%d/%m/%Y"),
+                    "descricao_despesa": descricao,
                     "fornecedor": fornecedor,
                     "cpf_cnpj": cpf_cnpj,
                     "valor_despesa": valor,
@@ -3747,7 +3759,7 @@ if step_selecionado == "Despesas":
                         # ==================================================
                         if not editando:
 
-                            st.write(f"**{id_despesa.upper()}**")
+                            st.write(f"**{id_despesa.upper()}:** {lanc.get('descricao_despesa')}")
 
                             col1, col2 = st.columns(2)
 
@@ -3909,7 +3921,12 @@ if step_selecionado == "Despesas":
                                     format="%.2f",
                                     key=f"edit_valor_{id_despesa}"
                                 )
-
+                                
+                            descricao = st.text_area(
+                                "Descrição da despesa *",
+                                value=lanc.get("descricao_despesa", ""),
+                                key=f"edit_desc_{id_despesa}"
+                            )
 
                             col1, col2 = st.columns([2, 1])
 
@@ -4003,6 +4020,9 @@ if step_selecionado == "Despesas":
 
                                         if not valor or valor <= 0:
                                             erros_campos.append("Valor total (R$)")
+                                            
+                                        if not descricao or not descricao.strip():
+                                            erros_campos.append("Descrição da despesa")
 
                                         if not fornecedor or not fornecedor.strip():
                                             erros_campos.append("Fornecedor")
@@ -4060,6 +4080,7 @@ if step_selecionado == "Despesas":
 
                                             lanc.update({
                                                 "data_despesa": data.strftime("%d/%m/%Y"),
+                                                "descricao_despesa": descricao,
                                                 "fornecedor": fornecedor,
                                                 "cpf_cnpj": cpf_cnpj,
                                                 "valor_despesa": valor
