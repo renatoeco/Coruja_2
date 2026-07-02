@@ -265,92 +265,201 @@ st.logo("images/logo_fundo_ecos.png", size='large')
 st.header('Equipe')
 
 # st.write('')
-st.divider()
+#st.divider()
 
+aba_ativos, aba_inativos = st.tabs([":material/person: Ativos", ":material/block: Inativos"])
 
-# Separando só a equipe e administradores
-if "Tipo de usuário" in df_pessoas.columns:
+with aba_ativos:
+
+    # Filtra apenas usuários da equipe e administradores
+    # com status igual a "ativo"
     df_equipe = df_pessoas[
-        df_pessoas["Tipo de usuário"].isin(["admin", "equipe"])
+        (
+            df_pessoas["Tipo de usuário"].isin(["admin", "equipe"])
+        )
+        &
+        (
+            df_pessoas["Status"] == "ativo"
+        )
     ]
-else:
-    df_equipe = pd.DataFrame()
-    st.warning("Coluna 'Tipo de usuário' não encontrada.")
 
 
-st.write('')
 
-dist_colunas = [3, 4, 3, 2, 3, 2, 1]
+    st.write('')
 
-# Colunas
-col1, col2, col3, col4, col5, col6, col7 = st.columns(dist_colunas)
+    dist_colunas = [3, 4, 3, 2, 3, 2, 1]
 
-# Cabeçalho da lista
-col1.write('**Nome**')
-col2.write('**Projetos**')
-col3.write('**E-mail**')
-col4.write('**Telefone**')
-col5.write('**Tipo de usuário**')
-col6.write('**Status**')
-col7.write('')
-
-st.write('')
-
-# Pra cada linha, criar colunas para os dados
-for _, row in df_equipe.iterrows():
+    # Colunas
     col1, col2, col3, col4, col5, col6, col7 = st.columns(dist_colunas)
 
-    # NOME -----------------
-    col1.write(row["Nome"])
+    # Cabeçalho da lista
+    col1.write('**Nome**')
+    col2.write('**Projetos**')
+    col3.write('**E-mail**')
+    col4.write('**Telefone**')
+    col5.write('**Tipo de usuário**')
+    col6.write('**Status**')
+    col7.write('')
 
-    # PROJETOS -----------------
+    st.write('')
 
-    # Tratando a coluna projetos, que pode ter múltiplos valores------
-    projetos = row.get("Projetos", [])
+    # Pra cada linha, criar colunas para os dados
+    for _, row in df_equipe.iterrows():
+        col1, col2, col3, col4, col5, col6, col7 = st.columns(dist_colunas)
 
-    if isinstance(projetos, str):
-        projetos = [projetos]
-    elif not isinstance(projetos, list):
-        projetos = []
+        # NOME -----------------
+        col1.write(row["Nome"])
 
-    # Converte IDs em códigos
-    projetos_convertidos = []
+        # PROJETOS -----------------
 
-    for projeto in projetos:
+        # Tratando a coluna projetos, que pode ter múltiplos valores------
+        projetos = row.get("Projetos", [])
+        # Garante que 'projetos' seja uma lista
+        if isinstance(projetos, str):
+            projetos = [projetos]
+        elif not isinstance(projetos, list):
+            projetos = []
+            
+        # Converte IDs em códigos
+        projetos_convertidos = []
 
-        # Formato novo (ID)
-        if projeto in mapa_id_para_codigo:
-            projetos_convertidos.append(mapa_id_para_codigo[projeto])
+        for projeto in projetos:
 
-        # Formato antigo (código)
+            # Formato novo (ID)
+            if projeto in mapa_id_para_codigo:
+                projetos_convertidos.append(mapa_id_para_codigo[projeto])
+
+            # Formato antigo (código)
+            else:
+                projetos_convertidos.append(projeto)
+
+        projetos = projetos_convertidos    
+        
+        # Exibe de forma amigável
+        if len(projetos) == 0:
+            col2.write("")
+        elif len(projetos) == 1:
+            col2.write(projetos[0])
         else:
-            projetos_convertidos.append(projeto)
+            col2.write(", ".join(projetos))
+        
 
-    projetos = projetos_convertidos
+        # E-MAIL -----------------
 
-    if len(projetos) == 0:
-        col2.write("")
-    elif len(projetos) == 1:
-        col2.write(projetos[0])
-    else:
-        col2.write(", ".join(projetos))
+        col3.write(row["E-mail"])
+
+        # TELEFONE -----------------
+        col4.write(row["Telefone"])
+
+        # TIPO DE USUÁRIO -----------------
+        tipo_usuario = row.get("Tipo de usuário", "").strip()
+
+        col5.write(tipo_usuario)
+
+        # STATUS -----------------       
+        col6.write(row["Status"])
+
+        # BOTÃO DE EDITAR -----------------
+        col7.button(":material/edit:", key=row["_id"], on_click=editar_pessoa, args=(row["_id"],))
+        
+
+with aba_inativos:
+
+    st.write('')
+
+    st.markdown(
+        "<span style='color:red;'>Usuários inativos estão impedidos de acessar o sistema.</span>",
+        unsafe_allow_html=True
+    )
+
+    st.write('')
+
+    # Filtra apenas usuários da equipe e administradores
+    # com status igual a "inativo"
+    df_equipe_inativos = df_pessoas[
+        (
+            df_pessoas["Tipo de usuário"].isin(["admin", "equipe"])
+        )
+        &
+        (
+            df_pessoas["Status"] == "inativo"
+        )
+    ]
+
+    dist_colunas = [3, 4, 3, 2, 3, 2, 1]
+
+    # Colunas
+    col1, col2, col3, col4, col5, col6, col7 = st.columns(dist_colunas)
     
+    # Cabeçalho da lista
+    col1.write('**Nome**')
+    col2.write('**Projetos**')
+    col3.write('**E-mail**')
+    col4.write('**Telefone**')
+    col5.write('**Tipo de usuário**')
+    col6.write('**Status**')
+    col7.write('')
 
-    # E-MAIL -----------------
+    st.write('')
+    
+    # Pra cada linha, criar colunas para os dados
+    for _, row in df_equipe_inativos.iterrows():
+        col1, col2, col3, col4, col5, col6, col7 = st.columns(dist_colunas)
+        
+        # NOME -----------------
+        col1.write(row["Nome"])
+        
+        # PROJETOS -----------------
+        
+        # Tratando a coluna projetos, que pode ter múltiplos valores
+        projetos = row.get("Projetos", [])
 
-    col3.write(row["E-mail"])
+        # Garante que 'projetos' seja uma lista
+        if isinstance(projetos, str):
+            projetos = [projetos]
+        elif not isinstance(projetos, list):
+            projetos = []
+            
+        # Converte IDs em códigos
+        projetos_convertidos = []
 
-    # TELEFONE -----------------
-    col4.write(row["Telefone"])
+        for projeto in projetos:
 
-    # TIPO DE USUÁRIO -----------------
-    tipo_usuario = row.get("Tipo de usuário", "").strip()
+            # Formato novo (ID)
+            if projeto in mapa_id_para_codigo:
+                projetos_convertidos.append(mapa_id_para_codigo[projeto])
 
-    col5.write(tipo_usuario)
+            # Formato antigo (código)
+            else:
+                projetos_convertidos.append(projeto)
 
-    # STATUS -----------------       
-    col6.write(row["Status"])
+        projetos = projetos_convertidos
 
-    # BOTÃO DE EDITAR -----------------
-    col7.button(":material/edit:", key=row["_id"], on_click=editar_pessoa, args=(row["_id"],))
-
+        # Exibe de forma amigável
+        if len(projetos) == 0:
+            col2.write("")
+        elif len(projetos) == 1:
+            col2.write(projetos[0])
+        else:
+            col2.write(", ".join(projetos))
+            
+        # E-MAIL -----------------
+        col3.write(row["E-mail"])
+        
+        # TELEFONE -----------------
+        col4.write(row["Telefone"])
+        
+        # TIPO DE USUÁRIO -----------------
+        tipo_usuario = row.get("Tipo de usuário", "").strip()
+        col5.write(tipo_usuario)
+        
+        # STATUS -----------------
+        col6.write(row["Status"])
+        
+        # BOTÃO DE EDITAR -----------------
+        col7.button(
+            ":material/edit:",
+            key=f'inativo_{row["_id"]}',
+            on_click=editar_pessoa,
+            args=(row["_id"],)
+        )
