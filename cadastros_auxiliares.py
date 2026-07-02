@@ -45,7 +45,8 @@ col_kbas = db["kbas"]
 # Editais
 col_editais = db["editais"]
 
-
+# Projetos
+col_projetos = db["projetos"]
 
 
 ###########################################################################################################
@@ -211,6 +212,8 @@ def formulario_nova_pergunta(perguntas, edital_selecionado, campo_perguntas="per
             "tipo": mapa_tipo[tipo],
             "ordem": len(perguntas) + 1
         }
+        
+        id_nova_pergunta = nova_pergunta["id_pergunta"]
 
         # Texto obrigatório
         nova_pergunta["pergunta"] = pergunta.strip()
@@ -234,6 +237,23 @@ def formulario_nova_pergunta(perguntas, edital_selecionado, campo_perguntas="per
             {"codigo_edital": edital_selecionado},
             {"$push": {campo_perguntas: nova_pergunta}}
         )
+        
+        # Adiciona automaticamente a nova pergunta à lista de perguntas
+        # excluídas de todos os projetos deste edital.
+        # Dessa forma, a pergunta só aparecerá para um projeto quando
+        # ela for explicitamente habilitada.
+        if campo_perguntas == "perguntas_relatorio":
+
+            col_projetos.update_many(
+                {
+                    "edital": edital_selecionado
+                },
+                {
+                    "$addToSet": {
+                        "perguntas_relat_excluidas": id_nova_pergunta
+                    }
+                }
+            )
 
 
         # Feedback

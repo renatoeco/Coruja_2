@@ -184,7 +184,25 @@ def email_valido(email):
     return re.match(padrao, email) is not None
 
 
+def salvar_perguntas_relatorio(perguntas, projeto_id):
 
+    perguntas_excluidas = []
+
+    for pergunta in perguntas:
+
+        id_pergunta = str(pergunta["id_pergunta"])
+
+        if not st.session_state[f"pergunta_relatorio_{id_pergunta}"]:
+            perguntas_excluidas.append(id_pergunta)
+
+    col_projetos.update_one(
+        {"_id": projeto_id},
+        {
+            "$set": {
+                "perguntas_relat_excluidas": perguntas_excluidas
+            }
+        }
+    )
 
 
 
@@ -2431,8 +2449,32 @@ else:
             perguntas_edital,
             key=lambda x: x.get("ordem", 9999)
         )
+        
+        # --------------------------------------------------
+        # INICIALIZA O CAMPO NO PROJETO
+        # --------------------------------------------------
 
-        perguntas_excluidas_novas = []
+        if "perguntas_relat_excluidas" not in projeto:
+
+            perguntas_excluidas = [
+                p["id_pergunta"]
+                for p in perguntas_edital
+            ]
+
+            col_projetos.update_one(
+                {"codigo": projeto["codigo"]},
+                {
+                    "$set": {
+                        "perguntas_relat_excluidas": perguntas_excluidas
+                    }
+                }
+            )
+
+            projeto["perguntas_relat_excluidas"] = perguntas_excluidas
+
+        else:
+
+            perguntas_excluidas = projeto["perguntas_relat_excluidas"]
 
         st.caption(
             "**Marque as perguntas que devem aparecer no relatório.**"
@@ -2444,32 +2486,16 @@ else:
 
         for pergunta in perguntas_edital:
 
-            id_pergunta = pergunta.get("id_pergunta")
+            id_pergunta = pergunta["id_pergunta"]
 
-            mostrar = st.checkbox(
-                pergunta.get("pergunta", ""),
+            st.checkbox(
+                pergunta["pergunta"],
                 value=id_pergunta not in perguntas_excluidas,
-                key=f"pergunta_relatorio_{id_pergunta}"
+                key=f"pergunta_relatorio_{id_pergunta}",
+                on_change=salvar_perguntas_relatorio,
+                args=(perguntas_edital, ObjectId(projeto["_id"]))
             )
 
-            # Se NÃO estiver marcada, salva na lista de excluídas
-            if not mostrar:
-                perguntas_excluidas_novas.append(id_pergunta)
-
-        # --------------------------------------------------
-        # SALVA AUTOMATICAMENTE
-        # --------------------------------------------------
-
-        if set(perguntas_excluidas_novas) != set(perguntas_excluidas):
-
-            col_projetos.update_one(
-                {"_id": projeto["_id"]},
-                {
-                    "$set": {
-                        "perguntas_relat_excluidas": perguntas_excluidas_novas
-                    }
-                }
-            )
 
 
 
