@@ -1418,6 +1418,10 @@ def dialog_relatos_fin():
                     unsafe_allow_html=True
                 )
 
+            # ==================================================
+            # DESCRIÇÃO
+            # ==================================================
+            st.write(lanc.get("descricao_despesa", ""))
 
             # Status do lançamento
             st.write(f"**Status:** {lanc.get('status_despesa', '')}")
@@ -1553,6 +1557,11 @@ def dialog_contrapartida_fin():
                     """,
                     unsafe_allow_html=True
                 )
+                
+            # ==================================================
+            # DESCRIÇÃO
+            # ==================================================
+            st.write(lanc.get("descricao_despesa", ""))
 
             st.write(f"**Status:** {lanc.get('status_despesa', '')}")
 
@@ -1698,6 +1707,11 @@ def dialog_contrapartida_nao_fin():
                     """,
                     unsafe_allow_html=True
                 )
+                
+            # ==================================================
+            # DESCRIÇÃO
+            # ==================================================
+            st.write(lanc.get("descricao_despesa", ""))
 
             st.write(f"**Status:** {lanc.get('status_despesa', '')}")
 
