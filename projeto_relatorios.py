@@ -486,7 +486,7 @@ def gerar_email_relatorio_reprovado(
 
             <p>
                 Atenciosamente,<br>
-                <strong>Sistema Coruja 2</strong>
+                <strong>Sistema de Gestão de Projetos do Fundo Ecos</strong>
             </p>
         </div>
 
