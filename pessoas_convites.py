@@ -42,6 +42,19 @@ if "_id" in df_projetos.columns:
 else:
     st.warning("Projetos sem campo '_id'.")
 
+# =============================================================================
+# MAPAS DE COMPATIBILIDADE ENTRE CÓDIGO E OBJECTID
+# =============================================================================
+
+mapa_codigo_para_id = dict(
+    zip(df_projetos["codigo"], df_projetos["_id"])
+)
+
+mapa_id_para_codigo = dict(
+    zip(df_projetos["_id"], df_projetos["codigo"])
+)
+
+codigos_validos = set(df_projetos["codigo"].astype(str))
 
 # PESSOAS
 
@@ -69,7 +82,6 @@ else:
 df_pendentes = df_pendentes.rename(columns={
     "nome_completo": "Nome",
     "tipo_usuario": "Tipo de usuário",
-    "tipo_beneficiario": "Tipo de beneficiário",
     "e_mail": "E-mail",
     "telefone": "Telefone",
     "status": "Status",
@@ -88,6 +100,20 @@ df_pendentes = df_pendentes.sort_values(by="Nome")
 # Funções
 ###########################################################################################################
 
+
+def converter_para_codigo(valor):
+
+    valor = str(valor)
+
+    # Nova estrutura (ObjectId)
+    if valor in mapa_id_para_codigo:
+        return mapa_id_para_codigo[valor]
+
+    # Estrutura antiga (código)
+    if valor in codigos_validos:
+        return valor
+
+    return None
 
 # Diálogo para editar uma pessoa
 @st.dialog("Editar Pessoa", width="medium")
@@ -116,17 +142,6 @@ def editar_pessoa(_id: str):
         else 0
     )
 
-    # Tipo de beneficiário — só aparece se tipo_usuario == beneficiario
-    tipo_beneficiario = None
-    if tipo_usuario == "beneficiario":
-        tipo_beneficiario = st.selectbox(
-            "Tipo de beneficiário",
-            options=["técnico", "financeiro"],
-            index=["técnico", "financeiro"].index(pessoa.get("tipo_beneficiario", "técnico"))
-            if pessoa.get("tipo_beneficiario") in ["técnico", "financeiro"]
-            else 0
-        )
-    
     if "codigo" in df_projetos.columns:
         opcoes_projetos = df_projetos["codigo"].dropna().astype(str).tolist()
     else:
@@ -134,10 +149,24 @@ def editar_pessoa(_id: str):
         st.warning("Projetos sem coluna 'codigo'.")
 
     # Projetos
+    projetos_salvos = pessoa.get("projetos", [])
+
+    if not isinstance(projetos_salvos, list):
+        projetos_salvos = []
+
+    projetos_default = [
+        codigo
+        for codigo in (
+            converter_para_codigo(p)
+            for p in projetos_salvos
+        )
+        if codigo is not None
+    ]
+
     projetos = st.multiselect(
         "Projetos",
         options=opcoes_projetos,
-        default=pessoa.get("projetos", []),
+        default=projetos_default,
     )
 
     st.write("")
@@ -145,21 +174,19 @@ def editar_pessoa(_id: str):
     # Botão de salvar
     if st.button("Salvar alterações", icon=":material/save:"):
         # Documento base
+        projetos_ids = [
+            ObjectId(mapa_codigo_para_id[codigo])
+            for codigo in projetos
+            if codigo in mapa_codigo_para_id
+        ]
+
         update_data = {
             "nome_completo": nome,
             "e_mail": email,
             "telefone": telefone,
             "tipo_usuario": tipo_usuario,
-            # "status": status,
-            "projetos": projetos
+            "projetos": projetos_ids
         }
-
-        # Adiciona tipo_beneficiario apenas se aplicável
-        if tipo_beneficiario:
-            update_data["tipo_beneficiario"] = tipo_beneficiario
-        else:
-            # Remove o campo se existir no documento anterior
-            col_pessoas.update_one({"_id": ObjectId(_id)}, {"$unset": {"tipo_beneficiario": ""}})
 
         # Atualiza o registro
         col_pessoas.update_one({"_id": ObjectId(_id)}, {"$set": update_data})
@@ -212,18 +239,20 @@ for _, row in df_pendentes.iterrows():
 
     # Tratando a coluna projetos, que pode ter múltiplos valores------
     projetos = row.get("Projetos", [])
-    # Garante que 'projetos' seja uma lista
-    if isinstance(projetos, str):
-        projetos = [projetos]
-    elif not isinstance(projetos, list):
+
+    if not isinstance(projetos, list):
         projetos = []
-    # Exibe de forma amigável
-    if len(projetos) == 0:
-        col2.write("")
-    elif len(projetos) == 1:
-        col2.write(projetos[0])
-    else:
-        col2.write(", ".join(projetos))
+
+    codigos = [
+        codigo
+        for codigo in (
+            converter_para_codigo(p)
+            for p in projetos
+        )
+        if codigo is not None
+    ]
+
+    col2.write(", ".join(codigos))
     
 
     # E-MAIL -----------------
@@ -237,16 +266,8 @@ for _, row in df_pendentes.iterrows():
     # TIPO DE USUÁRIO -----------------
     tipo_usuario = str(row.get("Tipo de usuário", "") or "").strip()
 
-    # Só tenta pegar tipo_beneficiario se for beneficiario
-    tipo_beneficiario = ""
     if tipo_usuario.lower() == "beneficiario":
-        tipo_beneficiario = str(row.get("Tipo de beneficiário", "") or "").strip()
-
-    # Se for beneficiário, concatena o tipo_beneficiario
-    if tipo_usuario.lower() == "beneficiario" and tipo_beneficiario:
-        tipo_exibido = f"{tipo_usuario} ({tipo_beneficiario})"
-    else:
-        tipo_exibido = tipo_usuario
+        tipo_exibido = f"{tipo_usuario}"
 
     col5.write(tipo_exibido)
 
