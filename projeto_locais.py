@@ -1241,7 +1241,7 @@ with aba_mapas:
                 ).add_to(mapa)
 
             # Renderiza o mapa ocupando toda a largura
-            st_folium(mapa, width="100%", height=600)
+            st_folium(mapa, width="100%", height=600, returned_objects=[])
 
 
 

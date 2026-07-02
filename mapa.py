@@ -249,7 +249,7 @@ else:
             icon=folium.Icon(color="red", prefix="fa"),
         ).add_to(mapa)
 
-    st_folium(mapa, width="100%", height=600)
+    st_folium(mapa, width="100%", height=600, returned_objects=[])
 
 
 
