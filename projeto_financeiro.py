@@ -4,6 +4,7 @@ import time
 import datetime
 import os
 import uuid
+from bson import ObjectId
 
 import streamlit_shadcn_ui as ui
 
@@ -126,24 +127,35 @@ logo_cepf = "https://fundoecos.org.br/wp-content/uploads/2025/05/Logo-Fundo-Ecos
 
 
 
-codigo_projeto_atual = st.session_state.get("projeto_atual")
+id_projeto_atual = st.session_state.get("projeto_atual")
 
-if not codigo_projeto_atual:
+if not id_projeto_atual:
     st.error("Nenhum projeto selecionado.")
     st.stop()
 
-# Capturando o projeto atual no bd
+id_projeto_atual = ObjectId(id_projeto_atual)
+
+if not id_projeto_atual:
+    st.error("Nenhum projeto selecionado.")
+    st.stop()
+    
+
 df_projeto = pd.DataFrame(
     list(
         col_projetos.find(
-            {"codigo": codigo_projeto_atual}
+            {"_id": id_projeto_atual}
         )
     )
 )
 
-if df_projeto.empty:
-    st.error("Projeto não encontrado no banco de dados.")
-    st.stop()
+projeto = col_projetos.find_one(
+    {"_id": id_projeto_atual},
+    {
+        "codigo": 1,
+        "sigla": 1,
+        "locais": 1
+    }
+) or {}
 
 
 # Transformar o id em string
@@ -894,7 +906,7 @@ def enviar_email_remanejamento(
 # ==================================================
 def efetivar_remanejamento(
     col_projetos,
-    codigo_projeto_atual,
+    id_projeto_atual,
     financeiro,
     reduzidas,
     aumentadas
@@ -930,7 +942,7 @@ def efetivar_remanejamento(
 
     # salva apenas o orçamento atualizado
     col_projetos.update_one(
-        {"codigo": codigo_projeto_atual},
+        {"_id": id_projeto_atual},
         {
             "$set": {
                 "financeiro.orcamento": orcamento_atual
@@ -2058,7 +2070,7 @@ with cron_desemb:
                     # -----------------------------------
                     if salvar:
                         col_projetos.update_one(
-                            {"codigo": codigo_projeto_atual},
+                            {"_id": id_projeto_atual},
                             {
                                 "$set": {
                                     "financeiro.valor_total": float(valor_total),
@@ -2386,7 +2398,7 @@ with cron_desemb:
 
 
                 col_projetos.update_one(
-                    {"codigo": codigo_projeto_atual},
+                    {"_id": id_projeto_atual},
                     {
                         "$set": {
                             "financeiro.parcelas": parcelas_final
@@ -2401,7 +2413,7 @@ with cron_desemb:
 
 
                 # Atualizar relatórios vinculados
-                atualizar_relatorios(col_projetos, codigo_projeto_atual)
+                atualizar_relatorios(col_projetos, id_projeto_atual)
 
                 st.success("Parcelas salvas com sucesso!", icon=":material/check:")
                 time.sleep(3)
@@ -2534,7 +2546,7 @@ with cron_desemb:
                         )
 
                     col_projetos.update_one(
-                        {"codigo": codigo_projeto_atual},
+                        {"_id": id_projeto_atual},
                         {
                             "$set": {
                                 "relatorios": relatorios_salvar
@@ -3940,7 +3952,7 @@ with orcamento:
             # Persistência
             # -----------------------------------
             col_projetos.update_one(
-                {"codigo": codigo_projeto_atual},
+                {"_id": id_projeto_atual},
                 {"$set": {"financeiro.orcamento": novo_orcamento}}
             )
 
@@ -4136,7 +4148,7 @@ if usuario_interno:
                             # -----------------------------------
                             col_projetos.update_one(
                                 {
-                                    "codigo": codigo_projeto_atual,
+                                    "codigo": id_projeto_atual,
                                     "financeiro.parcelas.numero": numero
                                 },
                                 {
@@ -4589,7 +4601,7 @@ with remanejamentos:
                             # Salvar no banco
                             # --------------------------------------
                             col_projetos.update_one(
-                                {"codigo": codigo_projeto_atual},
+                                {"_id": id_projeto_atual},
                                 {
                                     "$push": {
                                         "financeiro.remanejamentos_financeiros": registro
@@ -4895,7 +4907,7 @@ with remanejamentos:
                             width="stretch"
                         ):
                             aprovar_remanejamento(
-                                codigo_projeto_atual,
+                                id_projeto_atual,
                                 idx,
                                 item
                             )
@@ -4948,7 +4960,7 @@ with remanejamentos:
                                     log_recusa = f"Recusado por {nome} em {data}"
 
                                     col_projetos.update_one(
-                                        {"codigo": codigo_projeto_atual},
+                                        {"_id": id_projeto_atual},
                                         {
                                             "$set": {
                                                 f"financeiro.remanejamentos_financeiros.{idx}.status_remanejamento": "recusado",
@@ -4958,7 +4970,7 @@ with remanejamentos:
                                         }
                                     )
 
-                                    projeto_atualizado = col_projetos.find_one({"codigo": codigo_projeto_atual})
+                                    projeto_atualizado = col_projetos.find_one({"_id": id_projeto_atual})
 
                                     enviar_email_remanejamento_recusado(
                                         projeto_atualizado,

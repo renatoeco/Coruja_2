@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import re
+from bson import ObjectId
 
 from funcoes_auxiliares import (
     conectar_mongo_coruja,
@@ -91,19 +92,36 @@ def coletar_fotos_projeto(projeto):
 # CARREGAMENTO DO PROJETO
 ###########################################################################################################
 
-codigo_projeto_atual = st.session_state.get("projeto_atual")
+# Capturando o código do projeto e os dados do projeto
+id_projeto_atual = st.session_state.get("projeto_atual")
 
-if not codigo_projeto_atual:
+if not id_projeto_atual:
     st.error("Nenhum projeto selecionado.")
     st.stop()
 
+id_projeto_atual = ObjectId(id_projeto_atual)
+
+if not id_projeto_atual:
+    st.error("Nenhum projeto selecionado.")
+    st.stop()
+    
+
 df_projeto = pd.DataFrame(
-    list(col_projetos.find({"codigo": codigo_projeto_atual}))
+    list(
+        col_projetos.find(
+            {"_id": id_projeto_atual}
+        )
+    )
 )
 
-if df_projeto.empty:
-    st.error("Projeto não encontrado.")
-    st.stop()
+projeto = col_projetos.find_one(
+    {"_id": id_projeto_atual},
+    {
+        "codigo": 1,
+        "sigla": 1,
+        "locais": 1
+    }
+) or {}
 
 projeto = df_projeto.iloc[0].to_dict()
 

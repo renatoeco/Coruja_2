@@ -474,9 +474,9 @@ for index, projeto in df_filtrado.iterrows():
 
 
     # Botão “Ver projeto”
-    if cols[5].button("Ver projeto", key=f"ver_{projeto['codigo']}"):
+    if cols[5].button("Ver projeto", key=f"ver_{projeto['_id']}"):
         st.session_state.pagina_atual = "ver_projeto"
-        st.session_state.projeto_atual = projeto["codigo"]
+        st.session_state.projeto_atual = str(projeto["_id"])
         st.rerun()
 
 

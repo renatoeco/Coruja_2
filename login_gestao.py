@@ -107,10 +107,10 @@ def enviar_email(destinatario, codigo):
         st.error(f"Erro ao enviar e-mail: {e}")
         return False
 
-def converter_projetos_para_codigo(lista_projetos):
+def converter_projetos_para_id(lista_projetos):
     """
-    Recebe uma lista contendo ObjectIds (string) ou códigos
-    e devolve sempre uma lista de códigos.
+    Recebe uma lista contendo códigos ou ObjectIds e
+    devolve sempre uma lista de ObjectIds (string).
     """
 
     if not isinstance(lista_projetos, list):
@@ -122,15 +122,17 @@ def converter_projetos_para_codigo(lista_projetos):
 
         projeto = str(projeto)
 
-        # Nova estrutura
+        # Já está no formato novo
         if projeto in mapa_id_para_codigo:
-            resultado.append(
-                mapa_id_para_codigo[projeto]
-            )
-
-        # Estrutura antiga
-        elif projeto in codigos_validos:
             resultado.append(projeto)
+
+        # Está no formato antigo (código)
+        elif projeto in codigos_validos:
+
+            for p in projetos_db:
+                if p["codigo"] == projeto:
+                    resultado.append(str(p["_id"]))
+                    break
 
     return resultado
 
@@ -316,7 +318,7 @@ def recuperar_senha_dialog():
 
                                 # mantém compatibilidade com outras partes do sistema
                                 st.session_state["email"] = usuario.get("e_mail", "")
-                                st.session_state["projetos"] = converter_projetos_para_codigo(
+                                st.session_state["projetos"] = converter_projetos_para_id(
                                     usuario.get("projetos", [])
                                 )
 
@@ -419,7 +421,7 @@ def login():
                         st.session_state["tipo_usuario"] = tipo_usuario
                         st.session_state["nome"] = usuario_encontrado.get("nome_completo")
                         st.session_state["id_usuario"] = usuario_encontrado.get("_id")
-                        st.session_state["projetos"] = converter_projetos_para_codigo(
+                        st.session_state["projetos"] = converter_projetos_para_id(
                             usuario_encontrado.get("projetos", [])
                         )
                         st.rerun()

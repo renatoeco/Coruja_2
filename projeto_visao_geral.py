@@ -139,9 +139,9 @@ if not st.session_state["ultimo_acesso_atualizado"]:
 
     # OBTÉM CÓDIGO DO PROJETO A PARTIR DA SESSÃO
 
-    projeto_codigo = st.session_state.get("projeto_atual")
+    projeto_id = st.session_state.get("projeto_atual")
 
-    if projeto_codigo:
+    if projeto_id:
 
         # GERA DATA NO FUSO AMERICA/SAO_PAULO (SEM HORA)
 
@@ -157,7 +157,7 @@ if not st.session_state["ultimo_acesso_atualizado"]:
         # ATUALIZA DOCUMENTO NO MONGODB USANDO CAMPO "codigo"
 
         col_projetos.update_one(
-            {"codigo": projeto_codigo},
+            {"_id": ObjectId(projeto_id)},
             {
                 "$set": {
                     "ultimo_acesso": data_somente_dia
@@ -222,15 +222,19 @@ usuario_interno = st.session_state.tipo_usuario in ["admin", "equipe"]
 
 # Projeto
 
-# Código do projeto atual
-codigo_projeto_atual = st.session_state.get("projeto_atual")
+# ID do projeto atual
+projeto_id = st.session_state.get("projeto_atual")
 
-if not codigo_projeto_atual:
+if not projeto_id:
     st.error("Nenhum projeto selecionado.")
     st.stop()
 
 df_projeto = pd.DataFrame(
-    list(col_projetos.find({"codigo": codigo_projeto_atual}))
+    list(
+        col_projetos.find(
+            {"_id": ObjectId(projeto_id)}
+        )
+    )
 )
 
 # Converte _id para string
@@ -968,7 +972,7 @@ if not editar_cadastro:
                 }
 
                 resultado = col_projetos.update_one(
-                    {"codigo": st.session_state.projeto_atual},
+                    {"_id": ObjectId(st.session_state.projeto_atual)},
                     {"$push": {"anotacoes": anotacao}}
                 )
 
@@ -1047,7 +1051,7 @@ if not editar_cadastro:
 
                 resultado = col_projetos.update_one(
                     {
-                        "codigo": st.session_state.projeto_atual,
+                        "_id": ObjectId(st.session_state.projeto_atual),
                         "anotacoes.id": anotacao_selecionada["id"],
                     },
                     {
@@ -1170,7 +1174,7 @@ if not editar_cadastro:
                 }
 
                 resultado = col_projetos.update_one(
-                    {"codigo": st.session_state.projeto_atual},
+                    {"_id": ObjectId(st.session_state.projeto_atual)},
                     {"$push": {"visitas": visita}}
                 )
 
@@ -1238,7 +1242,7 @@ if not editar_cadastro:
 
                 resultado = col_projetos.update_one(
                     {
-                        "codigo": st.session_state.projeto_atual,
+                        "_id": ObjectId(st.session_state.projeto_atual),
                         "visitas.id": visita_selecionada["id"],
                     },
                     {
@@ -1357,7 +1361,7 @@ if not editar_cadastro:
 
                 # Insere o contato no projeto
                 resultado = col_projetos.update_one(
-                    {"codigo": st.session_state.projeto_atual},
+                    {"_id": ObjectId(st.session_state.projeto_atual)},
                     {"$push": {"contatos": contato}}
                 )
 
@@ -1505,7 +1509,7 @@ if not editar_cadastro:
 
                     resultado = col_projetos.update_one(
                         {
-                            "codigo": st.session_state.projeto_atual,
+                            "_id": ObjectId(st.session_state.projeto_atual),
                             "contatos.id": contato_selecionado.get("id")  # USA ID (CORRETO)
                         },
                         {
@@ -1969,6 +1973,8 @@ else:
                                     "$set": dados_projeto
                                 }
                             )
+                            
+                            st.session_state["projeto_atual"] = str(projeto_id)
 
 
 

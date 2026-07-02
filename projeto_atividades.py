@@ -4,6 +4,7 @@ import streamlit_shadcn_ui as ui
 import datetime
 import time
 import bson
+from bson import ObjectId
 
 from funcoes_auxiliares import (
     conectar_mongo_coruja, 
@@ -130,7 +131,7 @@ def renderizar_acoes_remanejamento(item, idx):
 
 
                 col_projetos.update_one(
-                    {"codigo": codigo_projeto_atual},
+                    {"_id": id_projeto_atual},
                     {
                         "$set": {
                             **set_updates,
@@ -166,7 +167,7 @@ def renderizar_acoes_remanejamento(item, idx):
                 }
 
                 col_projetos.update_one(
-                    {"codigo": codigo_projeto_atual},
+                    {"_id": id_projeto_atual},
                     {
                         "$push": {
                             "plano_trabalho.componentes.$[comp].atividades": nova_atividade
@@ -192,7 +193,7 @@ def renderizar_acoes_remanejamento(item, idx):
                 atividade_id = item.get("atividade_id")
 
                 col_projetos.update_one(
-                    {"codigo": codigo_projeto_atual},
+                    {"_id": id_projeto_atual},
                     {
                         "$pull": {
                             "plano_trabalho.componentes.$[comp].atividades": {
@@ -215,7 +216,7 @@ def renderizar_acoes_remanejamento(item, idx):
             # ==================================================
 
             projeto_atualizado = col_projetos.find_one(
-                {"codigo": codigo_projeto_atual}
+                {"_id": id_projeto_atual}
             )
 
             item_atualizado = projeto_atualizado["plano_trabalho"]["remanejamentos_atividades"][idx]
@@ -303,7 +304,7 @@ def renderizar_acoes_remanejamento(item, idx):
                     log_recusa = f"Recusado por {nome} em {data}"
 
                     col_projetos.update_one(
-                        {"codigo": codigo_projeto_atual},
+                        {"_id": id_projeto_atual},
                         {
                             "$set": {
                                 f"plano_trabalho.remanejamentos_atividades.{idx}.status_remanejamento": "recusado",
@@ -314,7 +315,7 @@ def renderizar_acoes_remanejamento(item, idx):
                     )
 
                     projeto_atualizado = col_projetos.find_one(
-                        {"codigo": codigo_projeto_atual}
+                        {"_id": id_projeto_atual}
                     )
 
                     item_atualizado = projeto_atualizado["plano_trabalho"]["remanejamentos_atividades"][idx]
@@ -2189,24 +2190,36 @@ def dialog_relatos():
 logo_cepf = "https://fundoecos.org.br/wp-content/uploads/2025/05/Logo-Fundo-Ecos-PNG-sem-fundo-sem-margem.png"
 
 
-codigo_projeto_atual = st.session_state.get("projeto_atual")
+# Capturando o código do projeto e os dados do projeto
+id_projeto_atual = st.session_state.get("projeto_atual")
 
-if not codigo_projeto_atual:
+if not id_projeto_atual:
     st.error("Nenhum projeto selecionado.")
     st.stop()
 
-# Capturando o projeto atual no bd
+id_projeto_atual = ObjectId(id_projeto_atual)
+
+if not id_projeto_atual:
+    st.error("Nenhum projeto selecionado.")
+    st.stop()
+    
+
 df_projeto = pd.DataFrame(
     list(
         col_projetos.find(
-            {"codigo": codigo_projeto_atual}
+            {"_id": id_projeto_atual}
         )
     )
 )
 
-if df_projeto.empty:
-    st.error("Projeto não encontrado no banco de dados.")
-    st.stop()
+projeto = col_projetos.find_one(
+    {"_id": id_projeto_atual},
+    {
+        "codigo": 1,
+        "sigla": 1,
+        "locais": 1
+    }
+) or {}
 
 
 # Transformar o id em string
@@ -2767,7 +2780,7 @@ with plano_trabalho:
                     # Persistência no MongoDB
                     # ------------------------------------------------------
                     resultado = col_projetos.update_one(
-                        {"codigo": codigo_projeto_atual},
+                        {"_id": id_projeto_atual},
                         {"$set": {"plano_trabalho.componentes": componentes_atualizados}}
                     )
 
@@ -2861,7 +2874,7 @@ with plano_trabalho:
                         })
 
                 col_projetos.update_one(
-                    {"codigo": codigo_projeto_atual},
+                    {"_id": id_projeto_atual},
                     {"$set": {"plano_trabalho.componentes": novos_componentes}}
                 )
 
@@ -3361,7 +3374,7 @@ with indicadores:
                         else:
 
                             projeto = col_projetos.find_one(
-                                {"codigo": codigo_projeto_atual}
+                                {"_id": id_projeto_atual}
                             )
 
                             indicadores_existentes = projeto.get("indicadores", [])
@@ -3405,7 +3418,7 @@ with indicadores:
                             indicadores_filtrados.append(indicador_para_salvar)
 
                             resultado = col_projetos.update_one(
-                                {"codigo": codigo_projeto_atual},
+                                {"_id": id_projeto_atual},
                                 {
                                     "$set": {
                                         "indicadores": indicadores_filtrados
@@ -4309,7 +4322,7 @@ with indicadores:
 
 #             # Atualiza o documento do projeto no MongoDB
 #             resultado = col_projetos.update_one(
-#                 {"codigo": codigo_projeto_atual},
+#                 {"_id": id_projeto_atual},
 #                 {
 #                     "$set": {
 #                         "salvaguardas": dados_salvaguardas
@@ -4553,7 +4566,7 @@ with remanejamentos:
                             }
 
                             col_projetos.update_one(
-                                {"codigo": codigo_projeto_atual},
+                                {"_id": id_projeto_atual},
                                 {
                                     "$push": {
                                         "plano_trabalho.remanejamentos_atividades": novo_remanejamento
@@ -4564,7 +4577,7 @@ with remanejamentos:
 
 
                             # Enviando email para os padrinhos
-                            projeto_atualizado = col_projetos.find_one({"codigo": codigo_projeto_atual})
+                            projeto_atualizado = col_projetos.find_one({"_id": id_projeto_atual})
 
                             enviar_email_remanejamento_atividade(
                                 projeto_atualizado,
@@ -4791,7 +4804,7 @@ with remanejamentos:
                                     }
 
                                     col_projetos.update_one(
-                                        {"codigo": codigo_projeto_atual},
+                                        {"_id": id_projeto_atual},
                                         {
                                             "$push": {
                                                 "plano_trabalho.remanejamentos_atividades": novo_remanejamento
@@ -4800,11 +4813,11 @@ with remanejamentos:
                                     )
 
                                     projeto_atualizado = col_projetos.find_one(
-                                        {"codigo": codigo_projeto_atual}
+                                        {"_id": id_projeto_atual}
                                     )
 
                                     enviar_email_nova_atividade(
-                                        codigo_projeto_atual,
+                                        id_projeto_atual,
                                         projeto_atualizado
                                     )
                                     
@@ -4929,7 +4942,7 @@ with remanejamentos:
                                         }
 
                                         col_projetos.update_one(
-                                            {"codigo": codigo_projeto_atual},
+                                            {"_id": id_projeto_atual},
                                             {
                                                 "$push": {
                                                     "plano_trabalho.remanejamentos_atividades": novo_remanejamento
@@ -4938,11 +4951,11 @@ with remanejamentos:
                                         )
 
                                         projeto_atualizado = col_projetos.find_one(
-                                            {"codigo": codigo_projeto_atual}
+                                            {"_id": id_projeto_atual}
                                         )
 
                                         enviar_email_remocao_atividade_solicitada(
-                                            codigo_projeto_atual,
+                                            id_projeto_atual,
                                             projeto_atualizado
                                         )
                                         

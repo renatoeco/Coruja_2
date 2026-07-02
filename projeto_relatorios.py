@@ -11,7 +11,7 @@ from io import BytesIO
 from docx import Document
 from docx.shared import Pt, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-
+from bson import ObjectId
 
 from zoneinfo import ZoneInfo 
 
@@ -128,19 +128,35 @@ lista_publicos = list(col_publicos.find({}, {"_id": 0, "publico": 1}))
 opcoes_publicos = sorted({p["publico"] for p in lista_publicos} - {"Outros"})
 opcoes_publicos.append("Outros")
 
-codigo_projeto_atual = st.session_state.projeto_atual
+id_projeto_atual = st.session_state.get("projeto_atual")
+
+if not id_projeto_atual:
+    st.error("Nenhum projeto selecionado.")
+    st.stop()
+
+id_projeto_atual = ObjectId(id_projeto_atual)
+
+if not id_projeto_atual:
+    st.error("Nenhum projeto selecionado.")
+    st.stop()
+    
 
 df_projeto = pd.DataFrame(
     list(
         col_projetos.find(
-            {"codigo": codigo_projeto_atual}
+            {"_id": id_projeto_atual}
         )
     )
 )
 
-if df_projeto.empty:
-    st.error("Projeto não encontrado.")
-    st.stop()
+projeto = col_projetos.find_one(
+    {"_id": id_projeto_atual},
+    {
+        "codigo": 1,
+        "sigla": 1,
+        "locais": 1
+    }
+) or {}
 
 projeto = df_projeto.iloc[0]
 
