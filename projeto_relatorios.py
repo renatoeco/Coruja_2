@@ -1879,22 +1879,44 @@ def atualizar_status_relatorio(idx, relatorio_numero, projeto_codigo):
     status_anterior = relatorio.get("status_relatorio")
 
     # --------------------------------------------------
-    # 3. ATUALIZA STATUS DO RELATÓRIO
+    # 3. MONTA A ATUALIZAÇÃO DO RELATÓRIO
     # --------------------------------------------------
+    campos_set = {
+        "relatorios.$.status_relatorio": status_novo
+    }
+
+    campos_unset = {}
+
+    # Se aprovado, registra aprovação
+    if status_novo == "aprovado":
+        campos_set["relatorios.$.data_aprovacao"] = datetime.datetime.now().strftime("%d/%m/%Y")
+        campos_set["relatorios.$.aprovado_por"] = st.session_state.get("nome", "Usuário")
+
+    # Caso deixe de estar aprovado, remove os dados de aprovação
+    else:
+        campos_unset["relatorios.$.data_aprovacao"] = ""
+        campos_unset["relatorios.$.aprovado_por"] = ""
+
+    # --------------------------------------------------
+    # 4. ATUALIZA O RELATÓRIO
+    # --------------------------------------------------
+    update = {
+        "$set": campos_set
+    }
+
+    if campos_unset:
+        update["$unset"] = campos_unset
+
     col_projetos.update_one(
         {
             "codigo": projeto_codigo,
             "relatorios.numero": relatorio_numero
         },
-        {
-            "$set": {
-                "relatorios.$.status_relatorio": status_novo
-            }
-        }
+        update
     )
 
     # --------------------------------------------------
-    # 4. VERIFICA SE ALGUMA REGRA DE RELATOS SE APLICA
+    # 5. VERIFICA SE ALGUMA REGRA DE RELATOS SE APLICA
     # --------------------------------------------------
     aplica_regra_a = (
         status_novo == "modo_edicao"
@@ -1910,7 +1932,7 @@ def atualizar_status_relatorio(idx, relatorio_numero, projeto_codigo):
         return  # nada a fazer nos relatos
 
     # --------------------------------------------------
-    # 5. RECARREGA O PROJETO COMPLETO
+    # 6. RECARREGA O PROJETO COMPLETO
     # --------------------------------------------------
     projeto_atualizado = col_projetos.find_one(
         {"codigo": projeto_codigo}
@@ -1920,7 +1942,7 @@ def atualizar_status_relatorio(idx, relatorio_numero, projeto_codigo):
     houve_alteracao = False
 
     # --------------------------------------------------
-    # 6. APLICA AS REGRAS NOS RELATOS
+    # 7. APLICA AS REGRAS NOS RELATOS
     # --------------------------------------------------
     # ------------------------------------------------------------------
     # Percorre todos os componentes
@@ -1978,7 +2000,7 @@ def atualizar_status_relatorio(idx, relatorio_numero, projeto_codigo):
 
 
     # --------------------------------------------------
-    # 7. SALVA NO BANCO APENAS SE HOUVE ALTERAÇÃO
+    # 8. SALVA NO BANCO APENAS SE HOUVE ALTERAÇÃO
     # --------------------------------------------------
     if houve_alteracao:
         col_projetos.update_one(
