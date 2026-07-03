@@ -12,6 +12,7 @@ from docx import Document
 from docx.shared import Pt, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from bson import ObjectId
+from num2words import num2words
 
 from zoneinfo import ZoneInfo 
 
@@ -112,6 +113,8 @@ col_editais = db["editais"]
 col_beneficios = db["beneficios"]
 
 col_publicos = db["publicos"]
+
+col_organizacoes = db["organizacoes"]
 
 col_categorias_despesa = db["categorias_despesa"]
 
@@ -2116,11 +2119,13 @@ def gerar_certificado_relatorio(relatorio, projeto):
 
     doc.add_paragraph()
 
-    titulo = doc.add_heading(
-        f"Certificado - Relatório {relatorio['numero']}",
-        level=1
-    )
+    titulo = doc.add_heading(level=1)
     titulo.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    run = titulo.add_run(f"Certificado {relatorio['numero']}")
+    run.font.name = "Arial"
+    run.font.size = Pt(14)
+    run.bold = True
 
     doc.add_paragraph()
 
@@ -2128,38 +2133,115 @@ def gerar_certificado_relatorio(relatorio, projeto):
     # Texto
     # ------------------------------------------------------
 
-    texto = (
-        f"Certificamos que o Relatório {relatorio['numero']} do projeto "
-        f"{projeto['codigo']} - {projeto['nome_do_projeto']} "
-        f"foi analisado e aprovado pela equipe técnica do Fundo Ecos."
+    # ------------------------------------------------------
+    # Descobre qual parcela será liberada
+    # ------------------------------------------------------
+
+    numero_proxima_parcela = relatorio["numero"] + 1
+
+    parcelas = projeto.get("financeiro", {}).get("parcelas", [])
+
+    parcela = next(
+        (
+            p for p in parcelas
+            if p.get("numero") == numero_proxima_parcela
+        ),
+        None
     )
+
+    # ------------------------------------------------------
+    # Busca o nome da organização
+    # ------------------------------------------------------
+
+    organizacao = col_organizacoes.find_one(
+        {"_id": projeto.get("id_organizacao")},
+        {"nome_organizacao": 1}
+    )
+
+    nome_organizacao = (
+        organizacao.get("nome_organizacao")
+        if organizacao
+        else "Organização não cadastrada"
+    )
+
+    # Caso exista parcela seguinte
+    if parcela:
+
+        valor = parcela.get("valor", 0)
+
+        valor_formatado = (
+            f"R$ {valor:,.2f}"
+            .replace(",", "X")
+            .replace(".", ",")
+            .replace("X", ".")
+        )
+
+        # Caso utilize num2words
+        valor_extenso = num2words(
+            valor,
+            lang="pt_BR",
+            to="currency"
+        )
+
+        texto = (
+            f"Certifico que o projeto "
+            f"{projeto['codigo']} - {nome_organizacao} - "
+            f"está sendo implementado de acordo com os documentos do projeto, "
+            f"e por isso está habilitado a receber a parcela "
+            f"{numero_proxima_parcela} no valor de "
+            f"{valor_formatado} ({valor_extenso})."
+        )
+
+    else:
+
+        texto = (
+            f"Certifico que o projeto "
+            f"{projeto['codigo']} - {nome_organizacao} - "
+            f"está sendo implementado de acordo com os documentos do projeto."
+        )
 
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
 
     run = p.add_run(texto)
     run.font.name = "Arial"
-    run.font.size = Pt(12)
+    run.font.size = Pt(11)
 
     doc.add_paragraph()
     doc.add_paragraph()
 
     data = datetime.datetime.today().strftime("%d/%m/%Y")
 
-    p = doc.add_paragraph(f"Brasília, {data}")
+    p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    run = p.add_run(f"Brasília, {data}")
+    run.font.name = "Arial"
+    run.font.size = Pt(11)
 
     doc.add_paragraph()
 
     assinatura = doc.add_paragraph()
     assinatura.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-    assinatura.add_run("____________________________________\n")
-    assinatura.add_run("Rodrigo Almeida Noleto\n").bold = True
-    assinatura.add_run("Coordenador do Fundo Ecos\n")
-    assinatura.add_run(
+    run = assinatura.add_run("____________________________________\n")
+    run.font.name = "Arial"
+    run.font.size = Pt(11)
+
+    run = assinatura.add_run("Rodrigo Almeida Noleto\n")
+    run.font.name = "Arial"
+    run.font.size = Pt(11)
+
+    run = assinatura.add_run("Coordenador do Fundo Ecos\n")
+    run.font.name = "Arial"
+    run.font.size = Pt(11)
+
+    run = assinatura.add_run(
         "Instituto Sociedade, População e Natureza"
     )
+    run.bold = True
+    run.font.name = "Arial"
+    run.font.size = Pt(11)
 
     buffer = BytesIO()
     doc.save(buffer)
@@ -7056,7 +7138,7 @@ if step_selecionado == "Avaliação":
             st.download_button(
                 "Baixar certificado",
                 data=certificado,
-                file_name=f"Certificado_Relatorio_{relatorio_numero}_{projeto['codigo']}.docx",
+                file_name=f"Certificado_{relatorio_numero}_{projeto['codigo']}.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 icon=":material/download:",
                 type="tertiary"
