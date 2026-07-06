@@ -2298,6 +2298,10 @@ def gerar_relatorio_monitoramento_docx(
     )
     titulo.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
+    for run in titulo.runs:
+        run.font.name = "Arial"
+        run.font.size = Pt(14)
+
     doc.add_paragraph()
 
     # ------------------------------------------------------------------
@@ -2308,19 +2312,25 @@ def gerar_relatorio_monitoramento_docx(
     run = p.add_run("Projeto: ")
     run.bold = True
     run.font.name = "Arial"
+    run.font.size = Pt(12)
 
-    p.add_run(
-        f"{projeto.get('codigo','')} - "
-        f"{projeto.get('titulo_projeto','')}"
+    run = p.add_run(
+    f"{projeto.get('codigo','')} - "
+        f"{projeto.get('sigla','')}"
     )
+    run.font.name = "Arial"
+    run.font.size = Pt(12)
 
     p = doc.add_paragraph()
 
     run = p.add_run("Relatório: ")
     run.bold = True
     run.font.name = "Arial"
+    run.font.size = Pt(12)
 
-    p.add_run(str(relatorio.get("numero", "")))
+    run = p.add_run(str(relatorio.get("numero", "")))
+    run.font.name = "Arial"
+    run.font.size = Pt(12)
 
     if relatorio.get("data_aprovacao"):
 
@@ -2329,8 +2339,11 @@ def gerar_relatorio_monitoramento_docx(
         run = p.add_run("Data da aprovação: ")
         run.bold = True
         run.font.name = "Arial"
+        run.font.size = Pt(12)
 
-        p.add_run(relatorio["data_aprovacao"])
+        run = p.add_run(relatorio["data_aprovacao"])
+        run.font.name = "Arial"
+        run.font.size = Pt(12)
 
     if relatorio.get("aprovado_por"):
 
@@ -2339,8 +2352,11 @@ def gerar_relatorio_monitoramento_docx(
         run = p.add_run("Aprovado por: ")
         run.bold = True
         run.font.name = "Arial"
+        run.font.size = Pt(12)
 
-        p.add_run(relatorio["aprovado_por"])
+        run = p.add_run(relatorio["aprovado_por"])
+        run.font.name = "Arial"
+        run.font.size = Pt(12)
         
     # ------------------------------------------------------------------
     # Separador
@@ -2409,7 +2425,7 @@ def gerar_relatorio_monitoramento_docx(
         run = p.add_run(texto)
         run.bold = True
         run.font.name = "Arial"
-        run.font.size = Pt(11)
+        run.font.size = Pt(12)
 
         # --------------------------------------------------------------
         # Upload
@@ -2431,7 +2447,7 @@ def gerar_relatorio_monitoramento_docx(
 
                         run = p.add_run(f"• {nome}\n{link}")
                         run.font.name = "Arial"
-                        run.font.size = Pt(11)
+                        run.font.size = Pt(12)
 
                     else:
 
@@ -2439,7 +2455,7 @@ def gerar_relatorio_monitoramento_docx(
 
                         run = p.add_run(f"• {nome}")
                         run.font.name = "Arial"
-                        run.font.size = Pt(11)
+                        run.font.size = Pt(12)
 
             else:
 
@@ -2447,7 +2463,7 @@ def gerar_relatorio_monitoramento_docx(
 
                 run = p.add_run("Nenhum arquivo enviado.")
                 run.font.name = "Arial"
-                run.font.size = Pt(11)
+                run.font.size = Pt(12)
 
             doc.add_paragraph()
 
@@ -2482,9 +2498,33 @@ def gerar_relatorio_monitoramento_docx(
 
         run = p.add_run(str(resposta))
         run.font.name = "Arial"
-        run.font.size = Pt(11)
+        run.font.size = Pt(12)
 
         p.paragraph_format.space_after = Pt(12)
+        
+    # ------------------------------------------------------------------
+    # Encaminhamento (última devolutiva registrada)
+    # ------------------------------------------------------------------
+    devolucoes = relatorio.get("devolucao", [])
+
+    if devolucoes:
+
+        ultima_devolucao = devolucoes[-1]
+
+        p = doc.add_paragraph()
+
+        run = p.add_run("Devolutiva: ")
+        run.bold = True
+        run.font.name = "Arial"
+        run.font.size = Pt(12)
+
+        p = doc.add_paragraph()
+
+        run = p.add_run(
+            ultima_devolucao.get("texto_devolutiva", "—")
+        )
+        run.font.name = "Arial"
+        run.font.size = Pt(12)
 
     # ------------------------------------------------------------------
     # Salva em memória
