@@ -526,8 +526,11 @@ def notificar_padrinhos_relatorio(
     projeto,
     logo_url
 ):
-    padrinhos = buscar_padrinhos_do_projeto(col_pessoas, projeto["codigo"])
-
+    padrinhos = buscar_padrinhos_do_projeto(
+        col_pessoas,
+        projeto["_id"]
+    )
+    
     if not padrinhos:
         return False
 
@@ -630,20 +633,24 @@ def montar_email_relatorio_envio(
 """
 
 
-def buscar_padrinhos_do_projeto(col_pessoas, codigo_projeto: str):
+def buscar_padrinhos_do_projeto(col_pessoas, projeto_id):
     """
-    Retorna lista de pessoas (dict) que são padrinhos do projeto.
-    Regra:
-      - tipo_usuario != beneficiario
-      - tipo_usuario != visitante
-      - projetos contém o código do projeto
+    Retorna a lista de padrinhos ativos associados ao projeto.
+
+    O campo 'projetos' da coleção pessoas armazena ObjectIds dos projetos.
     """
+
+    # Garante que o valor utilizado na consulta seja um ObjectId
+    if isinstance(projeto_id, str):
+        projeto_id = ObjectId(projeto_id)
 
     padrinhos = list(
         col_pessoas.find(
             {
-                "tipo_usuario": {"$nin": ["beneficiario", "visitante"]},
-                "projetos": codigo_projeto,
+                "tipo_usuario": {
+                    "$nin": ["beneficiario", "visitante"]
+                },
+                "projetos": projeto_id,
                 "status": "ativo"
             },
             {
@@ -652,7 +659,7 @@ def buscar_padrinhos_do_projeto(col_pessoas, codigo_projeto: str):
             }
         )
     )
-
+    
     return padrinhos
 
 
