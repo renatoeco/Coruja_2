@@ -2127,24 +2127,30 @@ def dialog_relatos():
                     """,
                     unsafe_allow_html=True
                 )
-
+                
             # Texto do relato
             st.write(relato.get("relato", ""))
 
             st.write("")
 
-            col1, col2 = st.columns([2, 3])
+            # ============================================================
+            # INFORMAÇÕES GERAIS DA ATIVIDADE
+            # ============================================================
 
-            data_inicio = atividade.get("data_inicio", "-")
-            data_fim = atividade.get("data_fim", "-")
+            porcentagem = atividade.get("porcentagem_atv", 0)
 
+            col1, col2, col3 = st.columns(3)
 
-            col1.write(
-                f"**Quando:** {data_inicio} - {data_fim}"
-            )
+            with col1:
+                st.write(f"**Data de início:** {atividade.get('data_inicio', '-')}")
 
-            # Status do relato
-            col2.write(f"**Status:** {relato.get('status_relato', '')}")
+            with col2:
+                st.write(f"**Data de fim:** {atividade.get('data_fim', '-')}")
+
+            with col3:
+                st.write(f"**Porcentagem:** {porcentagem}%")
+
+            st.write("")
 
             # --------------------------------------------------
             # ANEXOS
