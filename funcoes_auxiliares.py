@@ -154,23 +154,6 @@ def registrar_estatistica_sessao(db):
         st.session_state.visita_contabilizada = True
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 def calcular_status_atividade(atividade):
 
     hoje = pd.Timestamp.today().normalize()
@@ -229,19 +212,6 @@ def calcular_status_atividade(atividade):
             return "atrasada"
 
     return "indefinido"
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # def gerar_recibo_docx(
@@ -319,15 +289,8 @@ def calcular_status_atividade(atividade):
 #     doc.save(caminho_arquivo)
 
 
-
-
-
-
-
 def valor_por_extenso(valor: float) -> str:
     return num2words(valor, lang="pt_BR", to="currency")
-
-
 
 
 def data_extenso_pt(data: datetime) -> str:
@@ -337,8 +300,6 @@ def data_extenso_pt(data: datetime) -> str:
     ]
 
     return f"{data.day} de {meses[data.month - 1]} de {data.year}"
-
-
 
 
 def numero_ordinal_pt(numero: int) -> str:
@@ -355,8 +316,6 @@ def numero_ordinal_pt(numero: int) -> str:
         10: "décima"
     }
     return mapa.get(numero, f"{numero}ª")
-
-
 
 
 ###########################################################################################################
@@ -1006,6 +965,27 @@ def calcular_status_projetos(df_projetos: pd.DataFrame) -> pd.DataFrame:
 
 
 def sidebar_projeto():
+    db = conectar_mongo_coruja()
+    # Projetos
+    col_projetos = db["projetos"]
+
+    df_projetos = pd.DataFrame(
+        list(
+            col_projetos.find(
+                {},
+                {
+                    "_id": 1,
+                    "codigo": 1
+                }
+            )
+        )
+    )
+
+    df_projetos["_id"] = df_projetos["_id"].astype(str)
+
+    mapa_id_para_codigo = dict(
+        zip(df_projetos["_id"], df_projetos["codigo"])
+    )
 
     st.sidebar.write('')
 
@@ -1035,29 +1015,32 @@ def sidebar_projeto():
             st.session_state.projeto_atual = None
             st.rerun()
 
-
-
     # Pequeno cabeçalho no sidebar
 
     tipo_usuario = st.session_state.get("tipo_usuario")
 
+    # Exibe informações apenas para usuários internos e visitantes
+    if tipo_usuario in ["admin", "equipe", "visitante"]:
 
-    st.sidebar.caption(st.session_state.get("nome"))
+        st.sidebar.caption(st.session_state.get("nome"))
 
-    if tipo_usuario == 'beneficiario':
+        if tipo_usuario == "admin":
+            st.sidebar.caption("Tipo: administrador(a)")
 
-        st.sidebar.caption("Tipo: beneficiário(a)")
+        elif tipo_usuario == "equipe":
+            st.sidebar.caption("Tipo: equipe")
 
-    elif tipo_usuario == 'admin':
-        st.sidebar.caption("Tipo: administrador(a)")
+        elif tipo_usuario == "visitante":
+            st.sidebar.caption("Tipo: visitante")
 
-    elif tipo_usuario == 'equipe':
-        st.sidebar.caption("Tipo: equipe")
+        id_projeto = str(st.session_state.get("projeto_atual", ""))
 
-    elif tipo_usuario == 'visitante':
-        st.sidebar.caption("Tipo: visitante")
+        codigo_projeto = mapa_id_para_codigo.get(
+            id_projeto,
+            id_projeto if id_projeto else "-"
+        )
 
-    st.sidebar.caption("Projeto: " + st.session_state.get("projeto_atual", "-"))
+        st.sidebar.caption(f"Projeto: {codigo_projeto}")
 
 
     # st.sidebar.divider()
