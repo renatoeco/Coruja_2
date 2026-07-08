@@ -2520,7 +2520,7 @@ def gerar_relatorio_monitoramento_docx(
 
         p = doc.add_paragraph()
 
-        run = p.add_run("Devolutiva: ")
+        run = p.add_run("Encaminhamento: ")
         run.bold = True
         run.font.name = "Arial"
         run.font.size = Pt(12)
