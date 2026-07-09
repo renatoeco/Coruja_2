@@ -2134,21 +2134,21 @@ def dialog_relatos():
             st.write("")
 
             # ============================================================
-            # INFORMAÇÕES GERAIS DA ATIVIDADE
+            # INFORMAÇÕES GERAIS DO RELATO
             # ============================================================
 
-            porcentagem = atividade.get("porcentagem_atv", 0)
+            porcentagem = relato.get("porc_ativ_relato", 0)
 
             col1, col2, col3 = st.columns(3)
 
             with col1:
-                st.write(f"**Data de início:** {atividade.get('data_inicio', '-')}")
+                st.write(f"**Data de início:** {relato.get('data_inicio', '-')}")
 
             with col2:
-                st.write(f"**Data de fim:** {atividade.get('data_fim', '-')}")
+                st.write(f"**Data de fim:** {relato.get('data_fim', '-')}")
 
             with col3:
-                st.write(f"**Porcentagem:** {porcentagem}%")
+                st.write(f"**Porcentagem da atividade neste relato:** {porcentagem}%")
 
             st.write("")
 
