@@ -6852,7 +6852,7 @@ if step_selecionado == "Enviar":
             )
 
             st.markdown(
-                "Recomendamos que **envie o relatório** quando o saldo for **menor que 20%**."
+                "Recomendamos que **envie o relatório** quando o saldo for **menor que 30%**."
             )
 
         else:
