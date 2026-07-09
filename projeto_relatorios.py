@@ -2123,6 +2123,9 @@ def gerar_certificado_relatorio(relatorio, projeto):
         "images/logo_ISPN_2021.png",
         width=Inches(2)
     )
+    
+    doc.add_paragraph()
+    
 
     doc.add_paragraph()
 
@@ -2134,6 +2137,7 @@ def gerar_certificado_relatorio(relatorio, projeto):
     run.font.size = Pt(14)
     run.bold = True
 
+    doc.add_paragraph()
     doc.add_paragraph()
 
     # ------------------------------------------------------
