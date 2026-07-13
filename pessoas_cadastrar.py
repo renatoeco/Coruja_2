@@ -189,7 +189,7 @@ df_editado = st.data_editor(
 
         "tipo_usuario": st.column_config.SelectboxColumn(
             "Tipo de usuário",
-            options=["", "admin", "equipe", "beneficiario", "visitante"],
+            options=["", "admin", "equipe", "parceiro", "visitante"],
             width=150
         ),
 
@@ -255,6 +255,11 @@ if st.button(":material/save: Convidar pessoas", type="primary"):
 
             nome = str(row["nome_completo"]).strip()
             tipo = str(row["tipo_usuario"]).strip()
+
+            # Mantém "parceiro" apenas na interface,
+            # mas salva como "beneficiario" no banco.
+            if tipo == "parceiro":
+                tipo = "beneficiario"
             email = str(row["e_mail"]).strip()
             telefone = str(row["telefone"]).strip()
             projetos_lista = row["projetos"]
@@ -382,7 +387,7 @@ if st.button(":material/save: Convidar pessoas", type="primary"):
                 email = pessoa.get("e_mail")
                 tipo_usuario = pessoa.get("tipo_usuario")
 
-                # Permissão apenas para beneficiário ou visitante
+                # Permissão apenas para parceiros (salvos como "beneficiario") ou visitantes
                 if email and tipo_usuario in ["beneficiario", "visitante"]:
 
                     for id_projeto in pessoa.get("projetos", []):

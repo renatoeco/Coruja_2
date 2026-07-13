@@ -101,9 +101,14 @@ def editar_pessoa(_id: str):
     # ===============================
     # Tipo de usuário
     # ===============================
-    tipos_usuario_validos = ["admin", "equipe", "beneficiario", "visitante"]
+    tipos_usuario_validos = ["admin", "equipe", "parceiro", "visitante"]
 
     tipo_usuario_raw = pessoa.get("tipo_usuario", "")
+
+    # Converte o valor salvo no banco para exibição
+    if tipo_usuario_raw == "beneficiario":
+        tipo_usuario_raw = "parceiro"
+
     tipo_usuario_default = (
         tipo_usuario_raw.strip()
         if isinstance(tipo_usuario_raw, str) and tipo_usuario_raw in tipos_usuario_validos
@@ -116,25 +121,6 @@ def editar_pessoa(_id: str):
         index=tipos_usuario_validos.index(tipo_usuario_default),
     )
 
-    # ===============================
-    # Tipo de beneficiário (condicional)
-    # ===============================
-    tipo_beneficiario = None
-    tipos_beneficiario_validos = ["técnico", "financeiro"]
-
-    if tipo_usuario == "beneficiario":
-        tipo_beneficiario_raw = pessoa.get("tipo_beneficiario", tipos_beneficiario_validos[0])
-        tipo_beneficiario_default = (
-            tipo_beneficiario_raw
-            if tipo_beneficiario_raw in tipos_beneficiario_validos
-            else tipos_beneficiario_validos[0]
-        )
-
-        tipo_beneficiario = st.selectbox(
-            "Tipo de beneficiário",
-            options=tipos_beneficiario_validos,
-            index=tipos_beneficiario_validos.index(tipo_beneficiario_default),
-        )
 
     # ===============================
     # Status
@@ -215,24 +201,21 @@ def editar_pessoa(_id: str):
             if codigo in mapa_codigo_para_id
         ]
         
+        # Mantém "parceiro" apenas na interface
+        tipo_usuario_salvar = (
+            "beneficiario"
+            if tipo_usuario == "parceiro"
+            else tipo_usuario
+        )
+        
         update_data = {
             "nome_completo": nome,
             "e_mail": email,
             "telefone": telefone,
-            "tipo_usuario": tipo_usuario,
+            "tipo_usuario": tipo_usuario_salvar,
             "status": status,
             "projetos": projetos_ids,
         }
-
-        # Tipo beneficiário (somente se for beneficiário)
-        if tipo_usuario == "beneficiario" and tipo_beneficiario:
-            update_data["tipo_beneficiario"] = tipo_beneficiario
-        else:
-            # Remove se existir no banco
-            col_pessoas.update_one(
-                {"_id": ObjectId(_id)},
-                {"$unset": {"tipo_beneficiario": ""}},
-            )
 
         # Atualiza documento
         col_pessoas.update_one(
@@ -353,6 +336,9 @@ with aba_ativos:
 
         # TIPO DE USUÁRIO -----------------
         tipo_usuario = row.get("Tipo de usuário", "").strip()
+
+        if tipo_usuario == "beneficiario":
+            tipo_usuario = "parceiro"
 
         col5.write(tipo_usuario)
 

@@ -120,12 +120,16 @@ def editar_pessoa(_id: str):
     # Tipo de usuário
     tipo_usuario_raw = pessoa.get("tipo_usuario", "")
     tipo_usuario_default = tipo_usuario_raw.strip() if isinstance(tipo_usuario_raw, str) else ""
+    
+    # Exibe "parceiro" na interface, mas o banco continua armazenando "beneficiario"
+    if tipo_usuario_default == "beneficiario":
+        tipo_usuario_default = "parceiro"
 
     tipo_usuario = st.selectbox(
         "Tipo de usuário",
-        options=["admin", "equipe", "beneficiario", "visitante"],
-        index=["admin", "equipe", "beneficiario", "visitante"].index(tipo_usuario_default)
-        if tipo_usuario_default in ["admin", "equipe", "beneficiario", "visitante"]
+        options=["admin", "equipe", "parceiro", "visitante"],
+        index=["admin", "equipe", "parceiro", "visitante"].index(tipo_usuario_default)
+        if tipo_usuario_default in ["admin", "equipe", "parceiro", "visitante"]
         else 0
     )
 
@@ -162,6 +166,10 @@ def editar_pessoa(_id: str):
             for codigo in projetos
             if codigo in mapa_codigo_para_id
         ]
+        
+        # Mantém "parceiro" apenas na interface
+        if tipo_usuario == "parceiro":
+            tipo_usuario = "beneficiario"
         
         # Documento base
         update_data = {
@@ -444,7 +452,11 @@ with aba_ativos:
         # TIPO DE USUÁRIO -----------------
         tipo_usuario = row.get("Tipo de usuário", "").strip()
 
-        tipo_exibido = tipo_usuario
+        tipo_exibido = (
+            "parceiro"
+            if tipo_usuario == "beneficiario"
+            else tipo_usuario
+        )
 
         col5.write(tipo_exibido)
 

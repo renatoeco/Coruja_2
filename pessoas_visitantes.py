@@ -122,24 +122,19 @@ def editar_pessoa(_id: str):
     tipo_usuario_raw = pessoa.get("tipo_usuario", "")
     tipo_usuario_default = tipo_usuario_raw.strip() if isinstance(tipo_usuario_raw, str) else ""
 
+    # Exibe "parceiro" na interface
+    if tipo_usuario_default == "beneficiario":
+        tipo_usuario_default = "parceiro"
+
+    opcoes_tipo_usuario = ["admin", "equipe", "parceiro", "visitante"]
+
     tipo_usuario = st.selectbox(
         "Tipo de usuário",
-        options=["admin", "equipe", "beneficiario", "visitante"],
-        index=["admin", "equipe", "beneficiario", "visitante"].index(tipo_usuario_default)
-        if tipo_usuario_default in ["admin", "equipe", "beneficiario", "visitante"]
+        options=opcoes_tipo_usuario,
+        index=opcoes_tipo_usuario.index(tipo_usuario_default)
+        if tipo_usuario_default in opcoes_tipo_usuario
         else 0
     )
-
-    # Tipo de beneficiário — só aparece se tipo_usuario == beneficiario
-    tipo_beneficiario = None
-    if tipo_usuario == "beneficiario":
-        tipo_beneficiario = st.selectbox(
-            "Tipo de beneficiário",
-            options=["técnico", "financeiro"],
-            index=["técnico", "financeiro"].index(pessoa.get("tipo_beneficiario", "técnico"))
-            if pessoa.get("tipo_beneficiario") in ["técnico", "financeiro"]
-            else 0
-        )
 
     # Status
     status = st.selectbox(
@@ -176,22 +171,22 @@ def editar_pessoa(_id: str):
             if codigo in mapa_codigo_para_id
         ]
         
+        # Mantém "parceiro" apenas na interface
+        tipo_usuario_salvar = (
+            "beneficiario"
+            if tipo_usuario == "parceiro"
+            else tipo_usuario
+        )
+        
         # Documento base
         update_data = {
             "nome_completo": nome,
             "e_mail": email,
             "telefone": telefone,
-            "tipo_usuario": tipo_usuario,
+            "tipo_usuario": tipo_usuario_salvar,
             "status": status,
             "projetos": projetos_ids
         }
-
-        # Adiciona tipo_beneficiario apenas se aplicável
-        if tipo_beneficiario:
-            update_data["tipo_beneficiario"] = tipo_beneficiario
-        else:
-            # Remove o campo se existir no documento anterior
-            col_pessoas.update_one({"_id": ObjectId(_id)}, {"$unset": {"tipo_beneficiario": ""}})
 
         # Atualiza o registro
         col_pessoas.update_one({"_id": ObjectId(_id)}, {"$set": update_data})
@@ -327,7 +322,9 @@ for _, row in df_visitantes.iterrows():
     # TIPO DE USUÁRIO -----------------
     tipo_usuario = str(row.get("Tipo de usuário", "")).strip()
 
-    # Exibição
+    if tipo_usuario == "beneficiario":
+        tipo_usuario = "parceiro"
+
     col5.write(tipo_usuario)
 
 
