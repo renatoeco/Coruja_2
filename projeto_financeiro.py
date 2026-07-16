@@ -1439,22 +1439,8 @@ def dialog_relatos_fin():
             st.write(f"**Status:** {lanc.get('status_despesa', '')}")
 
             # ==================================================
-            # DADOS DO LANÇAMENTO
-            # Cada informação ocupa sua própria linha para evitar
-            # quebra de alinhamento quando houver textos longos.
+            # DADOS DO LANÇAMENTO + ANEXOS
             # ==================================================
-
-            linha1_col1, linha1_col2 = st.columns([1, 4])
-            linha1_col1.write("**Data:**")
-            linha1_col2.write(lanc.get("data_despesa", "-"))
-
-            linha2_col1, linha2_col2 = st.columns([1, 4])
-            linha2_col1.write("**Fornecedor:**")
-            linha2_col2.write(lanc.get("fornecedor", "-"))
-
-            linha3_col1, linha3_col2 = st.columns([1, 4])
-            linha3_col1.write("**CPF/CNPJ:**")
-            linha3_col2.write(lanc.get("cpf_cnpj", "-"))
 
             valor = lanc.get("valor_despesa", 0)
             valor_br = (
@@ -1464,23 +1450,38 @@ def dialog_relatos_fin():
                 .replace("X", ".")
             )
 
-            linha4_col1, linha4_col2 = st.columns([1, 4])
-            linha4_col1.write("**Valor (R$):**")
-            linha4_col2.write(valor_br)
+            col_info, col_anexos = st.columns([1, 1], gap="large")
 
-            # ==================================================
-            # Última linha: Valor à esquerda e Anexos ocupando
-            # aproximadamente metade do diálogo.
-            # ==================================================
+            with col_info:
 
-            anexos = lanc.get("anexos", [])
+                linha1_col1, linha1_col2 = st.columns([1, 3])
+                linha1_col1.write("**Data:**")
+                linha1_col2.write(lanc.get("data_despesa", "-"))
 
-            if anexos:
-                st.markdown("**Anexos:**")
+                linha2_col1, linha2_col2 = st.columns([1, 3])
+                linha2_col1.write("**Fornecedor:**")
+                linha2_col2.write(lanc.get("fornecedor", "-"))
 
-                for a in anexos:
-                    link = gerar_link_drive(a["id_arquivo"])
-                    st.markdown(f"[{a['nome_arquivo']}]({link})")
+                linha3_col1, linha3_col2 = st.columns([1, 3])
+                linha3_col1.write("**CPF/CNPJ:**")
+                linha3_col2.write(lanc.get("cpf_cnpj", "-"))
+
+                linha4_col1, linha4_col2 = st.columns([1, 3])
+                linha4_col1.write("**Valor (R$):**")
+                linha4_col2.write(valor_br)
+
+            with col_anexos:
+
+                st.write("**Anexos:**")
+
+                anexos = lanc.get("anexos", [])
+
+                if anexos:
+                    for a in anexos:
+                        link = gerar_link_drive(a["id_arquivo"])
+                        st.markdown(f"[{a['nome_arquivo']}]({link})")
+                else:
+                    st.write("-")
 
 
 # ==========================================================================================
@@ -1593,22 +1594,8 @@ def dialog_contrapartida_fin():
             st.write(f"**Status:** {lanc.get('status_despesa', '')}")
 
             # ==================================================
-            # DADOS DO LANÇAMENTO
-            # Cada informação ocupa sua própria linha para evitar
-            # quebra de alinhamento quando houver textos longos.
+            # DADOS DO LANÇAMENTO + ANEXOS
             # ==================================================
-
-            linha1_col1, linha1_col2 = st.columns([1, 4])
-            linha1_col1.write("**Data:**")
-            linha1_col2.write(lanc.get("data_despesa", "-"))
-
-            linha2_col1, linha2_col2 = st.columns([1, 4])
-            linha2_col1.write("**Fornecedor:**")
-            linha2_col2.write(lanc.get("fornecedor", "-"))
-
-            linha3_col1, linha3_col2 = st.columns([1, 4])
-            linha3_col1.write("**CPF/CNPJ:**")
-            linha3_col2.write(lanc.get("cpf_cnpj", "-"))
 
             valor = lanc.get("valor_despesa", 0)
             valor_br = (
@@ -1618,23 +1605,38 @@ def dialog_contrapartida_fin():
                 .replace("X", ".")
             )
 
-            linha4_col1, linha4_col2 = st.columns([1, 4])
-            linha4_col1.write("**Valor (R$):**")
-            linha4_col2.write(valor_br)
+            col_info, col_anexos = st.columns([1, 1], gap="large")
 
-            # ==================================================
-            # Última linha: Valor à esquerda e Anexos ocupando
-            # aproximadamente metade do diálogo.
-            # ==================================================
+            with col_info:
 
-            anexos = lanc.get("anexos", [])
+                linha1_col1, linha1_col2 = st.columns([1, 3])
+                linha1_col1.write("**Data:**")
+                linha1_col2.write(lanc.get("data_despesa", "-"))
 
-            if anexos:
-                st.markdown("**Anexos:**")
+                linha2_col1, linha2_col2 = st.columns([1, 3])
+                linha2_col1.write("**Fornecedor:**")
+                linha2_col2.write(lanc.get("fornecedor", "-"))
 
-                for a in anexos:
-                    link = gerar_link_drive(a["id_arquivo"])
-                    st.markdown(f"[{a['nome_arquivo']}]({link})")
+                linha3_col1, linha3_col2 = st.columns([1, 3])
+                linha3_col1.write("**CPF/CNPJ:**")
+                linha3_col2.write(lanc.get("cpf_cnpj", "-"))
+
+                linha4_col1, linha4_col2 = st.columns([1, 3])
+                linha4_col1.write("**Valor (R$):**")
+                linha4_col2.write(valor_br)
+
+            with col_anexos:
+
+                st.write("**Anexos:**")
+
+                anexos = lanc.get("anexos", [])
+
+                if anexos:
+                    for a in anexos:
+                        link = gerar_link_drive(a["id_arquivo"])
+                        st.markdown(f"[{a['nome_arquivo']}]({link})")
+                else:
+                    st.write("-")
 
 
 # ==========================================================================================
@@ -1747,22 +1749,8 @@ def dialog_contrapartida_nao_fin():
             st.write(f"**Status:** {lanc.get('status_despesa', '')}")
 
             # ==================================================
-            # DADOS DO LANÇAMENTO
-            # Cada informação ocupa sua própria linha para evitar
-            # quebra de alinhamento quando houver textos longos.
+            # DADOS DO LANÇAMENTO + ANEXOS
             # ==================================================
-
-            linha1_col1, linha1_col2 = st.columns([1, 4])
-            linha1_col1.write("**Data:**")
-            linha1_col2.write(lanc.get("data_despesa", "-"))
-
-            linha2_col1, linha2_col2 = st.columns([1, 4])
-            linha2_col1.write("**Fornecedor:**")
-            linha2_col2.write(lanc.get("fornecedor", "-"))
-
-            linha3_col1, linha3_col2 = st.columns([1, 4])
-            linha3_col1.write("**CPF/CNPJ:**")
-            linha3_col2.write(lanc.get("cpf_cnpj", "-"))
 
             valor = lanc.get("valor_despesa", 0)
             valor_br = (
@@ -1772,23 +1760,38 @@ def dialog_contrapartida_nao_fin():
                 .replace("X", ".")
             )
 
-            linha4_col1, linha4_col2 = st.columns([1, 4])
-            linha4_col1.write("**Valor (R$):**")
-            linha4_col2.write(valor_br)
+            col_info, col_anexos = st.columns([1, 1], gap="large")
 
-            # ==================================================
-            # Última linha: Valor à esquerda e Anexos ocupando
-            # aproximadamente metade do diálogo.
-            # ==================================================
+            with col_info:
 
-            anexos = lanc.get("anexos", [])
+                linha1_col1, linha1_col2 = st.columns([1, 3])
+                linha1_col1.write("**Data:**")
+                linha1_col2.write(lanc.get("data_despesa", "-"))
 
-            if anexos:
-                st.markdown("**Anexos:**")
+                linha2_col1, linha2_col2 = st.columns([1, 3])
+                linha2_col1.write("**Fornecedor:**")
+                linha2_col2.write(lanc.get("fornecedor", "-"))
 
-                for a in anexos:
-                    link = gerar_link_drive(a["id_arquivo"])
-                    st.markdown(f"[{a['nome_arquivo']}]({link})")
+                linha3_col1, linha3_col2 = st.columns([1, 3])
+                linha3_col1.write("**CPF/CNPJ:**")
+                linha3_col2.write(lanc.get("cpf_cnpj", "-"))
+
+                linha4_col1, linha4_col2 = st.columns([1, 3])
+                linha4_col1.write("**Valor (R$):**")
+                linha4_col2.write(valor_br)
+
+            with col_anexos:
+
+                st.write("**Anexos:**")
+
+                anexos = lanc.get("anexos", [])
+
+                if anexos:
+                    for a in anexos:
+                        link = gerar_link_drive(a["id_arquivo"])
+                        st.markdown(f"[{a['nome_arquivo']}]({link})")
+                else:
+                    st.write("-")
 
 
 ###########################################################################################################
