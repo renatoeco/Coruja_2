@@ -4175,7 +4175,7 @@ if usuario_interno:
                             # -----------------------------------
                             col_projetos.update_one(
                                 {
-                                    "codigo": id_projeto_atual,
+                                    "_id": id_projeto_atual,
                                     "financeiro.parcelas.numero": numero
                                 },
                                 {
