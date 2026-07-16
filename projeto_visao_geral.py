@@ -2203,7 +2203,7 @@ else:
             ):
 
                 col_projetos.update_one(
-                    {"_id": projeto["_id"]},
+                    {"_id": ObjectId(projeto["_id"])},
                     {
                         "$set": {
                             "direcoes_estrategicas": estrutura_final
@@ -2306,7 +2306,7 @@ else:
                 if salvar_publicos:
 
                     col_projetos.update_one(
-                        {"_id": projeto["_id"]},
+                        {"_id": ObjectId(projeto["_id"])},
                         {
                             "$set": {
                                 "publicos": publicos
@@ -2403,7 +2403,7 @@ else:
                         url_contrato = gerar_link_drive(id_arquivo)
 
                         col_projetos.update_one(
-                            {"_id": projeto["_id"]},
+                            {"_id": ObjectId(projeto["_id"])},
                             {
                                 "$push": {
                                     "contratos": {
