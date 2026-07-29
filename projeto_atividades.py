@@ -1279,12 +1279,14 @@ def enviar_email_nova_atividade(
 
     # Dados principais do projeto
     nome_projeto = projeto.get("nome_do_projeto")
+    codigo = projeto.get("codigo")
+
     # Busca o nome da organização vinculada ao projeto
     organizacao = obter_nome_organizacao(projeto)
 
     logo = logo_cepf
 
-    assunto = f"Solicitação de nova atividade - {codigo_projeto}"
+    assunto = f"Solicitação de nova atividade - {codigo}"
 
     corpo_html = f"""
     <html>
@@ -1324,7 +1326,7 @@ def enviar_email_nova_atividade(
         Foi recebida uma solicitação de
         <strong>nova atividade</strong>
         no projeto
-        <strong>{codigo_projeto} - {nome_projeto}</strong>
+        <strong>{codigo} - {nome_projeto}</strong>
         da organização
         <strong>{organizacao}</strong>.
         </p>
