@@ -532,10 +532,10 @@ def renderizar_card_add(item):
         col1, col2 = st.columns(2)
     
         with col1:
-            st.write(f"**Data de início:** {data_inicio}")
+            st.write(f"**Mês de início:** {data_inicio}")
     
         with col2:
-            st.write(f"**Data de fim:** {data_fim}")
+            st.write(f"**Mês de fim:** {data_fim}")
         
     
         st.write("")
@@ -683,8 +683,8 @@ def renderizar_card_alteracao(
         fim_md = highlight(data_fim_antes) if "data_fim" in antes else data_fim_antes
 
         st.markdown(f"**Atividade:** {atividade_md}", unsafe_allow_html=True)
-        st.markdown(f"**Data de início:** {inicio_md}", unsafe_allow_html=True)
-        st.markdown(f"**Data de fim:** {fim_md}", unsafe_allow_html=True)
+        st.markdown(f"**Mês de início:** {inicio_md}", unsafe_allow_html=True)
+        st.markdown(f"**Mês de fim:** {fim_md}", unsafe_allow_html=True)
 
     with col2:
 
@@ -699,8 +699,8 @@ def renderizar_card_alteracao(
         fim_md = highlight(data_fim_depois) if "data_fim" in depois else data_fim_depois
 
         st.markdown(f"**Atividade:** {atividade_md}", unsafe_allow_html=True)
-        st.markdown(f"**Data de início:** {inicio_md}", unsafe_allow_html=True)
-        st.markdown(f"**Data de fim:** {fim_md}", unsafe_allow_html=True)
+        st.markdown(f"**Mês de início:** {inicio_md}", unsafe_allow_html=True)
+        st.markdown(f"**Mês de fim:** {fim_md}", unsafe_allow_html=True)
 
     with col3:
 
@@ -803,8 +803,8 @@ def enviar_email_remanejamento_atividade(
 
     nomes_campos = {
         "atividade": "Descrição da atividade",
-        "data_inicio": "Data de início",
-        "data_fim": "Data de fim"
+        "data_inicio": "Mês de início",
+        "data_fim": "Mês de fim"
     }
 
     for campo in campos:
@@ -968,8 +968,8 @@ def enviar_email_remanejamento_atividade_aprovado(
 
         nomes_campos = {
             "atividade": "Descrição da atividade",
-            "data_inicio": "Data de início",
-            "data_fim": "Data de fim"
+            "data_inicio": "Mês de início",
+            "data_fim": "Mês de fim"
         }
 
         campo_legivel = nomes_campos.get(campo, campo)
@@ -1133,8 +1133,8 @@ def enviar_email_remanejamento_atividade_recusado(
 
         nomes_campos = {
             "atividade": "Descrição da atividade",
-            "data_inicio": "Data de início",
-            "data_fim": "Data de fim"
+            "data_inicio": "Mês de início",
+            "data_fim": "Mês de fim"
         }
 
         campo_legivel = nomes_campos.get(campo, campo)
@@ -1471,12 +1471,12 @@ def enviar_email_nova_atividade_aprovada(
         </tr>
 
         <tr>
-            <td style="padding:6px 10px; border:1px solid #ddd;"><strong>Data de início</strong></td>
+            <td style="padding:6px 10px; border:1px solid #ddd;"><strong>Mês de início</strong></td>
             <td style="padding:6px 10px; border:1px solid #ddd;">{data_inicio}</td>
         </tr>
 
         <tr>
-            <td style="padding:6px 10px; border:1px solid #ddd;"><strong>Data de fim</strong></td>
+            <td style="padding:6px 10px; border:1px solid #ddd;"><strong>Mês de fim</strong></td>
             <td style="padding:6px 10px; border:1px solid #ddd;">{data_fim}</td>
         </tr>
 
@@ -1609,12 +1609,12 @@ def enviar_email_nova_atividade_recusada(
         </tr>
 
         <tr>
-            <td style="padding:6px 10px; border:1px solid #ddd;"><strong>Data de início</strong></td>
+            <td style="padding:6px 10px; border:1px solid #ddd;"><strong>Mês de início</strong></td>
             <td style="padding:6px 10px; border:1px solid #ddd;">{data_inicio}</td>
         </tr>
 
         <tr>
-            <td style="padding:6px 10px; border:1px solid #ddd;"><strong>Data de fim</strong></td>
+            <td style="padding:6px 10px; border:1px solid #ddd;"><strong>Mês de fim</strong></td>
             <td style="padding:6px 10px; border:1px solid #ddd;">{data_fim}</td>
         </tr>
         </table>
@@ -2143,10 +2143,10 @@ def dialog_relatos():
             col1, col2, col3 = st.columns(3)
 
             with col1:
-                st.write(f"**Data de início:** {relato.get('data_inicio', '-')}")
+                st.write(f"**Mês de início:** {relato.get('data_inicio', '-')}")
 
             with col2:
-                st.write(f"**Data de fim:** {relato.get('data_fim', '-')}")
+                st.write(f"**Mês de fim:** {relato.get('data_fim', '-')}")
 
             with col3:
                 st.write(f"**Porcentagem da atividade neste relato:** {porcentagem}%")
@@ -2444,8 +2444,8 @@ with plano_trabalho:
 
                     atividades_processadas.append({
                         "Atividade": a.get("atividade"),
-                        "Data de início": a.get("data_inicio"),
-                        "Data de fim": a.get("data_fim"),
+                        "Mês de início": a.get("data_inicio"),
+                        "Mês de fim": a.get("data_fim"),
                         "Status": status,
                         "Porcentagem": a.get("porcentagem_atv", 0)
                     })
@@ -2470,7 +2470,7 @@ with plano_trabalho:
 
                 st.dataframe(
                     df_atividades[
-                        ["Atividade", "Data de início", "Data de fim", "Status", "Porcentagem"]
+                        ["Atividade", "Mês de início", "Mês de fim", "Status", "Porcentagem"]
                     ],
                     hide_index=True,
                     selection_mode="single-row",
@@ -2483,13 +2483,13 @@ with plano_trabalho:
                             width=700
                         ),
 
-                        "Data de início": st.column_config.TextColumn(
-                            "Data de início",
+                        "Mês de início": st.column_config.TextColumn(
+                            "Mês de início",
                             width=20
                         ),
 
-                        "Data de fim": st.column_config.TextColumn(
-                            "Data de fim",
+                        "Mês de fim": st.column_config.TextColumn(
+                            "Mês de fim",
                             width=20
                         ),
 
@@ -2632,12 +2632,12 @@ with plano_trabalho:
                         width=700
                     ),
                     "data_inicio": st.column_config.DateColumn(
-                        label="Data de início",
+                        label="Mês de início",
                         width=120,
                         format="MM/YYYY"   
                     ),
                     "data_fim": st.column_config.DateColumn(
-                        label="Data de fim",
+                        label="Mês de fim",
                         width=120,
                         format="MM/YYYY"   
                     ),
@@ -4444,7 +4444,7 @@ with remanejamentos:
             col1, col2 = st.columns(2)
             with col1:
                 nova_data_inicio = date_picker(
-                    label="Data de início",
+                    label="Mês de início",
                     value=data_inicio_original,   # já é um objeto date (dia sempre 1º)
                     format="MM/yyyy",             # <-- token date-fns: só mês/ano, sem seleção de dia
                     one_tap=True,                 # seleciona com 1 clique, sem precisar confirmar
@@ -4453,7 +4453,7 @@ with remanejamentos:
                 )
             with col2:
                 nova_data_fim = date_picker(
-                    label="Data de fim",
+                    label="Mês de fim",
                     value=data_fim_original,
                     format="MM/yyyy",
                     one_tap=True,
@@ -4744,16 +4744,16 @@ with remanejamentos:
 
                         with col1:
                             data_inicio = date_picker(
-                                label="Data de início",
+                                label="Mês de início",
                                 format="MM/yyyy",   # <-- idem
                                 one_tap=True,
                                 block=True,
                                 key="add_data_inicio"
                             )
-                            
+
                         with col2:
                             data_fim = date_picker(
-                                label="Data de fim",
+                                label="Mês de fim",
                                 format="MM/yyyy",
                                 one_tap=True,
                                 block=True,
