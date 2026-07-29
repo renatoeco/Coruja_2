@@ -5,6 +5,7 @@ import datetime
 import time
 import bson
 from bson import ObjectId
+from st_rsuite import date_picker
 
 from funcoes_auxiliares import (
     conectar_mongo_coruja, 
@@ -2607,16 +2608,14 @@ with plano_trabalho:
 
             # Converte para datetime (se houver valores)
             if not df_atividades.empty:
-
                 df_atividades["data_inicio"] = pd.to_datetime(
                     df_atividades["data_inicio"],
-                    format="%d/%m/%Y",
+                    format="%m/%Y",   
                     errors="coerce"
                 )
-
                 df_atividades["data_fim"] = pd.to_datetime(
                     df_atividades["data_fim"],
-                    format="%d/%m/%Y",
+                    format="%m/%Y",   
                     errors="coerce"
                 )
 
@@ -2632,17 +2631,15 @@ with plano_trabalho:
                         label="Atividade",
                         width=700
                     ),
-
                     "data_inicio": st.column_config.DateColumn(
                         label="Data de início",
                         width=120,
-                        format="DD/MM/YYYY"
+                        format="MM/YYYY"   
                     ),
-
                     "data_fim": st.column_config.DateColumn(
                         label="Data de fim",
                         width=120,
-                        format="DD/MM/YYYY"
+                        format="MM/YYYY"   
                     ),
                 }
             )
@@ -2712,12 +2709,11 @@ with plano_trabalho:
                     # Linha válida → adiciona
                     # ----------------------------------------------------------
                     if all(campos_preenchidos):
-
                         atividades_final.append({
                             "id": row.get("id"),
                             "atividade": atividade,
-                            "data_inicio": pd.to_datetime(data_inicio).strftime("%d/%m/%Y"),
-                            "data_fim": pd.to_datetime(data_fim).strftime("%d/%m/%Y"),
+                            "data_inicio": pd.to_datetime(data_inicio).strftime("%m/%Y"),
+                            "data_fim": pd.to_datetime(data_fim).strftime("%m/%Y"),
                         })
 
                 # ----------------------------------------------------------
@@ -4429,10 +4425,10 @@ with remanejamentos:
             data_fim_original = None
 
             if data_inicio_str:
-                data_inicio_original = datetime.datetime.strptime(data_inicio_str, "%d/%m/%Y").date()
+                data_inicio_original = datetime.datetime.strptime(data_inicio_str, "%m/%Y").date()
 
             if data_fim_str:
-                data_fim_original = datetime.datetime.strptime(data_fim_str, "%d/%m/%Y").date()
+                data_fim_original = datetime.datetime.strptime(data_fim_str, "%m/%Y").date()
 
             # --------------------------------------------------------------
             # Inputs
@@ -4446,22 +4442,22 @@ with remanejamentos:
             )
 
             col1, col2 = st.columns(2)
-
             with col1:
-
-                nova_data_inicio = st.date_input(
-                    "Data de início",
-                    value=data_inicio_original,
-                    format="DD/MM/YYYY",
+                nova_data_inicio = date_picker(
+                    label="Data de início",
+                    value=data_inicio_original,   # já é um objeto date (dia sempre 1º)
+                    format="MM/yyyy",             # <-- token date-fns: só mês/ano, sem seleção de dia
+                    one_tap=True,                 # seleciona com 1 clique, sem precisar confirmar
+                    block=True,                   # ocupa a largura da coluna
                     key="remanej_data_inicio"
                 )
-
             with col2:
-
-                nova_data_fim = st.date_input(
-                    "Data de fim",
+                nova_data_fim = date_picker(
+                    label="Data de fim",
                     value=data_fim_original,
-                    format="DD/MM/YYYY",
+                    format="MM/yyyy",
+                    one_tap=True,
+                    block=True,
                     key="remanej_data_fim"
                 )
 
@@ -4525,14 +4521,12 @@ with remanejamentos:
                         depois["atividade"] = descricao_atividade
 
                     if nova_data_inicio != data_inicio_original:
-
                         antes["data_inicio"] = data_inicio_str
-                        depois["data_inicio"] = nova_data_inicio.strftime("%d/%m/%Y")
+                        depois["data_inicio"] = nova_data_inicio.strftime("%m/%Y")  # ERA "%d/%m/%Y"
 
                     if nova_data_fim != data_fim_original:
-
                         antes["data_fim"] = data_fim_str
-                        depois["data_fim"] = nova_data_fim.strftime("%d/%m/%Y")
+                        depois["data_fim"] = nova_data_fim.strftime("%m/%Y")  # ERA "%d/%m/%Y"
 
                     # --------------------------------------------------
                     # Só registra se houve alteração
@@ -4749,16 +4743,20 @@ with remanejamentos:
                         col1, col2 = st.columns(2)
 
                         with col1:
-                            data_inicio = st.date_input(
-                                "Data de início",
-                                format="DD/MM/YYYY",
+                            data_inicio = date_picker(
+                                label="Data de início",
+                                format="MM/yyyy",   # <-- idem
+                                one_tap=True,
+                                block=True,
                                 key="add_data_inicio"
                             )
-
+                            
                         with col2:
-                            data_fim = st.date_input(
-                                "Data de fim",
-                                format="DD/MM/YYYY",
+                            data_fim = date_picker(
+                                label="Data de fim",
+                                format="MM/yyyy",
+                                one_tap=True,
+                                block=True,
                                 key="add_data_fim"
                             )
 
@@ -4802,8 +4800,8 @@ with remanejamentos:
 
                                         "componente": componente_sel,
                                         "add_atividade": descricao,
-                                        "data_inicio": data_inicio.strftime("%d/%m/%Y"),
-                                        "data_fim": data_fim.strftime("%d/%m/%Y"),
+                                        "data_inicio": data_inicio.strftime("%m/%Y"), 
+                                        "data_fim": data_fim.strftime("%m/%Y"),
 
                                         "justificativa": justificativa,
                                         "autor": st.session_state.get("nome")

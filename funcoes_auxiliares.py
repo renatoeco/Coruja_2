@@ -155,20 +155,29 @@ def registrar_estatistica_sessao(db):
 
 
 def calcular_status_atividade(atividade):
-
+    
     hoje = pd.Timestamp.today().normalize()
 
+    # Formato agora é só mês/ano (ex: "07/2026")
     data_inicio = pd.to_datetime(
         atividade.get("data_inicio"),
-        format="%d/%m/%Y",
+        format="%m/%Y",   
+        errors="coerce"
+    )
+    data_fim = pd.to_datetime(
+        atividade.get("data_fim"),
+        format="%m/%Y",   
         errors="coerce"
     )
 
-    data_fim = pd.to_datetime(
-        atividade.get("data_fim"),
-        format="%d/%m/%Y",
-        errors="coerce"
-    )
+    # --------------------------------------------------
+    # Ajusta data_fim para o ÚLTIMO DIA do mês
+    # (sem isso, "%m/%Y" gera o dia 1º e a atividade
+    # ficaria "atrasada" já no início do mês final)
+    # --------------------------------------------------
+
+    if pd.notna(data_fim):
+        data_fim = data_fim + pd.offsets.MonthEnd(0)
 
     porcentagem = atividade.get("porcentagem_atv", 0)
 
@@ -186,16 +195,15 @@ def calcular_status_atividade(atividade):
 
     # Regra 2 — porcentagem == 0
     if porcentagem == 0:
-
         if hoje < inicio_mais_30:
             return "prevista"
-
+        
         elif inicio_mais_30 <= hoje < fim_menos_30:
             return "atrasada"
-
+        
         elif fim_menos_30 <= hoje <= data_fim:
             return "próximo ao prazo"
-
+        
         elif hoje > data_fim:
             return "atrasada"
 
@@ -204,10 +212,10 @@ def calcular_status_atividade(atividade):
 
         if hoje < fim_menos_30:
             return "em andamento"
-
+        
         elif fim_menos_30 <= hoje <= data_fim:
             return "próximo ao prazo"
-
+        
         elif hoje > data_fim:
             return "atrasada"
 
