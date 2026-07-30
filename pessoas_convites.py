@@ -81,7 +81,7 @@ else:
 # Renomeia as colunas
 df_pendentes = df_pendentes.rename(columns={
     "nome_completo": "Nome",
-    "tipo_usuario": "Tipo de usuário",
+    "tipo_usuario": "Tipo de usuário/a",
     "e_mail": "E-mail",
     "telefone": "Telefone",
     "status": "Status",
@@ -130,18 +130,18 @@ def editar_pessoa(_id: str):
     email = st.text_input("E-mail", value=pessoa.get("e_mail", ""))
     telefone = st.text_input("Telefone", value=pessoa.get("telefone", ""))
 
-    # Tipo de usuário
+    # Tipo de usuário/a
     tipo_usuario_raw = pessoa.get("tipo_usuario", "")
     tipo_usuario_default = tipo_usuario_raw.strip() if isinstance(tipo_usuario_raw, str) else ""
 
     # Exibe "parceiro" na interface
     if tipo_usuario_default == "beneficiario":
-        tipo_usuario_default = "parceiro"
+        tipo_usuario_default = "parceiro/a"
 
-    opcoes_tipo_usuario = ["admin", "equipe", "parceiro", "visitante"]
+    opcoes_tipo_usuario = ["admin", "equipe", "parceiro/a", "visitante"]
 
     tipo_usuario = st.selectbox(
-        "Tipo de usuário",
+        "Tipo de usuário/a",
         options=opcoes_tipo_usuario,
         index=opcoes_tipo_usuario.index(tipo_usuario_default)
         if tipo_usuario_default in opcoes_tipo_usuario
@@ -187,7 +187,7 @@ def editar_pessoa(_id: str):
         ]
         
         # Mantém "parceiro" apenas na interface
-        if tipo_usuario == "parceiro":
+        if tipo_usuario == "parceiro/a":
             tipo_usuario = "beneficiario"
 
         update_data = {
@@ -232,7 +232,7 @@ col1.write('**Nome**')
 col2.write('**Projetos**')
 col3.write('**E-mail**')
 col4.write('**Telefone**')
-col5.write('**Tipo de usuário**')
+col5.write('**Tipo de usuário/a**')
 col6.write('**Data do convite**')
 col7.write('')
 
@@ -274,10 +274,10 @@ for _, row in df_pendentes.iterrows():
 
 
     # TIPO DE USUÁRIO -----------------
-    tipo_usuario = str(row.get("Tipo de usuário", "") or "").strip()
+    tipo_usuario = str(row.get("Tipo de usuário/a", "") or "").strip()
 
     tipo_exibido = (
-        "parceiro"
+        "parceiro/a"
         if tipo_usuario == "beneficiario"
         else tipo_usuario
     )

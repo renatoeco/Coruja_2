@@ -188,8 +188,8 @@ df_editado = st.data_editor(
         "nome_completo": st.column_config.TextColumn("Nome completo", width=250),
 
         "tipo_usuario": st.column_config.SelectboxColumn(
-            "Tipo de usuário",
-            options=["", "admin", "equipe", "parceiro", "visitante"],
+            "Tipo de usuário/a",
+            options=["", "admin", "equipe", "parceiro/a", "visitante"],
             width=150
         ),
 
@@ -258,7 +258,7 @@ if st.button(":material/save: Convidar pessoas", type="primary"):
 
             # Mantém "parceiro" apenas na interface,
             # mas salva como "beneficiario" no banco.
-            if tipo == "parceiro":
+            if tipo == "parceiro/a":
                 tipo = "beneficiario"
             email = str(row["e_mail"]).strip()
             telefone = str(row["telefone"]).strip()

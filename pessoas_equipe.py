@@ -42,7 +42,7 @@ else:
 # Renomeia as colunas
 df_pessoas = df_pessoas.rename(columns={
     "nome_completo": "Nome",
-    "tipo_usuario": "Tipo de usuário",
+    "tipo_usuario": "Tipo de usuário/a",
     "tipo_beneficiario": "Tipo de beneficiário",
     "e_mail": "E-mail",
     "telefone": "Telefone",
@@ -99,15 +99,15 @@ def editar_pessoa(_id: str):
     telefone = st.text_input("Telefone", value=pessoa.get("telefone", ""))
 
     # ===============================
-    # Tipo de usuário
+    # Tipo de usuário/a
     # ===============================
-    tipos_usuario_validos = ["admin", "equipe", "parceiro", "visitante"]
+    tipos_usuario_validos = ["admin", "equipe", "parceiro/a", "visitante"]
 
     tipo_usuario_raw = pessoa.get("tipo_usuario", "")
 
     # Converte o valor salvo no banco para exibição
     if tipo_usuario_raw == "beneficiario":
-        tipo_usuario_raw = "parceiro"
+        tipo_usuario_raw = "parceiro/a"
 
     tipo_usuario_default = (
         tipo_usuario_raw.strip()
@@ -116,7 +116,7 @@ def editar_pessoa(_id: str):
     )
 
     tipo_usuario = st.selectbox(
-        "Tipo de usuário",
+        "Tipo de usuário/a",
         options=tipos_usuario_validos,
         index=tipos_usuario_validos.index(tipo_usuario_default),
     )
@@ -204,7 +204,7 @@ def editar_pessoa(_id: str):
         # Mantém "parceiro" apenas na interface
         tipo_usuario_salvar = (
             "beneficiario"
-            if tipo_usuario == "parceiro"
+            if tipo_usuario == "parceiro/a"
             else tipo_usuario
         )
         
@@ -258,7 +258,7 @@ with aba_ativos:
     # com status igual a "ativo"
     df_equipe = df_pessoas[
         (
-            df_pessoas["Tipo de usuário"].isin(["admin", "equipe"])
+            df_pessoas["Tipo de usuário/a"].isin(["admin", "equipe"])
         )
         &
         (
@@ -280,7 +280,7 @@ with aba_ativos:
     col2.write('**Projetos**')
     col3.write('**E-mail**')
     col4.write('**Telefone**')
-    col5.write('**Tipo de usuário**')
+    col5.write('**Tipo de usuário/a**')
     col6.write('**Status**')
     col7.write('')
 
@@ -335,10 +335,10 @@ with aba_ativos:
         col4.write(row["Telefone"])
 
         # TIPO DE USUÁRIO -----------------
-        tipo_usuario = row.get("Tipo de usuário", "").strip()
+        tipo_usuario = row.get("Tipo de usuário/a", "").strip()
 
         if tipo_usuario == "beneficiario":
-            tipo_usuario = "parceiro"
+            tipo_usuario = "parceiro/a"
 
         col5.write(tipo_usuario)
 
@@ -364,7 +364,7 @@ with aba_inativos:
     # com status igual a "inativo"
     df_equipe_inativos = df_pessoas[
         (
-            df_pessoas["Tipo de usuário"].isin(["admin", "equipe"])
+            df_pessoas["Tipo de usuário/a"].isin(["admin", "equipe"])
         )
         &
         (
@@ -382,7 +382,7 @@ with aba_inativos:
     col2.write('**Projetos**')
     col3.write('**E-mail**')
     col4.write('**Telefone**')
-    col5.write('**Tipo de usuário**')
+    col5.write('**Tipo de usuário/a**')
     col6.write('**Status**')
     col7.write('')
 
@@ -436,7 +436,7 @@ with aba_inativos:
         col4.write(row["Telefone"])
         
         # TIPO DE USUÁRIO -----------------
-        tipo_usuario = row.get("Tipo de usuário", "").strip()
+        tipo_usuario = row.get("Tipo de usuário/a", "").strip()
         col5.write(tipo_usuario)
         
         # STATUS -----------------

@@ -8,7 +8,7 @@ from io import BytesIO
 
 
 
-st.set_page_config(page_title="Parceiros", page_icon=":material/group:")
+st.set_page_config(page_title="Parceiros/as", page_icon=":material/group:")
 
 
 
@@ -44,7 +44,7 @@ else:
 # Renomeia as colunas
 df_pessoas = df_pessoas.rename(columns={
     "nome_completo": "Nome",
-    "tipo_usuario": "Tipo de usuário",
+    "tipo_usuario": "Tipo de usuário/a",
     "e_mail": "E-mail",
     "telefone": "Telefone",
     "status": "Status",
@@ -117,19 +117,19 @@ def editar_pessoa(_id: str):
     email = st.text_input("E-mail", value=pessoa.get("e_mail", ""))
     telefone = st.text_input("Telefone", value=pessoa.get("telefone", ""))
 
-    # Tipo de usuário
+    # Tipo de usuário/a
     tipo_usuario_raw = pessoa.get("tipo_usuario", "")
     tipo_usuario_default = tipo_usuario_raw.strip() if isinstance(tipo_usuario_raw, str) else ""
     
     # Exibe "parceiro" na interface, mas o banco continua armazenando "beneficiario"
     if tipo_usuario_default == "beneficiario":
-        tipo_usuario_default = "parceiro"
+        tipo_usuario_default = "parceiro/a"
 
     tipo_usuario = st.selectbox(
-        "Tipo de usuário",
-        options=["admin", "equipe", "parceiro", "visitante"],
-        index=["admin", "equipe", "parceiro", "visitante"].index(tipo_usuario_default)
-        if tipo_usuario_default in ["admin", "equipe", "parceiro", "visitante"]
+        "Tipo de usuário/a",
+        options=["admin", "equipe", "parceiro/a", "visitante"],
+        index=["admin", "equipe", "parceiro/a", "visitante"].index(tipo_usuario_default)
+        if tipo_usuario_default in ["admin", "equipe", "parceiro/a", "visitante"]
         else 0
     )
 
@@ -168,7 +168,7 @@ def editar_pessoa(_id: str):
         ]
         
         # Mantém "parceiro" apenas na interface
-        if tipo_usuario == "parceiro":
+        if tipo_usuario == "parceiro/a":
             tipo_usuario = "beneficiario"
         
         # Documento base
@@ -285,7 +285,7 @@ def editar_pessoa(_id: str):
 # Logo do sidebar
 st.logo("images/logo_fundo_ecos.png", size='large')
 
-st.header('Parceiros(as)')
+st.header('Parceiros/as')
 
 
 ###########################################################################################################
@@ -315,7 +315,7 @@ st.header('Parceiros(as)')
 
 #                 # Filtra apenas usuários do tipo beneficiario
 #                 df_export = df_pessoas[
-#                     df_pessoas["Tipo de usuário"] == "beneficiario"
+#                     df_pessoas["Tipo de usuário/a"] == "beneficiario"
 #                 ].copy()
 
 #                 # Mantém apenas as colunas necessárias
@@ -389,7 +389,7 @@ with aba_ativos:
     
     df_benef = df_pessoas[
         (
-            df_pessoas["Tipo de usuário"] == "beneficiario"
+            df_pessoas["Tipo de usuário/a"] == "beneficiario"
         )
         &
         (
@@ -409,7 +409,7 @@ with aba_ativos:
     col2.write('**Projetos**')
     col3.write('**E-mail**')
     col4.write('**Telefone**')
-    col5.write('**Tipo de usuário**')
+    col5.write('**Tipo de usuário/a**')
     col6.write('**Status**')
     col7.write('')
 
@@ -450,10 +450,10 @@ with aba_ativos:
         col4.write(row["Telefone"])
 
         # TIPO DE USUÁRIO -----------------
-        tipo_usuario = row.get("Tipo de usuário", "").strip()
+        tipo_usuario = row.get("Tipo de usuário/a", "").strip()
 
         tipo_exibido = (
-            "parceiro"
+            "parceiro/a"
             if tipo_usuario == "beneficiario"
             else tipo_usuario
         )
@@ -479,7 +479,7 @@ with aba_inativos:
     # Filtra apenas beneficiários inativos
     df_benef_inativos = df_pessoas[
         (
-            df_pessoas["Tipo de usuário"] == "beneficiario"
+            df_pessoas["Tipo de usuário/a"] == "beneficiario"
         )
         &
         (
@@ -497,7 +497,7 @@ with aba_inativos:
     col2.write('**Projetos**')
     col3.write('**E-mail**')
     col4.write('**Telefone**')
-    col5.write('**Tipo de usuário**')
+    col5.write('**Tipo de usuário/a**')
     col6.write('**Status**')
     col7.write('')
 
@@ -538,7 +538,7 @@ with aba_inativos:
         col4.write(row["Telefone"])
 
         # TIPO DE USUÁRIO -----------------
-        tipo_usuario = row.get("Tipo de usuário", "").strip()
+        tipo_usuario = row.get("Tipo de usuário/a", "").strip()
 
         tipo_exibido = tipo_usuario
 
