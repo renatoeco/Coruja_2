@@ -2548,61 +2548,58 @@ with plano_trabalho:
                 if "plano_trabalho" in df_projeto.columns else {}
             )
             
-            # Lista de componentes
-            opcoes_componentes = [
-                c for c in componentes
-            ]
-
-            nomes_componentes = [
-                c.get("componente") for c in componentes
-            ]
-
-            if not nomes_componentes:
-                st.write("")
-                st.caption("Nenhum objetivo específico cadastrado. Cadastre objetivos específicos antes de adicionar atividades.")
-                st.stop()
-                
-            componente_nome = st.selectbox(
-                "Selecione o objetivo específico",
-                [""] + nomes_componentes
-            )
-
-            # Recupera o componente selecionado
-            componente_sel = next(
-                (c for c in componentes if c.get("componente") == componente_nome),
-                None
-            )
-            
-            if not componente_sel:
-                st.caption("Selecione um objetivo específico.")
-                st.stop()
-
-            # ============================================================
-            # Carregar atividades existentes
-            # ============================================================
-
-            atividades_exist = componente_sel.get("atividades", [])
+            # ==========================================================
+            # Monta tabela única de atividades
+            # ==========================================================
 
             lista_atividades = []
-            for a in atividades_exist:
-                # Agora as datas não serão convertidas aqui.
-                lista_atividades.append({
-                    "id": a.get("id"),
-                    "atividade": a.get("atividade", ""),
-                    "data_inicio": a.get("data_inicio", ""),
-                    "data_fim": a.get("data_fim", ""),
-                })
+
+            for componente in componentes:
+
+                nome_objetivo = componente.get("componente", "")
+
+                for atividade in componente.get("atividades", []):
+
+                    lista_atividades.append({
+
+                        "id": atividade.get("id"),
+
+                        "id_componente": componente.get("id"),
+
+                        "objetivo": nome_objetivo,
+
+                        "atividade": atividade.get("atividade", ""),
+
+                        "data_inicio": atividade.get("data_inicio", ""),
+
+                        "data_fim": atividade.get("data_fim", ""),
+
+                    })
 
             df_atividades = pd.DataFrame(lista_atividades)
 
-            # Se estiver vazio, cria colunas vazias
             if df_atividades.empty:
+
                 df_atividades = pd.DataFrame({
+
+                    "id": pd.Series(dtype="str"),
+
+                    "id_componente": pd.Series(dtype="str"),
+
+                    "objetivo": pd.Series(dtype="str"),
+
                     "atividade": pd.Series(dtype="str"),
+
                     "data_inicio": pd.Series(dtype="str"),
+
                     "data_fim": pd.Series(dtype="str"),
+
                 })
 
+            df_atividades = df_atividades.sort_values(
+                ["objetivo", "atividade"],
+                ignore_index=True
+            )
 
             # ============================================================
             # Data Editor 
@@ -2621,7 +2618,6 @@ with plano_trabalho:
                     errors="coerce"
                 )
 
-
             df_editado = st.data_editor(
                 df_atividades,
                 num_rows="dynamic",
@@ -2629,20 +2625,36 @@ with plano_trabalho:
                 key="editor_atividades",
                 column_config={
                     "id": None,
+
+                    "id_componente": None,
+
+                    "objetivo": st.column_config.SelectboxColumn(
+                        "Objetivo específico",
+                        options=[
+                            c.get("componente", "")
+                            for c in componentes
+                        ],
+                        required=True,
+                        width=300
+                    ),
+
                     "atividade": st.column_config.TextColumn(
-                        label="Atividade",
-                        width=700
+                        "Atividade",
+                        width=600
                     ),
+
                     "data_inicio": st.column_config.DateColumn(
-                        label="Mês de início",
-                        width=120,
-                        format="MM/YYYY"   
+                        "Mês de início",
+                        format="MM/YYYY",
+                        width=120
                     ),
+
                     "data_fim": st.column_config.DateColumn(
-                        label="Mês de fim",
-                        width=120,
-                        format="MM/YYYY"   
+                        "Mês de fim",
+                        format="MM/YYYY",
+                        width=120
                     ),
+
                 }
             )
 
@@ -2685,6 +2697,8 @@ with plano_trabalho:
 
                 for idx, row in df_editado.iterrows():
 
+                    objetivo = str(row["objetivo"]).strip()
+
                     atividade = str(row["atividade"]).strip()
 
                     # Aqui NÃO converte para string ainda — mantém tipo original
@@ -2695,9 +2709,15 @@ with plano_trabalho:
                     # Detecta linha parcialmente preenchida
                     # ----------------------------------------------------------
                     campos_preenchidos = [
+
+                        objetivo != "",
+
                         atividade != "",
+
                         not pd.isna(data_inicio),
+
                         not pd.isna(data_fim)
+
                     ]
 
                     # Se pelo menos 1 campo foi preenchido mas não todos → erro
@@ -2713,6 +2733,7 @@ with plano_trabalho:
                     if all(campos_preenchidos):
                         atividades_final.append({
                             "id": row.get("id"),
+                            "objetivo": objetivo,
                             "atividade": atividade,
                             "data_inicio": pd.to_datetime(data_inicio).strftime("%m/%Y"),
                             "data_fim": pd.to_datetime(data_fim).strftime("%m/%Y"),
@@ -2728,57 +2749,85 @@ with plano_trabalho:
 
                 else:
 
-                    atividades_antigas = {
-                        a["id"]: a for a in atividades_exist
-                    }
-
                     # ------------------------------------------------------
-                    # Cria nova lista de atividades (sempre novos IDs)
-                    # ------------------------------------------------------
-
-                    nova_lista = []
-
-                    for a in atividades_final:
-
-                        atividade_antiga = atividades_antigas.get(a.get("id"))
-
-                        if atividade_antiga:
-
-                            nova_lista.append({
-                                "id": atividade_antiga["id"],
-                                "atividade": a["atividade"],
-                                "data_inicio": a["data_inicio"],
-                                "data_fim": a["data_fim"],
-
-                                "porcentagem_atv": atividade_antiga.get("porcentagem_atv", 0),
-                                "status_atividade": atividade_antiga.get("status_atividade"),
-                                "relatos": atividade_antiga.get("relatos", [])
-                            })
-
-                        else:
-
-                            nova_lista.append({
-                                "id": str(bson.ObjectId()),
-                                "atividade": a["atividade"],
-                                "data_inicio": a["data_inicio"],
-                                "data_fim": a["data_fim"],
-                                "porcentagem_atv": 0,
-                                "relatos": []
-                            })
-
-                    # ------------------------------------------------------
-                    # Atualiza apenas o componente correspondente
+                    # Atualiza todos os componentes
                     # ------------------------------------------------------
                     componentes_atualizados = []
 
-                    for c in componentes:
-                        if c["id"] == componente_sel["id"]:
-                            componentes_atualizados.append({
-                                **c,
-                                "atividades": nova_lista
-                            })
+                    # Preserva todos os componentes existentes
+                    for componente in componentes:
+
+                        componentes_atualizados.append({
+
+                            **componente,
+
+                            "atividades": []
+
+                        })
+
+
+                    # Índice por nome
+                    mapa_componentes = {
+                        c["componente"]: c
+                        for c in componentes_atualizados
+                    }
+
+                    # Índice das atividades antigas
+                    atividades_antigas = {}
+
+                    for componente in componentes:
+
+                        for atividade in componente.get("atividades", []):
+
+                            atividades_antigas[atividade["id"]] = atividade
+
+
+                    # Distribui novamente cada atividade
+                    for atividade in atividades_final:
+
+                        atividade_antiga = atividades_antigas.get(atividade["id"])
+
+                        if atividade_antiga:
+
+                            nova = {
+
+                                "id": atividade_antiga["id"],
+
+                                "atividade": atividade["atividade"],
+
+                                "data_inicio": atividade["data_inicio"],
+
+                                "data_fim": atividade["data_fim"],
+
+                                "porcentagem_atv": atividade_antiga.get("porcentagem_atv", 0),
+
+                                "status_atividade": atividade_antiga.get("status_atividade"),
+
+                                "relatos": atividade_antiga.get("relatos", [])
+
+                            }
+
                         else:
-                            componentes_atualizados.append(c)
+
+                            nova = {
+
+                                "id": str(bson.ObjectId()),
+
+                                "atividade": atividade["atividade"],
+
+                                "data_inicio": atividade["data_inicio"],
+
+                                "data_fim": atividade["data_fim"],
+
+                                "porcentagem_atv": 0,
+
+                                "relatos": []
+
+                            }
+
+                        mapa_componentes[
+                            atividade["objetivo"]
+                        ]["atividades"].append(nova)
 
                     # ------------------------------------------------------
                     # Persistência no MongoDB
