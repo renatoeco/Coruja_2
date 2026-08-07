@@ -2347,11 +2347,35 @@ with cron_desemb:
             # -----------------------------------
             if st.button("Salvar parcelas", icon=":material/save:"):
 
+                # -----------------------------------
+                # Validar se há parcelas sem data prevista
+                # (precisa vir ANTES do dropna, senão o erro
+                # aparece como "diferença de valor" em vez de
+                # apontar a data faltando)
+                # -----------------------------------
+
+                parcelas_sem_data = df_parcelas[
+                    df_parcelas["data_prevista"].isna()
+                    & df_parcelas["numero"].notna()
+                ]
+
+                if not parcelas_sem_data.empty:
+                    numeros_faltando = ", ".join(
+                        str(int(n)) for n in parcelas_sem_data["numero"].tolist()
+                    )
+
+                    st.error(
+                        f"Erro: informe a data prevista da(s) parcela(s) {numeros_faltando}. "
+                        "Todas as parcelas precisam ter uma data prevista preenchida.",
+                        icon=":material/error:"
+                    )
+
+                    st.stop()
+
                 df_salvar = df_parcelas.dropna(
                     subset=["valor", "data_prevista"],
                     how="any"
                 ).copy()
-
 
                 # -----------------------------------
                 # Validar soma dos valores das parcelas
@@ -2359,7 +2383,6 @@ with cron_desemb:
                 soma_valores = df_salvar["valor"].sum()
 
                 if round(soma_valores, 2) != round(valor_total, 2):
-
                     soma_fmt = (
                         f"R$ {soma_valores:,.2f}"
                         .replace(",", "X")
@@ -2376,12 +2399,10 @@ with cron_desemb:
 
                     st.error(
                         f"Erro: A soma das parcelas ({soma_fmt.replace('$', '\\$')}) deve ser igual ao valor total do projeto ({total_fmt.replace('$', '\\$')}).",
-                        # f"Erro: A soma das parcelas ({soma_fmt}) deve ser igual ao valor total do projeto ({total_fmt}).",
                         icon=":material/error:"
                     )
+
                     st.stop()
-
-
 
                 # Ordenar antes de salvar
                 df_salvar = df_salvar.sort_values(
