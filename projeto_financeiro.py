@@ -2365,8 +2365,7 @@ with cron_desemb:
                     )
 
                     st.error(
-                        f"Erro: informe a data prevista da(s) parcela(s) {numeros_faltando}. "
-                        "Todas as parcelas precisam ter uma data prevista preenchida.",
+                        f"Erro: informe a data prevista da(s) parcela(s) {numeros_faltando}. ",
                         icon=":material/error:"
                     )
 
