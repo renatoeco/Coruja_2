@@ -2,9 +2,12 @@ import streamlit as st
 import pandas as pd
 import time
 import datetime
-import os
+from datetime import timezone
+from zoneinfo import ZoneInfo
 import uuid
 from bson import ObjectId
+import hashlib
+import json
 
 import streamlit_shadcn_ui as ui
 
@@ -202,9 +205,6 @@ def format_brl(valor):
     )
 
 
-
-
-
 # Função para notificar os usuários internos quando os valores das parcelas ficam desatualizados
 # em decorrência do cadastro de aditivo ou devolução, que alteram o valor do projeto.
 def notifica_parcelas_desencontradas():
@@ -246,11 +246,6 @@ def notifica_parcelas_desencontradas():
                 "O valor total das parcelas está diferente do valor total do projeto. **Atualize o cronograma de parcelas.**",
                 icon=":material/warning:"
             )
-
-
-
-
-
 
 
 # ==================================================
@@ -321,9 +316,6 @@ def aprovar_remanejamento(
     st.rerun()
 
 
-
-
-
 # ==================================================
 # Atualiza aceite técnico/financeiro imediatamente, na análise do remanejamento
 # ==================================================
@@ -379,11 +371,6 @@ def atualizar_aceite_remanejamento(
             }
         }
     )
-
-
-
-
-
 
 
 # ==================================================
@@ -552,11 +539,6 @@ def enviar_email_remanejamento_recusado(
     enviar_email(corpo_html, destinatarios, assunto)
 
 
-
-
-
-
-
 # ==================================================
 # Envia e-mail para o beneficiário quando remanejamento é aprovado
 # ==================================================
@@ -720,10 +702,6 @@ def enviar_email_remanejamento_aprovado(
     """
 
     enviar_email(corpo_html, destinatarios, assunto)
-
-
-
-
 
 
 # ==================================================
@@ -891,14 +869,6 @@ def enviar_email_remanejamento(
             enviar_email(corpo_html, [pessoa["e_mail"]], assunto)
 
 
-
-
-
-
-
-
-
-
 # ==================================================
 # Função utilitária
 # Efetiva o remanejamento no orçamento
@@ -949,11 +919,6 @@ def efetivar_remanejamento(
             }
         }
     )
-
-
-
-
-
 
 
 def obter_nome_investidor(db, projeto):
@@ -1055,9 +1020,6 @@ def obter_nome_investidor(db, projeto):
 
 
 
-
-
-
 def calcular_gasto(item):
     lancamentos = item.get("lancamentos", [])
     return sum(
@@ -1065,7 +1027,6 @@ def calcular_gasto(item):
         for l in lancamentos
         if l.get("valor_despesa") is not None
     )
-
 
 
 # def gerar_recibo_docx(
@@ -1259,7 +1220,6 @@ def calcular_gasto(item):
 #     # return True
 
 
-
 def atualizar_relatorios(col_projetos, codigo_projeto):
     """
     Garante a existência de 1 relatório para cada parcela.
@@ -1317,9 +1277,6 @@ def atualizar_relatorios(col_projetos, codigo_projeto):
         {"codigo": codigo_projeto},
         {"$set": {"relatorios": novos_relatorios}}
     )
-
-
-
 
 
 # ==========================================================================================
@@ -1792,6 +1749,116 @@ def dialog_contrapartida_nao_fin():
                         st.markdown(f"[{a['nome_arquivo']}]({link})")
                 else:
                     st.write("-")
+
+
+def hash_df(df):
+    """
+    Gera um hash estável para o DataFrame, independente da ordem
+    das colunas e de tipos como NaN/NaT/datetime.
+    """
+    if df is None or df.empty:
+        return hashlib.md5(b"empty").hexdigest()
+    
+    df_norm = df.reindex(sorted(df.columns), axis=1)
+    
+    registros = df_norm.to_dict("records")
+    
+    texto = json.dumps(registros, sort_keys=True, default=str, ensure_ascii=False)
+    
+    return hashlib.md5(texto.encode("utf-8")).hexdigest()
+        
+        
+@st.fragment(run_every=8)
+def autosave_orcamento():
+    
+    # -----------------------------------
+    # Trava: só executa se o autosave estiver explicitamente ativo
+    # -----------------------------------
+    if not st.session_state.get("autosave_orcamento_ativo", False):
+        return
+
+    ultima_edicao = st.session_state.get("orcamento_ultima_edicao")
+    df_atual = st.session_state.get("df_orcamento_atual_editado", pd.DataFrame())
+    hash_atual = hash_df(df_atual)
+
+    # --------------------------------------------------
+    # Busca no MongoDB o que está REALMENTE salvo agora
+    # (rascunho, se existir; senão, nenhum rascunho ainda)
+    # --------------------------------------------------
+    projeto_bd = col_projetos.find_one(
+        {"_id": id_projeto_atual},
+        {"financeiro.orcamento_rascunho": 1}
+    ) or {}
+    
+    rascunho_bd = (projeto_bd.get("financeiro") or {}).get("orcamento_rascunho")
+
+    if rascunho_bd and rascunho_bd.get("hash"):
+        # Caminho rápido: usa o hash já gravado junto do rascunho
+        hash_salvo_bd = rascunho_bd["hash"]
+        
+    elif rascunho_bd and rascunho_bd.get("dados") is not None:
+        # Compatibilidade: rascunho antigo sem campo "hash"
+        hash_salvo_bd = hash_df(pd.DataFrame(rascunho_bd["dados"]))
+        
+    else:
+        # Nenhum rascunho salvo ainda -> compara com o estado
+        # original carregado ao entrar no modo de edição
+        hash_salvo_bd = hash_df(
+            st.session_state.get("df_orcamento_editor", pd.DataFrame())
+        )
+
+    st.session_state["orcamento_hash_salvo"] = hash_salvo_bd
+    houve_alteracao = hash_atual != hash_salvo_bd
+
+    # --------------------------------------------------
+    # Só salva se: (1) os dados são diferentes do que está no
+    # banco E (2) o usuário já parou de digitar há 3s (debounce)
+    # --------------------------------------------------
+    if houve_alteracao and ultima_edicao and (time.time() - ultima_edicao >= 3):
+        
+        col_projetos.update_one(
+            {"_id": id_projeto_atual},
+            {
+                "$set": {
+                    "financeiro.orcamento_rascunho": {
+                        "dados": df_atual.to_dict("records"),
+                        "hash": hash_atual,
+                        "salvo_em": datetime.datetime.now(datetime.UTC),
+                    }
+                }
+            }
+        )
+        
+        st.session_state["orcamento_hash_salvo"] = hash_atual
+        st.session_state["orcamento_autosave_ts"] = time.time()
+
+
+@st.fragment(run_every=8)
+def caption_rascunho_orcamento():
+    """
+    Exibe o aviso de rascunho salvo, em cima do botão de salvar.
+    Atualiza sozinho a cada 8s, em paralelo ao autosave.
+    """
+    ts = st.session_state.get("orcamento_autosave_ts")
+    if ts:
+
+        # --------------------------------------------------
+        # Converte o timestamp para o fuso oficial de
+        # Brasília/São Paulo.
+        #
+        # America/Sao_Paulo é o identificador IANA adequado
+        # para o horário de Brasília.
+        # --------------------------------------------------
+        data_hora_brasilia = datetime.datetime.fromtimestamp(
+            ts,
+            tz=ZoneInfo("America/Sao_Paulo")
+        )
+
+        st.caption(
+            f":material/cloud_done: Rascunho salvo às "
+            f"{data_hora_brasilia.strftime('%H:%M:%S')}  \n"
+            f"Clique no botão para efetivar as mudanças"
+        )
 
 
 ###########################################################################################################
@@ -2639,16 +2706,68 @@ with orcamento:
     # Detecta mudança do toggle
     modo_edicao_anterior = st.session_state.get("modo_edicao_orcamento_anterior", False)
 
-    # Se estava em edição e agora não está mais
+    # ==================================================
+    # Detectar mudança do modo de edição
+    # ==================================================
+
+    # --------------------------------------------------
+    # Se estava em edição e agora NÃO está mais:
+    # significa que o usuário saiu do modo de edição.
+    #
+    # Nesse momento:
+    # - removemos o estado temporário do editor;
+    # - desativamos o autosave;
+    # - limpamos os hashes/timestamps;
+    # - e principalmente escondemos o aviso de rascunho.
+    # --------------------------------------------------
     if modo_edicao_anterior and not modo_edicao:
 
-        # Remove dataframe temporário
+        # Remove dataframe temporário do editor.
         if "df_orcamento_editor" in st.session_state:
             del st.session_state["df_orcamento_editor"]
 
-        # Remove estado interno do data_editor
+        # Remove o estado interno do st.data_editor.
         if "editor_orcamento" in st.session_state:
             del st.session_state["editor_orcamento"]
+
+        # Desativa o autosave do orçamento.
+        st.session_state["autosave_orcamento_ativo"] = False
+
+        # Remove informações temporárias utilizadas pelo autosave.
+        st.session_state.pop("orcamento_hash_salvo", None)
+        st.session_state.pop("orcamento_ultima_edicao", None)
+        st.session_state.pop("orcamento_autosave_ts", None)
+        st.session_state.pop("df_orcamento_atual_editado", None)
+
+        # --------------------------------------------------
+        # O aviso NÃO deve aparecer enquanto o usuário está
+        # fora do modo de edição.
+        # Ele será ativado novamente somente quando houver
+        # uma nova entrada no modo de edição.
+        # --------------------------------------------------
+        st.session_state["mostrar_warning_rascunho_orcamento"] = False
+
+
+    # ==================================================
+    # Detectar entrada no modo de edição
+    # ==================================================
+
+    # --------------------------------------------------
+    # Se antes NÃO estava em edição e agora está:
+    # significa que o usuário acabou de entrar novamente
+    # no modo de edição.
+    #
+    # É somente nesse momento que verificamos se existe
+    # um rascunho pendente no banco.
+    # --------------------------------------------------
+    if not modo_edicao_anterior and modo_edicao:
+
+        # Busca o rascunho diretamente do documento atual.
+        rascunho = financeiro.get("orcamento_rascunho")
+
+        # O aviso só será exibido se realmente existir
+        # um rascunho pendente.
+        st.session_state["mostrar_warning_rascunho_orcamento"] = bool(rascunho)
 
     # Atualiza estado anterior
     st.session_state["modo_edicao_orcamento_anterior"] = modo_edicao
@@ -3608,6 +3727,110 @@ with orcamento:
                     del st.session_state["df_orcamento_editor"]
                     if "editor_orcamento" in st.session_state:
                         del st.session_state["editor_orcamento"]
+                        
+        # -----------------------------------
+        # Verificar rascunho de autosave pendente
+        # Carrega automaticamente, sem pedir confirmação
+        # -----------------------------------
+        rascunho = financeiro.get("orcamento_rascunho")
+
+        if rascunho and "df_orcamento_editor" not in st.session_state:
+            df_rascunho = pd.DataFrame(rascunho["dados"])
+
+            # -----------------------------------
+            # Mapa do que está REALMENTE salvo no banco (id_despesa -> item)
+            # usado para descobrir quais linhas do rascunho são
+            # diferentes do que já está persistido
+            # -----------------------------------
+            mapa_salvo_atual = {
+                item.get("id_despesa"): item
+                for item in orcamento_atual
+                if item.get("id_despesa")
+            }
+
+            def _linha_e_rascunho(row):
+                id_desp = row.get("id_despesa")
+                salvo = mapa_salvo_atual.get(id_desp)
+                # linha nova (ainda não existe no banco) -> é rascunho
+                if not salvo:
+                    return True
+                categoria_nome_salva = mapa_categoria_id_nome.get(
+                    str(salvo.get("categoria")), salvo.get("categoria")
+                )
+                if str(row.get("categoria_nome", "")) != str(categoria_nome_salva or ""):
+                    return True
+                if str(row.get("nome_despesa", "")) != str(salvo.get("nome_despesa", "")):
+                    return True
+                if format_brl(salvo.get("valor_total")) != str(row.get("valor_total_fmt", "")):
+                    return True
+                if format_brl(salvo.get("contrapartida_financeira")) != str(row.get("contrapartida_financeira_fmt", "")):
+                    return True
+                if format_brl(salvo.get("contrapartida_nao_financeira")) != str(row.get("contrapartida_nao_financeira_fmt", "")):
+                    return True
+                return False
+
+            df_rascunho["_alterado"] = df_rascunho.apply(_linha_e_rascunho, axis=1)
+
+            st.session_state["df_orcamento_editor"] = df_rascunho
+            st.session_state["orcamento_hash_salvo"] = rascunho.get(
+                "hash", hash_df(df_rascunho.drop(columns=["_alterado"], errors="ignore"))
+            )
+
+
+            # --------------------------------------------------
+            # Recupera a data/hora do autosave armazenada no MongoDB.
+            # --------------------------------------------------
+            salvo_em = rascunho.get("salvo_em")
+
+            if salvo_em:
+
+                # --------------------------------------------------
+                # O PyMongo normalmente retorna datetime sem tzinfo.
+                # Nesse caso, interpretamos explicitamente o valor
+                # recuperado como UTC.
+                # --------------------------------------------------
+                if salvo_em.tzinfo is None:
+                    salvo_em = salvo_em.replace(
+                        tzinfo=timezone.utc
+                    )
+
+                # --------------------------------------------------
+                # Salva o timestamp absoluto no session_state.
+                # --------------------------------------------------
+                st.session_state["orcamento_autosave_ts"] = (
+                    salvo_em.timestamp()
+                )
+
+            st.session_state.pop("editor_orcamento", None)
+
+        # --------------------------------------------------
+        # Exibir o aviso somente quando o usuário acabou de
+        # entrar novamente no modo de edição.
+        #
+        # Durante os reruns provocados por:
+        # - edição de células;
+        # - autosave;
+        # - alterações no data_editor;
+        # - outros widgets da página;
+        #
+        # o aviso não será recriado.
+        # --------------------------------------------------
+        if st.session_state.get(
+            "mostrar_warning_rascunho_orcamento",
+            False
+        ):
+            st.write("")
+            st.warning(
+                "Existe um rascunho não salvo",
+                icon=":material/warning:"
+            )
+            st.write("")
+
+        # -----------------------------------
+        # Inicializar estado do editor
+        # -----------------------------------
+        if "df_orcamento_editor" not in st.session_state:
+            st.session_state["df_orcamento_editor"] = df_orcamento.copy()
 
         # -----------------------------------
         # Inicializar estado do editor
@@ -3656,7 +3879,44 @@ with orcamento:
             },
             key="editor_orcamento",
         )
+        
+        # -----------------------------------
+        # Guardar o estado ATUAL editado para o autosave enxergar
+        # -----------------------------------
+        st.session_state["df_orcamento_atual_editado"] = df_editado_orc
 
+        # -----------------------------------
+        # Detectar se o usuário REALMENTE editou o data_editor
+        # (usa o estado interno do próprio widget, não hash)
+        # -----------------------------------
+        estado_editor_orc = st.session_state.get("editor_orcamento", {})
+        
+        usuario_editou_orcamento = bool(
+            estado_editor_orc.get("edited_rows")
+            or estado_editor_orc.get("added_rows")
+            or estado_editor_orc.get("deleted_rows")
+        )
+
+        if usuario_editou_orcamento:
+            hash_atual = hash_df(df_editado_orc)
+
+            if "orcamento_hash_salvo" not in st.session_state:
+                st.session_state["orcamento_hash_salvo"] = hash_df(
+                    st.session_state["df_orcamento_editor"]
+                )
+
+            houve_alteracao = hash_atual != st.session_state["orcamento_hash_salvo"]
+
+            if houve_alteracao:
+                st.session_state["orcamento_ultima_edicao"] = time.time()
+
+            st.session_state["autosave_orcamento_ativo"] = True
+            
+        else:
+            # Sem edição real -> não ativa o autosave, não precisa de rascunho
+            st.session_state["autosave_orcamento_ativo"] = False
+
+        autosave_orcamento()
 
         # -----------------------------------
         # Conversões
@@ -3706,18 +3966,22 @@ with orcamento:
         # -----------------------------------
         df_temp = df_editado_orc.copy()
 
-        df_temp["valor_total"] = df_temp["valor_total_fmt"].apply(parse_brl)
+        df_temp["valor_total"] = pd.to_numeric(df_temp["valor_total_fmt"].apply(parse_brl), errors="coerce")
 
 
         df_temp["contrapartida_financeira"] = (
+            pd.to_numeric(
             df_temp["contrapartida_financeira_fmt"]
             .apply(parse_brl)
+            )
             .fillna(0.0)
         )
 
         df_temp["contrapartida_nao_financeira"] = (
+            pd.to_numeric(
             df_temp["contrapartida_nao_financeira_fmt"]
             .apply(parse_brl)
+            )
             .fillna(0.0)
         )
 
@@ -3829,19 +4093,21 @@ with orcamento:
 
         st.write('')
         st.write('')
-
+        st.write('')
 
         # -----------------------------------
         # SALVAR
         # -----------------------------------
 
-        with st.container(horizontal=True, horizontal_alignment="right"):
-          
+        col1, col2 = st.columns([4, 1])
+
+        with col2:
+
+            caption_rascunho_orcamento()
+        
             botao_salvar_orcamento = st.button("Salvar orçamento", icon=":material/save:", type="primary", width=200)
             
             
-            
-        
         if botao_salvar_orcamento:
 
 
@@ -3897,17 +4163,19 @@ with orcamento:
             # Validação: soma das despesas vs valor do projeto
             # -----------------------------------
 
-            df_salvar["valor_total"] = df_salvar["valor_total_fmt"].apply(parse_brl)
+            df_salvar["valor_total"] = pd.to_numeric(df_salvar["valor_total_fmt"].apply(parse_brl), errors="coerce")
 
             df_salvar["contrapartida_financeira"] = (
+                pd.to_numeric(
                 df_salvar["contrapartida_financeira_fmt"]
                 .apply(parse_brl)
-            )
+            ))
 
             df_salvar["contrapartida_nao_financeira"] = (
+                pd.to_numeric(
                 df_salvar["contrapartida_nao_financeira_fmt"]
                 .apply(parse_brl)
-            )
+            ))
 
             # Soma apenas valores solicitados preenchidos
             soma_despesas = pd.to_numeric(
@@ -4000,16 +4268,30 @@ with orcamento:
             # -----------------------------------
             col_projetos.update_one(
                 {"_id": id_projeto_atual},
-                {"$set": {"financeiro.orcamento": novo_orcamento}}
+                {
+                    "$set": {"financeiro.orcamento": novo_orcamento},
+                    "$unset": {"financeiro.orcamento_rascunho": ""}
+                }
             )
+            
+            st.session_state["autosave_orcamento_ativo"] = False 
+            st.session_state.pop("orcamento_hash_salvo", None)
+            st.session_state.pop("orcamento_ultima_edicao", None)
+            st.session_state.pop("orcamento_autosave_ts", None)
+            st.session_state.pop("df_orcamento_atual_editado", None)
+            st.session_state["mostrar_warning_rascunho_orcamento"] = False
 
+            # -----------------------------------
+            # Resetar a base do editor e o estado do widget,
+            # para que o próximo rerun não "enxergue" as edições
+            # que já foram salvas como se ainda estivessem pendentes
+            # -----------------------------------
+            st.session_state.pop("df_orcamento_editor", None)
+            st.session_state.pop("editor_orcamento", None)
+            
             st.success("Orçamento salvo com sucesso!", icon=":material/check:")
             time.sleep(3)
             st.rerun()
-
-
-
-
 
 
 # --------------------------------------------------
@@ -4243,10 +4525,6 @@ if usuario_interno:
 with remanejamentos:
 
     st.markdown("### Remanejamentos")
-
-
-
-
 
     @st.fragment
     def fragmento_remanejamento(financeiro):
