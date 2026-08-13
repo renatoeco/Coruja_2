@@ -314,38 +314,117 @@ if edital_selecionado != "Todos" and "edital" in df_filtrado.columns:
 # Filtrar somente os projetos da pessoa logada
 if ver_meus_projetos:
 
-    nome_usuario = st.session_state.nome
-
-    # Busca a pessoa logada no df_pessoas (nome CONTÉM o nome do usuário)
+    # ------------------------------------------------------------------
+    # Busca a pessoa atualmente logada.
+    # O campo "projetos" da coleção "pessoas" armazena os IDs (_id)
+    # dos projetos, e não os códigos dos projetos.
+    # ------------------------------------------------------------------
     pessoa = df_pessoas.loc[
         df_pessoas["nome_completo"]
-            .fillna("")
-            .str.contains(st.session_state.nome, case=False)
+        .fillna("")
+        .str.contains(
+            st.session_state.nome,
+            case=False,
+            na=False
+        )
     ]
 
-    # Busca a pessoa logada no df_pessoas
+    # ------------------------------------------------------------------
+    # Caso a pessoa logada não seja encontrada no cadastro.
+    # ------------------------------------------------------------------
     if pessoa.empty:
         st.warning("Usuário não encontrado no cadastro de pessoas.")
         st.stop()
 
-    # Pega a lista de projetos da primeira linha encontrada
-    codigos_projetos = pessoa.iloc[0].get("projetos", [])
+    # ------------------------------------------------------------------
+    # Recupera a lista de projetos associada à pessoa.
+    #
+    # Exemplo do que está salvo no MongoDB:
+    #
+    # "projetos": [
+    #     ObjectId("68a123..."),
+    #     ObjectId("68b456...")
+    # ]
+    #
+    # Depois que df_pessoas foi convertido para DataFrame, esses valores
+    # podem estar como ObjectId ou como strings. Por isso a conversão
+    # abaixo utiliza str() para garantir compatibilidade.
+    # ------------------------------------------------------------------
+    ids_projetos = pessoa.iloc[0].get("projetos", [])
 
-    # Garante que seja uma lista
-    if not isinstance(codigos_projetos, list) or len(codigos_projetos) == 0:
+    # Garante que o campo seja realmente uma lista.
+    if not isinstance(ids_projetos, list) or len(ids_projetos) == 0:
         st.divider()
         st.caption("Nenhum projeto associado a você.")
         st.stop()
 
+    # ------------------------------------------------------------------
+    # Converte os IDs dos projetos para string.
+    #
+    # df_projetos["_id"] também foi convertido para string anteriormente,
+    # portanto agora os dois lados da comparação estarão no mesmo formato.
+    # ------------------------------------------------------------------
+    ids_projetos = {
+        str(id_projeto)
+        for id_projeto in ids_projetos
+        if id_projeto is not None
+    }
+
+    # ------------------------------------------------------------------
+    # Converte os IDs dos projetos da pessoa para os respectivos códigos.
+    #
+    # Exemplo:
+    #
+    # ID armazenado na pessoa:
+    # "68a123..."
+    #
+    # mapa_id_para_codigo:
+    # "68a123..." -> "FEC2026"
+    #
+    # Resultado:
+    # {"FEC2026", "FEC2025"}
+    #
+    # O get(..., None) evita que um projeto excluído do banco ou inválido
+    # gere erro.
+    # ------------------------------------------------------------------
+    codigos_projetos = {
+        mapa_id_para_codigo[id_projeto]
+        for id_projeto in ids_projetos
+        if id_projeto in mapa_id_para_codigo
+    }
+
+    # ------------------------------------------------------------------
+    # Caso nenhum dos IDs encontrados na pessoa corresponda a um projeto
+    # existente na coleção "projetos".
+    # ------------------------------------------------------------------
+    if not codigos_projetos:
+        st.divider()
+        st.caption("Nenhum projeto associado a você.")
+        st.stop()
+
+    # ------------------------------------------------------------------
+    # Agora sim podemos comparar:
+    #
+    # df_filtrado["codigo"]  -> códigos dos projetos
+    # codigos_projetos       -> códigos convertidos a partir dos IDs
+    #
+    # O filtro também respeita os filtros aplicados anteriormente, como
+    # o edital.
+    # ------------------------------------------------------------------
     df_meus = df_filtrado[
-        df_filtrado["codigo"].isin(codigos_projetos)
+        df_filtrado["codigo"].astype(str).isin(codigos_projetos)
     ]
 
+    # ------------------------------------------------------------------
+    # Caso os projetos da pessoa não estejam dentro dos demais filtros
+    # selecionados.
+    # ------------------------------------------------------------------
     if df_meus.empty:
         st.divider()
         st.caption("Nenhum projeto associado a você.")
         st.stop()
 
+    # Substitui o DataFrame atual pelos projetos da pessoa.
     df_filtrado = df_meus
 
 
