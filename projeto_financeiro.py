@@ -263,7 +263,7 @@ def aprovar_remanejamento(
     Aprova o remanejamento selecionado.
     """
 
-    projeto = col_projetos.find_one({"codigo": codigo_projeto})
+    projeto = col_projetos.find_one({"_id": codigo_projeto})
     financeiro = projeto.get("financeiro", {})
     lista = financeiro.get("remanejamentos_financeiros", [])
 
@@ -282,7 +282,7 @@ def aprovar_remanejamento(
     )
 
     col_projetos.update_one(
-        {"codigo": codigo_projeto},
+        {"_id": codigo_projeto},
         {
             "$set": {
                 "financeiro.remanejamentos_financeiros": lista
@@ -305,7 +305,7 @@ def aprovar_remanejamento(
     )
 
 
-    projeto_atualizado = col_projetos.find_one({"codigo": codigo_projeto})
+    projeto_atualizado = col_projetos.find_one({"_id": codigo_projeto})
     enviar_email_remanejamento_aprovado(
         projeto_atualizado,
         lista[idx]
@@ -1226,7 +1226,7 @@ def atualizar_relatorios(col_projetos, codigo_projeto):
     Preserva dados já existentes do relatório.
     """
 
-    projeto = col_projetos.find_one({"codigo": codigo_projeto})
+    projeto = col_projetos.find_one({"_id": codigo_projeto})
 
     if not projeto:
         return
@@ -1237,7 +1237,7 @@ def atualizar_relatorios(col_projetos, codigo_projeto):
     # Se não houver parcelas, remove relatórios
     if not parcelas:
         col_projetos.update_one(
-            {"codigo": codigo_projeto},
+            {"_id": codigo_projeto},
             {"$set": {"relatorios": []}}
         )
         return
@@ -1274,7 +1274,7 @@ def atualizar_relatorios(col_projetos, codigo_projeto):
         })
 
     col_projetos.update_one(
-        {"codigo": codigo_projeto},
+        {"_id": codigo_projeto},
         {"$set": {"relatorios": novos_relatorios}}
     )
 
