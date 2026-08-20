@@ -100,6 +100,13 @@ section[data-testid="stFileUploaderDropzone"] button[data-testid="stBaseButton-s
 </style>
 """, unsafe_allow_html=True)
 
+st.markdown("""
+<style>
+[data-baseweb="tab-panel"] {
+    opacity: 100% !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 
 ###########################################################################################################
