@@ -105,10 +105,10 @@ st.markdown(
     <style>
     /* Force full opacity on elements during reruns or when marked stale */
     .element-container[stale_data="true"], .stApp [data-baseweb="base-input"], div[stale_data="true"] {
-        opacity: 1 !important;
+        opacity: 0 !important;
     }
     .stAppUpdating {
-        opacity: 1 !important;
+        opacity: 0 !important;
     }
     </style>
     """,
