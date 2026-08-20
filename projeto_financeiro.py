@@ -100,13 +100,20 @@ section[data-testid="stFileUploaderDropzone"] button[data-testid="stBaseButton-s
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("""
-<style>
-[data-baseweb="tab-panel"] {
-    opacity: 100% !important;
-}
-</style>
-""", unsafe_allow_html=True)
+st.markdown(
+    """
+    <style>
+    /* Force full opacity on elements during reruns or when marked stale */
+    .element-container[stale_data="true"], .stApp [data-baseweb="base-input"], div[stale_data="true"] {
+        opacity: 1 !important;
+    }
+    .stAppUpdating {
+        opacity: 1 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 ###########################################################################################################
