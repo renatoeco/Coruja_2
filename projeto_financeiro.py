@@ -707,12 +707,12 @@ def enviar_email_remanejamento_aprovado(
 # ==================================================
 # Envia notificação de remanejamento para equipe/admin
 # ==================================================
+# ==================================================
+# Envia notificação de remanejamento para equipe/admin
+# ==================================================
 def enviar_email_remanejamento(
     db,
-    codigo_projeto,
-    sigla,
-    nome_projeto,
-    organizacao,
+    id_projeto_atual,    
     reduzidas,
     aumentadas,
 ):
@@ -720,27 +720,33 @@ def enviar_email_remanejamento(
     Envia e-mail para:
     • tipo_usuario in ["admin", "equipe"]
     • pessoa vinculada ao projeto
-
     Usa HTML padrão do sistema.
     """
-
     col_pessoas = db["pessoas"]
+    col_projetos = db["projetos"]
 
     # --------------------------------------------------
-    # Buscar destinatários
+    # Buscar o projeto direto do banco (dict puro, sem pandas)
+    # --------------------------------------------------
+    projeto = col_projetos.find_one({"_id": id_projeto_atual})
+    if not projeto:
+        return
+
+    codigo_projeto = projeto.get("_id")
+    sigla = projeto.get("sigla")
+    nome_projeto = projeto.get("nome_do_projeto")
+    organizacao = mapa_org_id_nome.get(projeto.get("id_organizacao"), "")
+
+    # --------------------------------------------------
+    # Buscar destinatários (mesmo padrão da função de atividades)
     # --------------------------------------------------
     pessoas = list(
         col_pessoas.find({
             "status": "ativo",
-            "tipo_usuario": {"$in": ["admin", "equipe"]},
-            "projetos": codigo_projeto
+            "projetos": codigo_projeto,
+            "tipo_usuario": {"$in": ["admin", "equipe"]}
         })
     )
-
-    if not pessoas:
-        return
-
-    emails = [p["e_mail"] for p in pessoas if p.get("e_mail")]
 
     # --------------------------------------------------
     # Montar tabelas HTML
@@ -748,44 +754,33 @@ def enviar_email_remanejamento(
     def montar_lista_html(itens, campo_valor):
         if not itens:
             return "<p>Nenhuma</p>"
-
         linhas = ""
         for i in itens:
             linhas += f"<li>{i['nome_despesa']}: {format_brl(i[campo_valor])}</li>"
-
         return f"<ul>{linhas}</ul>"
-
-
 
     lista_reduzidas = montar_lista_html(reduzidas, "valor_reduzido")
     lista_aumentadas = montar_lista_html(aumentadas, "valor_aumentado")
 
-    # --------------------------------------------------
-    # Mensagem condicional
-    # --------------------------------------------------
     mensagem_status = (
-            "<b>AÇÃO NECESSÁRIA: Esse remanejamento depende de análise e aprovação</b><br><br>"
-            'Visite a página de remanejamentos no '
-            '<a href="https://coruja-2-dev.streamlit.app" target="_blank">Sistema de Gestão de Projetos</a> '
-            "para dar continuidade."
-        )
+        "<b>AÇÃO NECESSÁRIA: Esse remanejamento depende de análise e aprovação</b><br><br>"
+        'Visite a página de remanejamentos financeiros no '
+        '<a href="https://coruja-2.streamlit.app" target="_blank">Sistema de Gestão de Projetos</a> '
+        "para dar continuidade."
+    )
 
-    # --------------------------------------------------
-    # Assunto
-    # --------------------------------------------------
-    assunto = f"Solicitação de remanejamento - {codigo_projeto} - {sigla}"
-
-    # --------------------------------------------------
-    # Enviar para cada pessoa (personalizado)
-    # --------------------------------------------------
+    assunto = f"Solicitação de remanejamento financeiro - {sigla} - {organizacao}"
     logo = logo_cepf
 
     with st.spinner("Enviando..."):
-
-
         for pessoa in pessoas:
+            email = pessoa.get("e_mail")
+            if not email:
+                continue
 
-            nome = pessoa.get("nome_completo", "").split()[0]
+            nome_completo = pessoa.get("nome_completo") or ""
+            partes_nome = nome_completo.split()
+            nome = partes_nome[0] if partes_nome else "Usuário"
 
             corpo_html = f"""
             <!DOCTYPE html>
@@ -793,80 +788,58 @@ def enviar_email_remanejamento(
             <head>
             <meta charset="utf-8">
             <style>
-
             body {{
                 font-family: Arial, Helvetica, sans-serif;
                 background-color: #f5f5f5;
             }}
-
             .container {{
-                max-width: 760px;   /* mais largo */
+                max-width: 760px;
                 margin: 0 auto;
                 background: white;
                 border-top: 6px solid #A0C256;
                 padding: 30px;
             }}
-
             .logo {{
-                text-align: center;   /* centraliza imagem */
+                text-align: center;
                 margin-bottom: 20px;
             }}
-
             .highlight {{
                 color: #A0C256;
                 font-weight: bold;
             }}
-
-            /* remove bolinhas e espaçamentos */
             ul {{
                 list-style: none;
                 padding-left: 0;
                 margin: 0;
             }}
-
             li {{
                 margin: 0;
                 padding: 0;
             }}
-
             </style>
             </head>
-
             <body>
-
             <div class="container">
-
                 <br>
-
                 <div class="logo">
                     <img src="{logo}" height="60">
                 </div>
-
                 <br>
-
                 <p>Olá <strong>{nome}</strong>,</p>
-
                 <p>
-                O projeto <span class="highlight">{codigo_projeto} - {sigla} - {nome_projeto}</span>,
+                O projeto <span class="highlight">{sigla} - {nome_projeto}</span>,
                 da organização <span class="highlight">{organizacao}</span>,
                 enviou uma nova solicitação de remanejamento financeiro.
                 </p>
-
                 <br>
-
                 <p>{mensagem_status}</p>
-
                 <br>
                 <p>Sistema de Gestão de Projetos</p>
-
             </div>
-
             </body>
             </html>
             """
-
-
-            enviar_email(corpo_html, [pessoa["e_mail"]], assunto)
+            enviar_email(corpo_html, [email], assunto)
 
 
 # ==================================================
@@ -4948,10 +4921,7 @@ with remanejamentos:
                             # -----------------------------------
                             enviar_email_remanejamento(
                                 db,
-                                projeto["codigo"],
-                                projeto["sigla"],
-                                projeto["nome_do_projeto"],
-                                organizacao_nome,
+                                id_projeto_atual,
                                 reduzidas,
                                 aumentadas,
                             )
