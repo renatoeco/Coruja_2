@@ -143,7 +143,7 @@ with col2:
                 key = f"btn_proj_{i}_{codigo}"
 
                 if st.button(texto_botao, key=key, type="tertiary"):
-                    st.session_state.projeto_atual = codigo
+                    st.session_state.projeto_atual = str(projeto["_id"]) 
                     st.session_state.pagina_atual = "ver_projeto"
                     st.rerun()
 
