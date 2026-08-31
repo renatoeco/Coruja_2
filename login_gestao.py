@@ -513,7 +513,7 @@ else:
             "Administração": [
                 st.Page("cadastros_auxiliares.py", title="Cadastros auxiliares", icon=":material/tune:"),
                 st.Page("relatorio_acessos.py", title="Relatório de acessos", icon=":material/bar_chart:"),
-                st.Page("relatorio_armazenamento.py", title="Armazenamento", icon=":material/home_storage:"),
+                st.Page("relatorio_armazenamento.py", title="Administração", icon=":material/home_storage:"),
                 #st.Page("relatorios_admin.py", title="Exportar relatórios", icon=":material/assignment:"),
 
             ],
@@ -544,7 +544,7 @@ else:
             "Administração": [
                 # st.Page("cadastros_auxiliares.py", title="Cadastros auxiliares", icon=":material/tune:"),
                 st.Page("relatorio_acessos.py", title="Relatório de acessos", icon=":material/bar_chart:"),
-                st.Page("relatorio_armazenamento.py", title="Armazenamento", icon=":material/home_storage:"),
+                st.Page("relatorio_armazenamento.py", title="Administração", icon=":material/home_storage:"),
                 #st.Page("relatorios_admin.py", title="Exportar relatórios", icon=":material/assignment:"),
 
             ],

@@ -142,7 +142,7 @@ st.logo("images/logo_fundo_ecos.png", size='large')
 
 if st.session_state.get("tipo_usuario") == "admin":
 
-    aba_armazenamento, aba_impersonar = st.tabs(["Banco de Dados", "Impersonar Usuário"])
+    aba_armazenamento, aba_impersonar = st.tabs(["Armazenamento", "Impersonar Usuário"])
     with aba_armazenamento:
         renderizar_armazenamento()
     with aba_impersonar:
