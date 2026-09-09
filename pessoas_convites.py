@@ -86,7 +86,8 @@ df_pendentes = df_pendentes.rename(columns={
     "telefone": "Telefone",
     "status": "Status",
     "projetos": "Projetos",
-    "data_convite": "Data do convite"
+    "data_convite": "Data do convite",
+    "codigo_convite": "Código de 1° acesso"
 })
 
 # Ordena por Nome
@@ -206,7 +207,33 @@ def editar_pessoa(_id: str):
         st.rerun()
 
 
+def exibir_valor(valor):
+    """
+    Retorna o valor para exibição na interface.
 
+    Caso o valor seja None, NaN, uma string vazia ou contenha
+    apenas espaços em branco, retorna 'Não preenchido'.
+    """
+
+    # Trata valores None.
+    if valor is None:
+        return "***Não preenchido***"
+
+    # Trata valores NaN do pandas.
+    try:
+        if pd.isna(valor):
+            return "***Não preenchido***"
+    except (TypeError, ValueError):
+        pass
+
+    # Trata strings vazias ou contendo apenas espaços.
+    if isinstance(valor, str):
+        valor = valor.strip()
+
+        if not valor:
+            return "***Não preenchido***"
+
+    return str(valor)
 
 
 ###########################################################################################################
@@ -222,10 +249,10 @@ st.header('Convites pendentes')
 st.divider()
 
 
-dist_colunas = [3, 4, 3, 2, 3, 2, 1]
+dist_colunas = [3, 4, 3, 2, 2, 2, 2, 1]
 
 # Colunas
-col1, col2, col3, col4, col5, col6, col7 = st.columns(dist_colunas)
+col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(dist_colunas)
 
 # Cabeçalho da lista
 col1.write('**Nome**')
@@ -234,25 +261,34 @@ col3.write('**E-mail**')
 col4.write('**Telefone**')
 col5.write('**Tipo de usuário/a**')
 col6.write('**Data do convite**')
-col7.write('')
+col7.write('**Código de 1° acesso**')
+col8.write('')
 
 st.write('')
 
 # Pra cada linha, criar colunas para os dados
+# Para cada pessoa pendente, cria uma linha com as colunas da tabela.
 for _, row in df_pendentes.iterrows():
-    col1, col2, col3, col4, col5, col6, col7 = st.columns(dist_colunas)
+
+    col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(
+        dist_colunas
+    )
 
     # NOME -----------------
-    col1.write(row["Nome"])
+    # Exibe o nome ou "Não preenchido" caso esteja vazio.
+    col1.write(exibir_valor(row.get("Nome")))
+
 
     # PROJETOS -----------------
 
-    # Tratando a coluna projetos, que pode ter múltiplos valores------
+    # Obtém os projetos da pessoa.
+    # Caso o campo não exista ou não seja uma lista, utiliza uma lista vazia.
     projetos = row.get("Projetos", [])
 
     if not isinstance(projetos, list):
         projetos = []
 
+    # Converte os ObjectIds dos projetos para seus respectivos códigos.
     codigos = [
         codigo
         for codigo in (
@@ -262,30 +298,65 @@ for _, row in df_pendentes.iterrows():
         if codigo is not None
     ]
 
-    col2.write(", ".join(codigos))
-    
+    # Se não houver projetos associados, exibe "Não preenchido".
+    if codigos:
+        col2.write(", ".join(codigos))
+    else:
+        col2.write("Não preenchido")
+
 
     # E-MAIL -----------------
+    # Exibe o e-mail ou "Não preenchido".
+    col3.write(exibir_valor(row.get("E-mail")))
 
-    col3.write(row["E-mail"])
 
     # TELEFONE -----------------
-    col4.write(row["Telefone"])
+    # Exibe o telefone ou "Não preenchido".
+    col4.write(exibir_valor(row.get("Telefone")))
 
 
     # TIPO DE USUÁRIO -----------------
-    tipo_usuario = str(row.get("Tipo de usuário/a", "") or "").strip()
 
-    tipo_exibido = (
-        "parceiro/a"
-        if tipo_usuario == "beneficiario"
-        else tipo_usuario
-    )
+    # Obtém o tipo de usuário.
+    tipo_usuario = row.get("Tipo de usuário/a")
+
+    # Trata valores vazios antes de realizar a conversão.
+    if (
+        tipo_usuario is None
+        or pd.isna(tipo_usuario)
+        or str(tipo_usuario).strip() == ""
+    ):
+        tipo_exibido = "Não preenchido"
+
+    else:
+        tipo_usuario = str(tipo_usuario).strip()
+
+        # Mantém a nomenclatura amigável utilizada na interface.
+        tipo_exibido = (
+            "parceiro/a"
+            if tipo_usuario == "beneficiario"
+            else tipo_usuario
+        )
 
     col5.write(tipo_exibido)
 
-    # STATUS -----------------       
-    col6.write(row["Data do convite"])
+    # DATA DO CONVITE -----------------
+    # Exibe a data ou "Não preenchido".
+    col6.write(exibir_valor(row.get("Data do convite")))
+
+    # CÓDIGO DE 1° ACESSO -----------------
+    # Exibe um ícone de olho; ao clicar, abre um popover com o código.
+    codigo_acesso = exibir_valor(row.get("Código de 1° acesso"))
+
+    with col7.popover(":material/visibility:", use_container_width=False, type="tertiary"):
+        st.write(f"**Código de 1° acesso:**")
+        st.code(codigo_acesso, language=None)
+
 
     # BOTÃO DE EDITAR -----------------
-    col7.button(":material/edit:", key=row["_id"], on_click=editar_pessoa, args=(row["_id"],))
+    col8.button(
+        ":material/edit:",
+        key=row["_id"],
+        on_click=editar_pessoa,
+        args=(row["_id"],)
+    )
