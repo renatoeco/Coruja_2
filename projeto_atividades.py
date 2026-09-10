@@ -3221,158 +3221,113 @@ with indicadores:
     #######################################################################################################
     else:
 
-
-        # Texto introdutório da seção
         st.write("*Selecione os indicadores que serão acompanhados no projeto.*")
-
-        # Aviso para o usuário lembrar de salvar
         st.markdown(
             "<span style='color:#2F5AA1;'>***Lembre-se de salvar cada indicador após editar.***</span>",
             unsafe_allow_html=True
         )
-
         st.write("")
         st.write("")
 
-
+        # --------------------------------------------------
+        # Sufixo ÚNICO por projeto — garante que os widgets
+        # de um projeto NUNCA leem o session_state de outro
+        # --------------------------------------------------
+        sufixo_proj = str(id_projeto_atual)
 
         # --------------------------------------------------
-        # INICIALIZA / NORMALIZA ESTADO
+        # Estado sempre recalculado do banco (fonte única de
+        # verdade) — não fica "grudado" entre projetos
         # --------------------------------------------------
-        # Cria o estado na sessão para armazenar os valores
-        # dos indicadores já salvos no projeto
+        indicadores_salvos = (
+            df_projeto["indicadores"].values[0]
+            if "indicadores" in df_projeto.columns
+            else []
+        )
 
-        if "valores_indicadores" not in st.session_state:
+        estado_projeto = {}
 
-            indicadores_salvos = (
-                df_projeto["indicadores"].values[0]
-                if "indicadores" in df_projeto.columns
-                else []
-            )
+        for item in indicadores_salvos:
+            lancamentos = item.get("lancamentos", [])
+            ultimo_lancamento = None
+            if lancamentos:
+                ultimo_lancamento = sorted(
+                    lancamentos, key=lambda x: x.get("relatorio_numero", 0)
+                )[-1]
 
-            estado = {}
-
-            for item in indicadores_salvos:
-                lancamentos = item.get("lancamentos", [])
-
-                ultimo_lancamento = None
-
-                if lancamentos:
-                    ultimo_lancamento = sorted(
-                        lancamentos,
-                        key=lambda x: x.get("relatorio_numero", 0)
-                    )[-1]
-
-                estado[item["id_indicador"]] = {
-                    "valor": item.get("valor", 0),
-                    "descricao": item.get("descricao_contribuicao", ""),
-                    "marco_zero": item.get("marco_zero", 0),
-                    "resultado_final": (
-                        ultimo_lancamento.get("resultado_atual", 0)
-                        if ultimo_lancamento
-                        else 0
-                    ),
-                    "observacoes": (
-                        ultimo_lancamento.get("observacoes", "")
-                        if ultimo_lancamento
-                        else ""
-                    ),
-                    "lancamentos": lancamentos
-                }
-
-            st.session_state.valores_indicadores = estado
-
-
-        # --------------------------------------------------
-        # GARANTIA DE DADOS
-        # --------------------------------------------------
-        # Verifica se existem indicadores cadastrados no edital
+            estado_projeto[item["id_indicador"]] = {
+                "valor": item.get("valor", 0),
+                "descricao": item.get("descricao_contribuicao", ""),
+                "marco_zero": item.get("marco_zero", 0),
+                "resultado_final": (
+                    ultimo_lancamento.get("resultado_atual", 0)
+                    if ultimo_lancamento else 0
+                ),
+                "observacoes": (
+                    ultimo_lancamento.get("observacoes", "")
+                    if ultimo_lancamento else ""
+                ),
+                "lancamentos": lancamentos
+            }
 
         if not indicadores_edital:
             st.caption("Não há indicadores cadastrados neste edital.")
 
         else:
 
-            # --------------------------------------------------
-            # LISTAGEM DOS INDICADORES
-            # --------------------------------------------------
-            # Cada indicador será renderizado em uma linha
-
             for ind in sorted(indicadores_edital, key=lambda x: x["indicador"]):
 
                 id_indicador = ind["_id"]
                 nome_indicador = ind["indicador"]
 
-                dados_atual = st.session_state.valores_indicadores.get(
+                dados_atual = estado_projeto.get(
                     id_indicador,
                     {
-                        "valor": 0,
-                        "descricao": "",
-                        "marco_zero": 0,
-                        "resultado_final": 0,
-                        "observacoes": "",
-                        "lancamentos": []
+                        "valor": 0, "descricao": "", "marco_zero": 0,
+                        "resultado_final": 0, "observacoes": "", "lancamentos": []
                     }
                 )
 
                 # ==================================================
-                # CHECKBOX DE SELEÇÃO
+                # CHECKBOX (chave namespaced por projeto)
                 # ==================================================
                 marcado = st.checkbox(
                     nome_indicador,
-                    key=f"chk_{id_indicador}",
-                    value=id_indicador in st.session_state.valores_indicadores
+                    key=f"chk_{sufixo_proj}_{id_indicador}",
+                    value=id_indicador in estado_projeto
                 )
 
-                # Remove do estado se desmarcado
                 if not marcado:
-                    st.session_state.valores_indicadores.pop(id_indicador, None)
                     st.divider()
                     continue
 
-                # ==================================================
-                # CONTAINER DO INDICADOR SELECIONADO
-                # ==================================================
                 with st.container(border=True):
 
-                    # Inputs
-                    col_marco_zero, col_valor, col_desc, col_res_final, col_obs = st.columns([2, 2, 4, 2, 3])
+                    col_marco_zero, col_valor, col_desc, col_res_final, col_obs = st.columns(
+                        [2, 2, 4, 2, 3]
+                    )
 
                     with col_marco_zero:
                         marco_zero = st.number_input(
                             "**Marco zero**",
                             step=1.0,
-                            value=float(
-                                dados_atual.get("marco_zero", 0)
-                                if isinstance(
-                                    dados_atual.get("marco_zero"),
-                                    (int, float)
-                                )
-                                else 0
-                            ),
-                            key=f"marco_zero_{id_indicador}",
+                            value=float(dados_atual.get("marco_zero", 0) or 0),
+                            key=f"marco_zero_{sufixo_proj}_{id_indicador}",
                         )
 
                     with col_valor:
                         valor = st.number_input(
                             "**Meta**",
                             step=1.0,
-                            value=float(
-                                dados_atual.get("valor", 0)
-                                if isinstance(
-                                    dados_atual.get("valor"),
-                                    (int, float)
-                                )
-                                else 0
-                            ),
-                            key=f"num_{id_indicador}",
+                            value=float(dados_atual.get("valor", 0) or 0),
+                            key=f"num_{sufixo_proj}_{id_indicador}",
                         )
 
                     with col_desc:
                         descricao = st.text_area(
                             "**Descrição**",
                             value=dados_atual.get("descricao", ""),
-                            key=f"desc_{id_indicador}",
+                            key=f"desc_{sufixo_proj}_{id_indicador}",
                             height=100,
                         )
 
@@ -3380,34 +3335,17 @@ with indicadores:
                         resultado_final = st.number_input(
                             "**Resultado final**",
                             step=1.0,
-                            value=float(
-                                dados_atual.get("resultado_final", 0)
-                                if isinstance(
-                                    dados_atual.get("resultado_final"),
-                                    (int, float)
-                                )
-                                else 0
-                            ),
-                            key=f"res_fin_{id_indicador}",
+                            value=float(dados_atual.get("resultado_final", 0) or 0),
+                            key=f"res_fin_{sufixo_proj}_{id_indicador}",
                         )
 
                     with col_obs:
                         observacoes = st.text_area(
                             "**Observações**",
                             value=dados_atual.get("observacoes", ""),
-                            key=f"obs_{id_indicador}",
+                            key=f"obs_{sufixo_proj}_{id_indicador}",
                             height=100,
                         )
-
-                    # Atualiza estado
-                    st.session_state.valores_indicadores[id_indicador] = {
-                        "valor": valor,
-                        "descricao": descricao,
-                        "marco_zero": marco_zero,
-                        "resultado_final": resultado_final,
-                        "observacoes": observacoes,
-                        "lancamentos": dados_atual.get("lancamentos", [])
-                    }
 
                     st.write("")
 
@@ -3415,7 +3353,7 @@ with indicadores:
                         "Salvar",
                         icon=":material/save:",
                         type="secondary",
-                        key=f"save_{id_indicador}",
+                        key=f"save_{sufixo_proj}_{id_indicador}",
                         width=200
                     )
 
@@ -3426,32 +3364,22 @@ with indicadores:
 
                         else:
 
-                            projeto = col_projetos.find_one(
-                                {"_id": id_projeto_atual}
-                            )
+                            projeto = col_projetos.find_one({"_id": id_projeto_atual})
 
                             indicadores_existentes = projeto.get("indicadores", [])
 
                             indicador_existente = next(
-                                (
-                                    i for i in indicadores_existentes
-                                    if i["id_indicador"] == id_indicador
-                                ),
+                                (i for i in indicadores_existentes if i["id_indicador"] == id_indicador),
                                 None
                             )
 
-                            # Preserva lançamentos existentes
                             lancamentos = indicador_existente.get("lancamentos", []) if indicador_existente else []
 
-                            # Atualiza o lançamento mais recente
                             if lancamentos:
                                 lancamentos_ordenados = sorted(
-                                    lancamentos,
-                                    key=lambda x: x.get("relatorio_numero", 0)
+                                    lancamentos, key=lambda x: x.get("relatorio_numero", 0)
                                 )
-
                                 ultimo = lancamentos_ordenados[-1]
-
                                 ultimo["resultado_atual"] = resultado_final
                                 ultimo["observacoes"] = observacoes
 
@@ -3467,30 +3395,20 @@ with indicadores:
                                 i for i in indicadores_existentes
                                 if i["id_indicador"] != id_indicador
                             ]
-
                             indicadores_filtrados.append(indicador_para_salvar)
 
                             resultado = col_projetos.update_one(
                                 {"_id": id_projeto_atual},
-                                {
-                                    "$set": {
-                                        "indicadores": indicadores_filtrados
-                                    }
-                                }
+                                {"$set": {"indicadores": indicadores_filtrados}}
                             )
 
                             if resultado.matched_count == 1:
-                                st.success(
-                                    "Indicador atualizado com sucesso!",
-                                    icon=":material/check:"
-                                )
+                                st.success("Indicador atualizado com sucesso!", icon=":material/check:")
                                 time.sleep(3)
                                 st.rerun()
-
                             else:
                                 st.error("Erro ao salvar indicador.")
 
-                # Separador visual entre indicadores
                 st.divider()
 
 
