@@ -3281,7 +3281,20 @@ with indicadores:
         # --------------------------------------------------
         # Sufixo ÚNICO por projeto — garante que os widgets
         # de um projeto NUNCA leem o session_state de outro
+        # Sufixo ÚNICO por projeto — garante que os widgets
+        # de um projeto NUNCA leem o session_state de outro
         # --------------------------------------------------
+        sufixo_proj = str(id_projeto_atual)
+
+        # --------------------------------------------------
+        # Estado sempre recalculado do banco (fonte única de
+        # verdade) — não fica "grudado" entre projetos
+        # --------------------------------------------------
+        indicadores_salvos = (
+            df_projeto["indicadores"].values[0]
+            if "indicadores" in df_projeto.columns
+            else []
+        )
         sufixo_proj = str(id_projeto_atual)
 
         # --------------------------------------------------
@@ -3295,6 +3308,7 @@ with indicadores:
         )
 
         estado_projeto = {}
+        estado_projeto = {}
 
         for item in indicadores_salvos:
             lancamentos = item.get("lancamentos", [])
@@ -3303,7 +3317,28 @@ with indicadores:
                 ultimo_lancamento = sorted(
                     lancamentos, key=lambda x: x.get("relatorio_numero", 0)
                 )[-1]
+        for item in indicadores_salvos:
+            lancamentos = item.get("lancamentos", [])
+            ultimo_lancamento = None
+            if lancamentos:
+                ultimo_lancamento = sorted(
+                    lancamentos, key=lambda x: x.get("relatorio_numero", 0)
+                )[-1]
 
+            estado_projeto[item["id_indicador"]] = {
+                "valor": item.get("valor", 0),
+                "descricao": item.get("descricao_contribuicao", ""),
+                "marco_zero": item.get("marco_zero", 0),
+                "resultado_final": (
+                    ultimo_lancamento.get("resultado_atual", 0)
+                    if ultimo_lancamento else 0
+                ),
+                "observacoes": (
+                    ultimo_lancamento.get("observacoes", "")
+                    if ultimo_lancamento else ""
+                ),
+                "lancamentos": lancamentos
+            }
             estado_projeto[item["id_indicador"]] = {
                 "valor": item.get("valor", 0),
                 "descricao": item.get("descricao_contribuicao", ""),
@@ -3330,14 +3365,18 @@ with indicadores:
                 nome_indicador = ind["indicador"]
 
                 dados_atual = estado_projeto.get(
+                dados_atual = estado_projeto.get(
                     id_indicador,
                     {
+                        "valor": 0, "descricao": "", "marco_zero": 0,
+                        "resultado_final": 0, "observacoes": "", "lancamentos": []
                         "valor": 0, "descricao": "", "marco_zero": 0,
                         "resultado_final": 0, "observacoes": "", "lancamentos": []
                     }
                 )
 
                 # ==================================================
+                # CHECKBOX (chave namespaced por projeto)
                 # CHECKBOX (chave namespaced por projeto)
                 # ==================================================
                 chave_chk = f"chk_{sufixo_proj}_{id_indicador}"
