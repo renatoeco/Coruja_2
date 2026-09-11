@@ -765,7 +765,7 @@ def enviar_email_remanejamento(
     mensagem_status = (
         "<b>AÇÃO NECESSÁRIA: Esse remanejamento depende de análise e aprovação</b><br><br>"
         'Visite a página de remanejamentos financeiros no '
-        '<a href="https://coruja-2.streamlit.app" target="_blank">Sistema de Gestão de Projetos</a> '
+        '<a href="https://coruja2.streamlit.app" target="_blank">Sistema de Gestão de Projetos</a> '
         "para dar continuidade."
     )
 
