@@ -45,6 +45,12 @@ mapa_id_para_codigo_ciclo = {
     for _, row in df_ciclos.iterrows()
 }
 
+# Editais
+mapa_id_para_codigo_edital = {
+    str(row["_id"]): row["codigo_edital"]
+    for _, row in df_editais.iterrows()
+}
+
 col_projetos = db["projetos"]
 df_projetos = pd.DataFrame(list(col_projetos.find()))
 
@@ -162,7 +168,7 @@ def normalizar_valor(valor):
         return 0.0
 
 
-def agregar_metricas_projetos(df_projetos, df_editais_original, df_ciclos_original):
+def agregar_metricas_projetos(df_projetos, df_editais_original, df_ciclos_original, mapa_id_para_codigo_edital):
     """
     Agrega número de iniciativas e valor investido por:
     - fase operacional
@@ -175,12 +181,15 @@ def agregar_metricas_projetos(df_projetos, df_editais_original, df_ciclos_origin
 
     df = df_projetos.copy()
 
+    # Garante comparação consistente: "edital" agora é o _id (ObjectId) do edital
+    df["edital"] = df["edital"].astype(str)
+
     # Valor investido
     df["valor_investido_num"] = df["financeiro"].apply(
         lambda x: normalizar_valor(x.get("valor_total", 0))
         if isinstance(x, dict) else 0
     )
-    
+
     # ==========================================================
     # MÉTRICAS POR EDITAL
     # ==========================================================
@@ -193,18 +202,23 @@ def agregar_metricas_projetos(df_projetos, df_editais_original, df_ciclos_origin
             }
         )
         .reset_index()
-        .rename(columns={"edital": "Código"})
     )
+
+    # Converte o _id do edital para o código (para casar com df_editais, que usa "Código")
+    metricas_editais["Código"] = metricas_editais["edital"].map(mapa_id_para_codigo_edital)
+    metricas_editais = metricas_editais.drop(columns=["edital"])
 
     # ==========================================================
     # CRUZAMENTO COM EDITAIS PARA PEGAR CICLOS
     # ==========================================================
-    df_editais_aux = df_editais_original[["codigo_edital", "ciclo_investimento"]].copy()
+    df_editais_aux = df_editais_original[["_id", "ciclo_investimento"]].copy()
+    df_editais_aux["_id"] = df_editais_aux["_id"].astype(str)
+    df_editais_aux = df_editais_aux.rename(columns={"_id": "_id_edital"})  # evita colisão
 
     df = df.merge(
         df_editais_aux,
         left_on="edital",
-        right_on="codigo_edital",
+        right_on="_id_edital",
         how="left"
     )
 
@@ -299,7 +313,8 @@ df_ciclos_metricas["doadores"] = df_ciclos_metricas["doadores"].apply(
 metricas_fases, metricas_editais, metricas_doadores = agregar_metricas_projetos(
     df_projetos,
     df_editais_metricas,
-    df_ciclos_metricas
+    df_ciclos_metricas,
+    mapa_id_para_codigo_edital
 )
 
 # Merge com fases
