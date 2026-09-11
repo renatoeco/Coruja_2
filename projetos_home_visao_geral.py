@@ -40,6 +40,17 @@ codigos_validos = set(df_projetos["codigo"].astype(str))
 col_editais = db["editais"]
 df_editais = pd.DataFrame(list(col_editais.find()))
 
+# Converte o _id do edital para string e monta os mapas de conversão
+if "_id" in df_editais.columns:
+    df_editais["_id"] = df_editais["_id"].astype(str)
+
+mapa_id_para_codigo_edital = (
+    dict(zip(df_editais["_id"], df_editais["codigo_edital"]))
+    if not df_editais.empty else {}
+)
+
+mapa_codigo_para_id_edital = {v: k for k, v in mapa_id_para_codigo_edital.items()}
+
 
 
 
@@ -174,6 +185,14 @@ if not df_projetos.empty:
         if col not in df_projetos.columns:
             df_projetos[col] = None
 
+    # Converte "edital" para string ANTES de mapear para o código
+    if "edital" in df_projetos.columns:
+        df_projetos["edital"] = df_projetos["edital"].astype(str)
+
+    # "edital" agora guarda o _id — cria uma coluna com o código, só para exibir
+    df_projetos["edital_codigo"] = df_projetos["edital"].map(mapa_id_para_codigo_edital)
+    df_projetos["edital_codigo"] = df_projetos["edital_codigo"].fillna(df_projetos["edital"])
+
 
 
 
@@ -192,7 +211,6 @@ if not df_projetos.empty:
     # DataFrame de projetos
     if "_id" in df_projetos.columns:
         df_projetos["_id"] = df_projetos["_id"].astype(str)
-
 
     # ------------------------------------------------------------------------------
     # 5.2 Conversão de datas com validação de existência das colunas
@@ -331,9 +349,9 @@ with st.container(horizontal=True):
 
 df_filtrado = df_projetos.copy()
 
-
 if edital_selecionado != "Todos":
-    df_filtrado = df_filtrado[df_filtrado["edital"] == edital_selecionado]
+    id_edital_selecionado = mapa_codigo_para_id_edital.get(edital_selecionado)
+    df_filtrado = df_filtrado[df_filtrado["edital"] == id_edital_selecionado]
 
 # Se não há projetos no edital
 if df_filtrado.empty:
@@ -396,13 +414,15 @@ else:
     # -------------------------------------------------
     # FILTRO DE PROJETOS ATRASADOS (ÚNICO PONTO)
     # -------------------------------------------------
-    if edital_selecionado == "Todos":
-        projetos_atrasados = df_filtrado[df_filtrado["status"] == "Atrasado"]
-    else:
-        projetos_atrasados = df_filtrado[
-            (df_filtrado["edital"] == edital_selecionado) &
-            (df_filtrado["status"] == "Atrasado")
-        ]
+    #if edital_selecionado == "Todos":
+
+    projetos_atrasados = df_filtrado[df_filtrado["status"] == "Atrasado"]
+
+    # else:
+    #     projetos_atrasados = df_filtrado[
+    #         (df_filtrado["edital"] == edital_selecionado) &
+    #         (df_filtrado["status"] == "Atrasado")
+    #     ]
 
     # -------------------------------------------------
     # COLUNAS
@@ -427,7 +447,7 @@ else:
             df_exibir = projetos_atrasados.copy()
 
             df_exibir = df_exibir[
-                ["codigo", "sigla", "padrinho", "edital", "dias_atraso"]
+                ["codigo", "sigla", "padrinho", "edital_codigo", "dias_atraso"]
             ]
 
             df_exibir = df_exibir.rename(columns={
@@ -435,7 +455,7 @@ else:
                 "sigla": "Sigla",
                 "padrinho": "Ponto focal",
                 "dias_atraso": "Dias de atraso",
-                "edital": "Edital"
+                "edital_codigo": "Edital"
             })
 
             df_exibir = df_exibir.sort_values(

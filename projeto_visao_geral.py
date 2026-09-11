@@ -324,8 +324,15 @@ mapa_org_id_nome = {
     for _, row in df_organizacoes.iterrows()
 }
 
+###########################################################################################################
+# MAPA ID -> CÓDIGO DO EDITAL
+###########################################################################################################
 
-
+# cria um dicionário para acessar rapidamente o código do edital pelo _id
+mapa_edital_id_codigo = {
+    row["_id"]: row["codigo_edital"]
+    for _, row in df_editais.iterrows()
+}
 
 ###########################################################################################################
 # NORMALIZAÇÃO DE IDs
@@ -465,10 +472,10 @@ if not contratos:
     pendencias.append("Contrato não cadastrado")
 
 # Perguntas do relatório
-edital_codigo = projeto.get("edital")
+edital_id = projeto.get("edital")
 
 edital = col_editais.find_one({
-    "codigo_edital": edital_codigo
+    "_id": edital_id
 })
 
 perguntas_edital = edital.get(
@@ -530,7 +537,7 @@ if not editar_cadastro:
     # EXIBIÇÃO DOS DADOS DO PROJETO
     ###########################################################################################################
 
-    st.write(f"**Edital:** {df_projeto['edital'].values[0]}")
+    st.write(f"**Edital:** {mapa_edital_id_codigo.get(df_projeto['edital'].values[0], '')}")
     st.write(f"**Organização:** {nome_org}")
     st.write(f"**Nome do projeto:** {df_projeto['nome_do_projeto'].values[0]}")
     st.write(f"**Objetivo geral:** {df_projeto['objetivo_geral'].values[0]}")
@@ -1684,19 +1691,19 @@ else:
             col1, col2, col3 = st.columns(3)
 
             # ---------- EDITAL ----------
-            lista_editais = df_editais["codigo_edital"].tolist()
+            lista_editais_ids = list(mapa_edital_id_codigo.keys())
 
-            # Garante que o valor atual exista na lista
             edital_atual = projeto.get("edital")
-            if edital_atual in lista_editais:
-                index_edital = lista_editais.index(edital_atual)
+            if edital_atual in lista_editais_ids:
+                index_edital = lista_editais_ids.index(edital_atual)
             else:
                 index_edital = 0  
 
-            edital = col1.selectbox(    # Coluna 1
+            edital = col1.selectbox(
                 "Edital",
-                options=lista_editais,
-                index=index_edital
+                options=lista_editais_ids,
+                index=index_edital,
+                format_func=lambda x: mapa_edital_id_codigo[x]  # exibe código do edital
             )
             
             # ---------- CÓDIGO ----------
@@ -2114,8 +2121,8 @@ else:
             # BUSCA LINHAS DO EDITAL
             # --------------------------------------------------
 
-            edital_nome = projeto.get("edital")
-            edital = col_editais.find_one({"codigo_edital": edital_nome})
+            edital_id = projeto.get("edital")
+            edital = col_editais.find_one({"_id": edital_id})
 
             direcoes_edital = edital.get("direcoes_estrategicas", []) if edital else []
 
@@ -2427,10 +2434,10 @@ else:
         # RECUPERA EDITAL DO PROJETO
         # --------------------------------------------------
 
-        edital_codigo = projeto.get("edital")
-
+        edital_id = projeto.get("edital")
+        
         edital = col_editais.find_one({
-            "codigo_edital": edital_codigo
+            "_id": edital_id
         })
 
         perguntas_edital = edital.get(

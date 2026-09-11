@@ -559,17 +559,27 @@ with tab3:
         
         st.write('')
 
-        lista_editais = sorted(col_editais.distinct("codigo_edital"))
+        editais_disponiveis = list(col_editais.find().sort("codigo_edital", 1))
+
+        # mapa id -> código do edital (para exibição no selectbox)
+        mapa_edital_id_codigo = {
+            e["_id"]: e["codigo_edital"]
+            for e in editais_disponiveis
+        }
+
+        lista_editais_ids = list(mapa_edital_id_codigo.keys())
 
         edital_selecionado = st.selectbox(
-            "Selecione o Edital:", 
-            options=[""] + lista_editais,
-            index=0
+            "Selecione o Edital:",
+            options=[None] + lista_editais_ids,
+            index=0,
+            format_func=lambda x: "" if x is None else mapa_edital_id_codigo[x],
         )
 
         if edital_selecionado:
+            
             # Buscar o edital selecionado no MongoDB
-            edital = col_editais.find_one({"codigo_edital": edital_selecionado})
+            edital = col_editais.find_one({"_id": edital_selecionado})
 
             if edital:
                 # Formulário de edição (sem aninhar forms!)
@@ -581,7 +591,6 @@ with tab3:
                     codigo_edital = st.text_input(
                         "Código do edital:",
                         value=edital.get("codigo_edital", ""),
-                        disabled=True
                     )
 
                     nome_edital = st.text_input(
@@ -648,6 +657,7 @@ with tab3:
                             col_editais.update_one(
                                 {"_id": edital["_id"]},
                                 {"$set": {
+                                    "codigo_edital":codigo_edital,
                                     "nome_edital": nome_edital,
                                     "data_lancamento": data_lancamento.strftime("%d/%m/%Y") if data_lancamento else None,
                                     "ciclo_investimento": ciclos_ids,
