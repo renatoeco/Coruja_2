@@ -443,21 +443,7 @@ if org_selecionada != "Todas" and "id_organizacao" in df_filtrado.columns:
     df_filtrado = df_filtrado[
         df_filtrado["id_organizacao"] == id_org
     ]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    
 
 # Se nenhum projeto encontrado
 if df_filtrado.empty:
@@ -465,8 +451,8 @@ if df_filtrado.empty:
     st.warning("Nenhum projeto encontrado.")
     st.stop()
 
-# Ordenar ascendente pela sigla
-df_filtrado = df_filtrado.sort_values(by="sigla", ignore_index=True)
+# Ordenar ascendente pelo código
+df_filtrado = df_filtrado.sort_values(by="codigo", ignore_index=True)
 
 
 # ============================================
