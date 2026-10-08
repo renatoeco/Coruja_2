@@ -1730,21 +1730,7 @@ else:
             )
 
 
-            # # ---------- ORGANIZAÇÃO ----------
-            # lista_organizacoes = df_organizacoes["nome_organizacao"].tolist()
 
-            # # Garante que o valor atual exista na lista
-            # organizacao_atual = projeto.get("organizacao")
-            # if organizacao_atual in lista_organizacoes:
-            #     index_organizacao = lista_organizacoes.index(organizacao_atual)
-            # else:
-            #     index_organizacao = 0  
-
-            # organizacao = st.selectbox(    # Coluna 1
-            #     "Organização",
-            #     options=lista_organizacoes,
-            #     index=index_organizacao
-            # )
 
 
             # ---------- NOME DO PROJETO ----------
@@ -1846,15 +1832,46 @@ else:
             )
 
 
-            st.divider()
+
+
+            # ---------- MARCADORES DO PROJETO ----------
+
+            st.write('')
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+
+                primeiro_f_ecos = st.toggle(
+                    "Primeiro projeto do Fundo Ecos",
+                    value=projeto.get("primeiro_f_ecos", False)
+                )
+
+                primeiro_vida = st.toggle(
+                    "Primeiro projeto da vida da organização",
+                    value=projeto.get("primeiro_vida", False)
+                )
+
+            with col2:
+
+                adaptacao = st.toggle(
+                    "Contribui com a adaptação às mudanças climáticas",
+                    value=projeto.get("adaptacao", False)
+                )
+
+                mitigacao = st.toggle(
+                    "Contribui com a mitigação das mudanças climáticas",
+                    value=projeto.get("mitigacao", False)
+                )
+
 
             # ---------- TOGGLE DE CANCELADO ----------
 
-            # st.write('')
-            # st.write('')
+            st.divider()
 
-            # STATUS ATUAL DO PROJETO
-            status_atual = projeto.get("status")  # pode ser None
+
+            # Status atual do projeto
+            status_atual = projeto.get("status")
             projeto_cancelado_atual = status_atual == "Cancelado"
 
             projeto_cancelado = st.toggle(
@@ -1869,6 +1886,8 @@ else:
                 novo_status = None
 
 
+
+            st.write("")
             st.write("")
 
             salvar = st.form_submit_button("Salvar alterações", key="salvar_alteracoes_cadastrais", icon=":material/save:", type="primary", width=250)
@@ -1940,6 +1959,10 @@ else:
                                 "nome_do_projeto": nome,
                                 "objetivo_geral": objetivo,
                                 "duracao": duracao,
+                                "primeiro_f_ecos": primeiro_f_ecos,
+                                "primeiro_vida": primeiro_vida,
+                                "adaptacao": adaptacao,
+                                "mitigacao": mitigacao,
                             }
 
                             # =============================================================================
@@ -1975,27 +1998,6 @@ else:
                             
                             st.session_state["projeto_atual"] = str(projeto_id)
 
-
-
-                            # # Atualizações na coleção de Projetos
-                            # col_projetos.update_one(
-                            #     {"_id": projeto_id},
-                            #     {
-                            #         "$set": {
-                            #             "edital": edital,
-                            #             "codigo": codigo,
-                            #             "sigla": sigla,
-                            #             "id_organizacao": id_organizacao,
-                            #             "nome_do_projeto": nome,
-                            #             "objetivo_geral": objetivo,
-                            #             "duracao": duracao,
-                            #             "data_inicio_contrato": data_inicio.strftime("%d/%m/%Y"),
-                            #             "data_fim_contrato": data_fim.strftime("%d/%m/%Y"),
-
-    
-                            #         }
-                            #     }
-                            # )
 
 
 
