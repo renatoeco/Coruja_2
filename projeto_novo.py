@@ -196,20 +196,37 @@ with st.form(key=f"form_novo_projeto_{st.session_state.form_key}", border=False)
 
 
     #######################################################################################################
-    # MARCADORES DE PRIMEIRO PROJETO
+    # MARCADORES DE PRIMEIRO PROJETO E ADAPTAÇAO/MITIGAÇÃO
     #######################################################################################################
 
     st.write('')
 
-    primeiro_f_ecos = st.checkbox(
-        "Primeiro projeto do Fundo Ecos",
-        value=st.session_state.form_projeto.get("primeiro_f_ecos", False)
-    )
+    col1, col2 = st.columns(2)
 
-    primeiro_vida = st.checkbox(
-        "Primeiro projeto da vida da organização",
-        value=st.session_state.form_projeto.get("primeiro_vida", False)
-    )
+    with col1:
+
+        primeiro_f_ecos = st.checkbox(
+            "Primeiro projeto do Fundo Ecos",
+            value=st.session_state.form_projeto.get("primeiro_f_ecos", False)
+        )
+
+        primeiro_vida = st.checkbox(
+            "Primeiro projeto da vida da organização",
+            value=st.session_state.form_projeto.get("primeiro_vida", False)
+        )
+
+
+    with col2:
+
+        adaptacao = st.checkbox(
+            "Contribui com a adaptação às mudanças climáticas",
+            value=st.session_state.form_projeto.get("adaptacao", False)
+        )
+
+        mitigacao = st.checkbox(
+            "Contribui com a mitigação das mudanças climáticas",
+            value=st.session_state.form_projeto.get("mitigacao", False)
+        )
 
     st.write('')
 
@@ -252,7 +269,9 @@ if submit:
         "responsavel": responsaveis_ids,  # lista de _id
         "objetivo": objetivo,
         "primeiro_f_ecos": primeiro_f_ecos,
-        "primeiro_vida": primeiro_vida
+        "primeiro_vida": primeiro_vida,
+        "adaptacao": adaptacao,
+        "mitigacao": mitigacao        
     })
 
 
@@ -301,6 +320,8 @@ if submit:
             "publicos": [],
             "primeiro_f_ecos": primeiro_f_ecos,
             "primeiro_vida": primeiro_vida,
+            "adaptacao": adaptacao,
+            "mitigacao": mitigacao,
             "status": "Em dia",
 
         })
@@ -340,7 +361,9 @@ if submit:
             "responsavel": [],
             "objetivo": "",
             "primeiro_f_ecos": False,
-            "primeiro_vida": False
+            "primeiro_vida": False,
+            "adaptacao": False,
+            "mitigacao": False
         }
 
         st.session_state.form_key += 1
