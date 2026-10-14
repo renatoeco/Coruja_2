@@ -16,6 +16,20 @@ from num2words import num2words
 
 from zoneinfo import ZoneInfo 
 
+import os
+import re
+from xml.sax.saxutils import escape
+
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.units import cm, inch
+from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.platypus.flowables import HRFlowable
 
 from funcoes_auxiliares import (
     conectar_mongo_coruja,
@@ -2547,6 +2561,574 @@ def gerar_relatorio_monitoramento_docx(
     buffer.seek(0)
 
     return buffer
+
+
+# ==========================================================================================
+# RELATÓRIO DE ATIVIDADES (PDF)
+# ==========================================================================================
+
+def _primeiro_existente(caminhos):
+    return next((c for c in caminhos if os.path.exists(c)), None)
+
+
+def registrar_fonte_arial():
+    """
+    Registra a fonte Arial no reportlab.
+    Procura primeiro em fonts/ do projeto e depois nas pastas do sistema.
+    Se não encontrar, usa Helvetica (métricas equivalentes à Arial).
+    """
+    if "Arial" in pdfmetrics.getRegisteredFontNames():
+        return "Arial", "Arial-Bold"
+
+    normal = _primeiro_existente([
+        "fonts/Arial.ttf", "fonts/arial.ttf",
+        "/usr/share/fonts/truetype/msttcorefonts/Arial.ttf",
+        "/System/Library/Fonts/Supplemental/Arial.ttf",
+        "C:/Windows/Fonts/arial.ttf",
+    ])
+    negrito = _primeiro_existente([
+        "fonts/Arial_Bold.ttf", "fonts/arialbd.ttf",
+        "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf",
+        "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+        "C:/Windows/Fonts/arialbd.ttf",
+    ])
+
+    if normal and negrito:
+        pdfmetrics.registerFont(TTFont("Arial", normal))
+        pdfmetrics.registerFont(TTFont("Arial-Bold", negrito))
+        pdfmetrics.registerFontFamily(
+            "Arial",
+            normal="Arial", bold="Arial-Bold",
+            italic="Arial", boldItalic="Arial-Bold"
+        )
+        return "Arial", "Arial-Bold"
+
+    return "Helvetica", "Helvetica-Bold"
+
+
+def _txt(valor):
+    """Escapa texto para o Paragraph do reportlab e preserva quebras de linha."""
+    if valor in [None, "", [], {}]:
+        return "—"
+    return escape(str(valor)).replace("\n", "<br/>")
+
+
+def _link(nome, url):
+    return f'<a href="{escape(url)}" color="blue"><u>{escape(str(nome))}</u></a>'
+
+
+def _valor_br(valor):
+    try:
+        valor = float(valor or 0)
+    except (TypeError, ValueError):
+        valor = 0
+    return f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def _divider():
+    return HRFlowable(
+        width="100%", thickness=1, color=colors.grey,
+        spaceBefore=14, spaceAfter=14
+    )
+
+
+def _linha(est, label, valor):
+    return Paragraph(f"<b>{escape(label)}:</b> {_txt(valor)}", est["texto"])
+
+
+# ------------------------------------------------------------------------------------------
+# SEÇÃO: ATIVIDADES
+# ------------------------------------------------------------------------------------------
+def _secao_atividades(projeto, numero, est):
+
+    f = [Paragraph("Atividades", est["secao"])]
+    tem_relato = False
+
+    for componente in projeto.get("plano_trabalho", {}).get("componentes", []):
+        for atividade in componente.get("atividades", []) or []:
+
+            relatos = [
+                r for r in atividade.get("relatos", [])
+                if r.get("relatorio_numero") == numero
+            ]
+
+            if not relatos:
+                continue
+
+            tem_relato = True
+
+            # Título da atividade com mais espaço até o primeiro relato
+            f.append(Paragraph(_txt(atividade.get("atividade")), est["titulo_item"]))
+
+            for relato in relatos:
+
+                f.append(Paragraph(
+                    f"<b>{_txt(relato.get('id_relato', '').upper())}:</b> "
+                    f"{_txt(relato.get('relato'))}",
+                    est["texto"]
+                ))
+                f.append(_linha(est, "Data de início", relato.get("data_inicio")))
+                f.append(_linha(est, "Data de fim", relato.get("data_fim")))
+
+                if relato.get("porc_ativ_relato") is not None:
+                    f.append(_linha(
+                        est, "Progresso da atividade informado",
+                        f"{relato.get('porc_ativ_relato')}%"
+                    ))
+
+                if relato.get("anexos"):
+                    f.append(Paragraph("<b>Anexos:</b>", est["texto"]))
+                    for a in relato["anexos"]:
+                        nome = a.get("nome_arquivo", "arquivo")
+                        item = (
+                            _link(nome, gerar_link_drive(a["id_arquivo"]))
+                            if a.get("id_arquivo") else escape(nome)
+                        )
+                        f.append(Paragraph(f"• {item}", est["item"]))
+                    f.append(Spacer(1, 8))   # espaço após a lista de anexos
+
+                if relato.get("fotos"):
+                    f.append(Paragraph("<b>Fotografias:</b>", est["texto"]))
+                    for foto in relato["fotos"]:
+                        nome = foto.get("nome_arquivo", "foto")
+                        item = (
+                            _link(nome, gerar_link_drive(foto["id_arquivo"]))
+                            if foto.get("id_arquivo") else escape(nome)
+                        )
+                        if foto.get("descricao"):
+                            item += f" | {_txt(foto['descricao'])}"
+                        if foto.get("fotografo"):
+                            item += f" | {_txt(foto['fotografo'])}"
+                        f.append(Paragraph(f"• {item}", est["item"]))
+                    f.append(Spacer(1, 8))   # espaço após a lista de fotos
+
+                # Separação entre relatos
+                f.append(Spacer(1, 14))
+
+    if not tem_relato:
+        f.append(Paragraph("Nenhum relato cadastrado neste relatório.", est["texto"]))
+
+    return f
+
+
+# ------------------------------------------------------------------------------------------
+# SEÇÃO: DESPESAS
+# ------------------------------------------------------------------------------------------
+def _secao_despesas(projeto, numero, est):
+
+    f = [Paragraph("Despesas", est["secao"])]
+
+    financeiro = projeto.get("financeiro", {})
+
+    # Saldo da parcela (mesma regra da aba Despesas)
+    parcela = next(
+        (p for p in financeiro.get("parcelas", []) if p.get("numero") == numero),
+        None
+    )
+    if parcela:
+        valor_parcela = parcela.get("valor", 0) or 0
+        total_gasto = sum(
+            l.get("valor_despesa", 0) or 0
+            for d in financeiro.get("orcamento", [])
+            for l in d.get("lancamentos", [])
+            if l.get("relatorio_numero") == numero
+        )
+        saldo_pct = ((valor_parcela - total_gasto) / valor_parcela * 100) if valor_parcela > 0 else 0
+        f.append(_linha(est, "Saldo disponível da parcela", f"{saldo_pct:.1f}%".replace(".", ",")))
+        f.append(Spacer(1, 8))
+
+    # Agrupamento TIPO > CATEGORIA > NOME
+    grupo = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+
+    for despesa in financeiro.get("orcamento", []):
+        nome_categoria = categorias_map.get(str(despesa.get("categoria")), "Categoria não encontrada")
+        for lanc in despesa.get("lancamentos", []):
+            if lanc.get("relatorio_numero") != numero:
+                continue
+            tipo = lanc.get("tipo_despesa", "orçamento")
+            grupo[tipo][nome_categoria][despesa.get("nome_despesa", "")].append(lanc)
+
+    if not grupo:
+        f.append(Paragraph("Nenhuma despesa registrada neste relatório.", est["texto"]))
+        return f
+
+    blocos = [
+        ("orçamento", "Despesas do Orçamento"),
+        ("CPFin", "Contrapartida Financeira"),
+        ("CPNFin", "Contrapartida Não-Financeira"),
+    ]
+
+    for tipo, titulo in blocos:
+
+        despesas_bloco = grupo.get(tipo)
+        if not despesas_bloco:
+            continue
+
+        f.append(Paragraph(titulo, est["subtitulo"]))
+        total_bloco = 0
+
+        for nome_categoria, despesas in despesas_bloco.items():
+
+            f.append(Paragraph(f"<b>Categoria:</b> {_txt(nome_categoria)}", est["texto"]))
+
+            for nome_despesa, lancamentos in despesas.items():
+
+                # Nome da despesa com mais espaço até os lançamentos
+                f.append(Paragraph(f"Despesa: {_txt(nome_despesa)}", est["titulo_item"]))
+
+                for lanc in lancamentos:
+
+                    total_bloco += lanc.get("valor_despesa", 0) or 0
+
+                    f.append(Paragraph(
+                        f"<b>{_txt(lanc.get('id_lanc_despesa', '').upper())}:</b> "
+                        f"{_txt(lanc.get('descricao_despesa'))}",
+                        est["item"]
+                    ))
+
+                    detalhes = [("Data", lanc.get("data_despesa"))]
+                    if lanc.get("fornecedor"):
+                        detalhes.append(("Fornecedor", lanc.get("fornecedor")))
+                    if lanc.get("cpf_cnpj"):
+                        detalhes.append(("CPF/CNPJ", lanc.get("cpf_cnpj")))
+                    detalhes.append(("Valor (R$)", _valor_br(lanc.get("valor_despesa"))))
+
+                    for label, valor in detalhes:
+                        f.append(Paragraph(f"<b>{label}:</b> {_txt(valor)}", est["item"]))
+
+                    if lanc.get("anexos"):
+                        f.append(Paragraph("<b>Anexos:</b>", est["item"]))
+                        for a in lanc["anexos"]:
+                            nome = a.get("nome_arquivo", "arquivo")
+                            item = (
+                                _link(nome, gerar_link_drive(a["id_arquivo"]))
+                                if a.get("id_arquivo") else escape(nome)
+                            )
+                            f.append(Paragraph(f"• {item}", est["item2"]))
+                        f.append(Spacer(1, 8))   # espaço após a lista de anexos
+
+                    # Separação entre lançamentos
+                    f.append(Spacer(1, 14))
+
+        f.append(Paragraph(f"<b>Total {titulo.lower()}:</b> R$ {_valor_br(total_bloco)}", est["texto"]))
+        f.append(Spacer(1, 10))
+
+    return f
+
+
+# ------------------------------------------------------------------------------------------
+# SEÇÃO: INDICADORES
+# ------------------------------------------------------------------------------------------
+def _secao_indicadores(projeto, edital, numero, est):
+
+    f = [Paragraph("Indicadores", est["secao"])]
+
+    mapa_indicadores = {
+        item["_id"]: item["indicador"]
+        for item in (edital or {}).get("indicadores", [])
+    }
+
+    indicadores = projeto.get("indicadores", [])
+
+    if not indicadores:
+        f.append(Paragraph("Nenhum indicador cadastrado neste projeto.", est["texto"]))
+        return f
+
+    # Largura útil real do frame: página - margens (2,5 cm de cada lado)
+    # - padding interno do frame (6 pt de cada lado)
+    largura_util = A4[0] - 5 * cm - 12
+    largura_col = largura_util / 3
+
+    for indicador in indicadores:
+
+        nome = mapa_indicadores.get(indicador.get("id_indicador"), "Indicador não encontrado")
+
+        lanc = next(
+            (l for l in indicador.get("lancamentos", []) if l.get("relatorio_numero") == numero),
+            None
+        )
+
+        f.append(_linha(est, "Indicador", nome))
+        f.append(_linha(est, "Descrição da contribuição", indicador.get("descricao_contribuicao")))
+        f.append(Spacer(1, 4))
+
+        # --------------------------------------------------
+        # Início / Meta / Resultado lado a lado
+        # --------------------------------------------------
+        resultado = (
+            formatar_numero_br_dinamico(lanc.get("resultado_atual"))
+            if lanc else "—"
+        )
+
+        celulas = [[
+            Paragraph(
+                f"<b>Início do projeto:</b> "
+                f"{_txt(formatar_numero_br_dinamico(indicador.get('marco_zero')))}",
+                est["celula"]
+            ),
+            Paragraph(
+                f"<b>Meta:</b> "
+                f"{_txt(formatar_numero_br_dinamico(indicador.get('valor')))}",
+                est["celula"]
+            ),
+            Paragraph(
+                f"<b>Resultado atual:</b> {_txt(resultado)}",
+                est["celula"]
+            ),
+        ]]
+
+        tabela = Table(celulas, colWidths=[largura_col] * 3, hAlign="LEFT")
+        tabela.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+        ]))
+
+        f.append(tabela)
+        f.append(Spacer(1, 6))
+
+        if lanc:
+            obs = lanc.get("observacoes")
+            if obs not in [None, "", "None"]:
+                f.append(_linha(est, "Observações", obs))
+        else:
+            f.append(Paragraph("Nenhum lançamento registrado para este relatório.", est["texto"]))
+
+        # Separação entre indicadores
+        f.append(Spacer(1, 16))
+
+    return f
+
+
+# ------------------------------------------------------------------------------------------
+# SEÇÃO: BENEFICIÁRIOS
+# ------------------------------------------------------------------------------------------
+def _secao_beneficiarios(relatorio, est, fonte, fonte_b):
+
+    f = [
+        Paragraph("Beneficiários", est["secao"]),
+        Paragraph("Número de beneficiários por gênero e faixa etária", est["subtitulo"]),
+    ]
+
+    dados = relatorio.get("beneficiarios_quant") or {
+        "mulheres": {"jovens": 0, "adultas": 0, "idosas": 0},
+        "homens": {"jovens": 0, "adultos": 0, "idosos": 0},
+        "nao_binarios": {"jovens": 0, "adultos": 0, "idosos": 0},
+    }
+
+    m, h, nb = dados.get("mulheres", {}), dados.get("homens", {}), dados.get("nao_binarios", {})
+
+    linhas_faixa = [
+        ("Jovens (até 24 anos)", m.get("jovens", 0), h.get("jovens", 0), nb.get("jovens", 0)),
+        ("Adultos", m.get("adultas", 0), h.get("adultos", 0), nb.get("adultos", 0)),
+        ("Idosos (60+ anos)", m.get("idosas", 0), h.get("idosos", 0), nb.get("idosos", 0)),
+    ]
+
+    tabela = [["", "Mulheres", "Homens", "Outro gênero", "Total"]]
+    tot_m = tot_h = tot_nb = 0
+
+    for faixa, vm, vh, vnb in linhas_faixa:
+        tot_m, tot_h, tot_nb = tot_m + vm, tot_h + vh, tot_nb + vnb
+        tabela.append([faixa, str(vm), str(vh), str(vnb), str(vm + vh + vnb)])
+
+    tabela.append(["Total", str(tot_m), str(tot_h), str(tot_nb), str(tot_m + tot_h + tot_nb)])
+
+    t = Table(tabela, colWidths=[4.6 * cm, 2.6 * cm, 2.6 * cm, 3.2 * cm, 2.6 * cm])
+    t.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (-1, -1), fonte),
+        ("FONTSIZE", (0, 0), (-1, -1), 12),
+        ("FONTNAME", (0, 0), (-1, 0), fonte_b),
+        ("FONTNAME", (0, -1), (-1, -1), fonte_b),
+        ("FONTNAME", (-1, 0), (-1, -1), fonte_b),
+        ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EEEEEE")),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+
+    f.append(t)
+    return f
+
+
+# ------------------------------------------------------------------------------------------
+# SEÇÃO: FORMULÁRIO
+# ------------------------------------------------------------------------------------------
+def _secao_formulario(projeto, edital, relatorio, est):
+
+    f = [Paragraph("Formulário", est["secao"])]
+
+    excluidas = projeto.get("perguntas_relat_excluidas", [])
+
+    perguntas = sorted(
+        [
+            p for p in (edital or {}).get("perguntas_relatorio", [])
+            if p.get("id_pergunta") not in excluidas
+        ],
+        key=lambda x: x.get("ordem", 0)
+    )
+
+    if not perguntas:
+        f.append(Paragraph("O edital não possui perguntas cadastradas.", est["texto"]))
+        return f
+
+    respostas = relatorio.get("respostas_formulario", {}) or {}
+
+    for pergunta in perguntas:
+
+        tipo = pergunta.get("tipo")
+        texto = pergunta.get("pergunta")
+        resposta = respostas.get(pergunta.get("id_pergunta"), {}).get("resposta")
+
+        if tipo == "titulo":
+            f.append(Paragraph(_txt(texto), est["subtitulo"]))
+            continue
+
+        if tipo == "subtitulo":
+            f.append(Paragraph(f"<b>{_txt(texto)}</b>", est["texto"]))
+            continue
+
+        if tipo == "paragrafo":
+            f.append(Paragraph(_txt(texto), est["texto"]))
+            continue
+
+        f.append(Paragraph(f"<b>{_txt(texto)}</b>", est["texto"]))
+        f.append(Spacer(1, 8))
+
+        if tipo == "upload_arquivo":
+            if resposta:
+                for arq in resposta:
+                    nome = arq.get("nome", "Arquivo")
+                    item = _link(nome, gerar_link_drive(arq["id"])) if arq.get("id") else escape(nome)
+                    f.append(Paragraph(f"• {item}", est["item"]))
+            else:
+                f.append(Paragraph("Nenhum arquivo enviado.", est["texto"]))
+
+        else:
+            if isinstance(resposta, list):
+                resposta = ", ".join(str(r) for r in resposta)
+            elif tipo == "numero" and resposta not in [None, ""]:
+                resposta = formatar_numero_br_dinamico(resposta)
+
+            f.append(Paragraph(_txt(resposta), est["texto"]))
+
+        f.append(Spacer(1, 22))
+
+    return f
+
+
+# ------------------------------------------------------------------------------------------
+# GERADOR PRINCIPAL
+# ------------------------------------------------------------------------------------------
+def gerar_relatorio_atividades_pdf(projeto, relatorio):
+    """
+    Gera o PDF do Relatório de Atividades com o conteúdo de todas as abas
+    (Atividades, Despesas, Indicadores, Beneficiários e Formulário).
+    Retorna um BytesIO.
+    """
+
+    fonte, fonte_b = registrar_fonte_arial()
+    numero = relatorio.get("numero")
+
+    edital = col_editais.find_one({"codigo_edital": projeto["edital"]})
+
+    est = {
+        "titulo": ParagraphStyle("titulo", fontName=fonte_b, fontSize=14, leading=18,
+                                    alignment=TA_CENTER, spaceAfter=30),
+        "secao": ParagraphStyle("secao", fontName=fonte_b, fontSize=14, leading=18, spaceAfter=12),
+        "subtitulo": ParagraphStyle("subtitulo", fontName=fonte_b, fontSize=12, leading=15,
+                                    spaceBefore=8, spaceAfter=8),
+        "titulo_item": ParagraphStyle("titulo_item", fontName=fonte_b, fontSize=12, leading=15,
+                                    spaceBefore=10, spaceAfter=14,
+                                    textColor=colors.HexColor("#6AA84F")),
+        "texto": ParagraphStyle("texto", fontName=fonte, fontSize=12, leading=15,
+                                    alignment=TA_JUSTIFY, spaceAfter=4),
+        "item": ParagraphStyle("item", fontName=fonte, fontSize=12, leading=15,
+                                    leftIndent=14, spaceAfter=3),
+        "item2": ParagraphStyle("item2", fontName=fonte, fontSize=12, leading=15,
+                                    leftIndent=28, spaceAfter=3),
+        "celula": ParagraphStyle("celula", fontName=fonte, fontSize=12, leading=15),
+    }
+
+    # --------------------------------------------------------------
+    # Cabeçalho (logo centralizada, como no docx) + nº da página
+    # --------------------------------------------------------------
+    def desenhar_pagina(canvas, doc):
+        canvas.saveState()
+
+        caminho_logo = "images/logo_ISPN_2021.png"
+        if os.path.exists(caminho_logo):
+            img = ImageReader(caminho_logo)
+            iw, ih = img.getSize()
+            largura = 2 * inch
+            altura = largura * ih / iw
+            canvas.drawImage(
+                img,
+                (A4[0] - largura) / 2,
+                A4[1] - 1.2 * cm - altura,
+                width=largura, height=altura, mask="auto"
+            )
+
+        canvas.setFont(fonte, 9)
+        canvas.drawCentredString(A4[0] / 2, 1.2 * cm, f"Página {doc.page}")
+        canvas.restoreState()
+
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=2.5 * cm, rightMargin=2.5 * cm,
+        topMargin=3.5 * cm, bottomMargin=3.5 * cm,
+        title=f"Relatório de Atividades {numero}",
+    )
+
+    story = [Paragraph("Relatório de Atividades", est["titulo"])]
+
+    # Informações do projeto (mesmo padrão do docx)
+    story.append(_linha(est, "Projeto", f"{projeto.get('codigo', '')} - {projeto.get('sigla', '')}"))
+    story.append(_linha(est, "Relatório", numero))
+    if relatorio.get("data_aprovacao"):
+        story.append(_linha(est, "Data da aprovação", relatorio["data_aprovacao"]))
+    if relatorio.get("aprovado_por"):
+        story.append(_linha(est, "Aprovado por", relatorio["aprovado_por"]))
+
+    story.append(_divider())
+
+    secoes = [
+        _secao_atividades(projeto, numero, est),
+        _secao_despesas(projeto, numero, est),
+        _secao_indicadores(projeto, edital, numero, est),
+        _secao_beneficiarios(relatorio, est, fonte, fonte_b),
+        _secao_formulario(projeto, edital, relatorio, est),
+    ]
+
+    for i, secao in enumerate(secoes):
+        if i > 0:
+            story.append(_divider())
+        story.extend(secao)
+
+    doc.build(story, onFirstPage=desenhar_pagina, onLaterPages=desenhar_pagina)
+
+    buffer.seek(0)
+    return buffer
+
+
+def nome_arquivo_relatorio_atividades(projeto, numero):
+    """relatorio_de_atividades_<numero>_<sigla_organizacao>.pdf"""
+
+    org = col_organizacoes.find_one(
+        {"_id": projeto.get("id_organizacao")},
+        {"sigla_organizacao": 1, "sigla": 1}
+    ) or {}
+
+    sigla = org.get("sigla_organizacao") or org.get("sigla") or projeto.get("sigla", "")
+    sigla = re.sub(r"[^\w\-]+", "_", str(sigla)).strip("_")
+
+    return f"relatorio_de_atividades_{numero}_{sigla}.pdf"
 
 
 ###########################################################################################################
@@ -6680,7 +7262,22 @@ if step_selecionado == "Enviar":
             projeto=projeto,
             relatorio=relatorio,
         )
+        
+        relatorio_atividades = gerar_relatorio_atividades_pdf(
+            projeto=projeto,
+            relatorio=relatorio,
+        )
+
         with st.container(horizontal=True, horizontal_alignment="right"):
+
+            st.download_button(
+                "Baixar relatório de atividades",
+                data=relatorio_atividades,
+                file_name=nome_arquivo_relatorio_atividades(projeto, relatorio_numero),
+                mime="application/pdf",
+                icon=":material/picture_as_pdf:",
+                type="tertiary"
+            )
 
             st.download_button(
                 "Baixar relatório de monitoramento",
@@ -7175,7 +7772,21 @@ if step_selecionado == "Avaliação":
             relatorio=relatorio_db,
         )
         
+        relatorio_atividades = gerar_relatorio_atividades_pdf(
+            projeto=projeto,
+            relatorio=relatorio_db,
+        )
+
         with st.container(horizontal=True, horizontal_alignment="right"):
+
+            st.download_button(
+                "Baixar relatório de atividades",
+                data=relatorio_atividades,
+                file_name=nome_arquivo_relatorio_atividades(projeto, relatorio_numero),
+                mime="application/pdf",
+                icon=":material/picture_as_pdf:",
+                type="tertiary"
+            )
 
             st.download_button(
                 "Baixar relatório de monitoramento",
