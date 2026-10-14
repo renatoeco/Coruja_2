@@ -1877,9 +1877,6 @@ def enviar_email_remocao_atividade_aprovada(
     enviar_email(corpo_html, destinatarios, assunto)
 
 
-
-
-
 # ==================================================
 # Envia e-mail quando solicitação de REMOÇÃO de atividade é recusada
 # ==================================================
@@ -2000,20 +1997,72 @@ def enviar_email_remocao_atividade_recusada(
     enviar_email(corpo_html, destinatarios, assunto)
 
 
+# ==================================================
+# Remove o indicador do projeto no banco
+# ==================================================
+def remover_indicador_projeto(id_indicador, nome_indicador):
+
+    resultado = col_projetos.update_one(
+        {"_id": id_projeto_atual},
+        {"$pull": {"indicadores": {"id_indicador": id_indicador}}}
+    )
+
+    if resultado.modified_count > 0:
+        st.toast(
+            f"Indicador removido do projeto: {nome_indicador}",
+            icon=":material/delete:"
+        )
 
 
+# ==================================================
+# Callback do checkbox de indicador
+# ==================================================
+def ao_alterar_checkbox_indicador(chave_checkbox, id_indicador, nome_indicador):
 
-# Função auxiliar que salva lista de impactos no banco
-# def salvar_impactos(chave, impactos, codigo_projeto):
-#     """
-#     Salva lista de impactos no banco.
-#     """
-#     resultado = col_projetos.update_one(
-#         {"codigo": codigo_projeto},
-#         {"$set": {chave: impactos}}
-#     )
+    # Se foi MARCADO, não faz nada (gravação ocorre no botão "Salvar")
+    if st.session_state.get(chave_checkbox):
+        return
 
-#     return resultado.modified_count == 1
+    # Consulta apenas o indicador em questão no projeto
+    projeto_doc = col_projetos.find_one(
+        {"_id": id_projeto_atual, "indicadores.id_indicador": id_indicador},
+        {"indicadores.$": 1}
+    )
+
+    # Indicador nunca foi salvo no projeto → nada a remover
+    if not projeto_doc:
+        return
+
+    indicador_doc = projeto_doc["indicadores"][0]
+    lancamentos = indicador_doc.get("lancamentos") or []
+
+    # Possui lançamentos → mantém marcado e pede confirmação
+    if lancamentos:
+        st.session_state[chave_checkbox] = True
+        st.session_state[f"pendente_remocao_{chave_checkbox}"] = len(lancamentos)
+        return
+
+    # Sem lançamentos → remove direto
+    remover_indicador_projeto(id_indicador, nome_indicador)
+
+
+# ==================================================
+# Callback do botão "Confirmar exclusão"
+# ==================================================
+def confirmar_remocao_indicador(chave_checkbox, id_indicador, nome_indicador):
+
+    remover_indicador_projeto(id_indicador, nome_indicador)
+
+    st.session_state[chave_checkbox] = False
+    st.session_state.pop(f"pendente_remocao_{chave_checkbox}", None)
+
+
+# ==================================================
+# Callback do botão "Cancelar"
+# ==================================================
+def cancelar_remocao_indicador(chave_checkbox):
+
+    st.session_state.pop(f"pendente_remocao_{chave_checkbox}", None)
 
 
 # DIÁLOGO: VER RELATOS 
@@ -3291,11 +3340,56 @@ with indicadores:
                 # ==================================================
                 # CHECKBOX (chave namespaced por projeto)
                 # ==================================================
+                chave_chk = f"chk_{sufixo_proj}_{id_indicador}"
+
+                # Inicializa o estado a partir do banco (sem usar value=,
+                # pois os callbacks alteram esse estado via session_state)
+                if chave_chk not in st.session_state:
+                    st.session_state[chave_chk] = id_indicador in estado_projeto
+
                 marcado = st.checkbox(
                     nome_indicador,
-                    key=f"chk_{sufixo_proj}_{id_indicador}",
-                    value=id_indicador in estado_projeto
+                    key=chave_chk,
+                    on_change=ao_alterar_checkbox_indicador,
+                    args=(chave_chk, id_indicador, nome_indicador)
                 )
+
+                # --------------------------------------------------
+                # Confirmação de exclusão (indicador com lançamentos)
+                # --------------------------------------------------
+                chave_pendente = f"pendente_remocao_{chave_chk}"
+
+                if chave_pendente in st.session_state:
+
+                    qtd_lanc = st.session_state[chave_pendente]
+
+                    with st.container(border=True):
+
+                        st.warning(
+                            f"Este indicador possui **{qtd_lanc} lançamento(s)** registrado(s) "
+                            "em relatórios. Ao removê-lo do projeto, todo esse histórico "
+                            "será apagado permanentemente.",
+                            icon=":material/warning:"
+                        )
+
+                        with st.container(horizontal=True):
+
+                            st.button(
+                                "Confirmar exclusão",
+                                type="primary",
+                                icon=":material/delete:",
+                                key=f"confirma_del_{chave_chk}",
+                                on_click=confirmar_remocao_indicador,
+                                args=(chave_chk, id_indicador, nome_indicador)
+                            )
+
+                            st.button(
+                                "Cancelar",
+                                icon=":material/close:",
+                                key=f"cancela_del_{chave_chk}",
+                                on_click=cancelar_remocao_indicador,
+                                args=(chave_chk,)
+                            )
 
                 if not marcado:
                     st.divider()
