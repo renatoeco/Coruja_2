@@ -10,7 +10,8 @@ from funcoes_auxiliares import (
     obter_ou_criar_pasta,
     obter_pasta_projeto,
     enviar_arquivo_drive,
-    gerar_link_drive
+    gerar_link_drive,
+    conectar_mongo_portal_ispn
 )
 import pandas as pd
 import streamlit_shadcn_ui as ui
@@ -91,15 +92,10 @@ section[data-testid="stFileUploaderDropzone"] button[data-testid="stBaseButton-s
 """, unsafe_allow_html=True)
 
 
-
-
-
-
-
-
 ###########################################################################################################
 # CONEXÃO COM O BANCO DE DADOS
 ###########################################################################################################
+
 
 # Conexão com MongoDB
 db = conectar_mongo_coruja()
@@ -112,9 +108,10 @@ col_editais = db["editais"]
 col_publicos = db["publicos"]
 col_organizacoes = db["organizacoes"]   
 
+db = conectar_mongo_portal_ispn()
 
-
-
+# Coleção de programas/áreas do portal ISPN
+col_programas_areas = db["programas_areas"]
 
 # ###########################################################################################################
 # # REGISTRO DE ESTATÍSTICA -  CONTABILIZAÇÃO DE VISITA
@@ -181,6 +178,14 @@ if not st.session_state["ultimo_acesso_atualizado"]:
 def email_valido(email):
     padrao = r"^[\w\.-]+@[\w\.-]+\.\w+$"
     return re.match(padrao, email) is not None
+
+
+def obter_lista_projeto(df, campo):
+    """Retorna o valor do campo como lista (ou lista vazia se não existir / estiver vazio)."""
+    if campo not in df.columns:
+        return []
+    valor = df[campo].values[0]
+    return valor if isinstance(valor, list) else []
 
 
 def salvar_perguntas_relatorio(perguntas, projeto_id):
@@ -312,6 +317,57 @@ mapa_publicos = dict(
 
 # Organizações
 df_organizacoes = pd.DataFrame(list(col_organizacoes.find()))
+
+# Programas (db portal ispn)
+lista_programas = sorted(
+    p for p in col_programas_areas.distinct("nome_programa_area")
+    if isinstance(p, str) and p.strip()
+)
+
+# Biomas
+LISTA_BIOMAS = [
+    "Amazônia",
+    "Caatinga",
+    "Cerrado",
+    "Mata Atlântica",
+    "Pampa",
+    "Pantanal",
+]
+
+# Temas
+LISTA_TEMAS = [
+    "Agroecologia",
+    "Agroextrativismo - Beneficiamento e Comercialização",
+    "Água",
+    "Apicultura e meliponicultura",
+    "Artesanato",
+    "Articulação",
+    "Capacitação",
+    "Certificação",
+    "Conservação da biodiversidade",
+    "Criação de animais",
+    "Cultura",
+    "Educação Ambiental",
+    "Energia Renovável",
+    "Fauna",
+    "Fogo",
+    "Gestão Territorial",
+    "Manejo da biodiversidade",
+    "Outro",
+    "Pesquisa",
+    "Plantas medicinais",
+    "Política Pública",
+    "Recuperação de áreas degradadas",
+    "Sistemas Agroflorestais - SAFs",
+    "Turismo",
+]
+
+
+def valores_salvos_validos(valores, opcoes):
+    """Retorna só os valores salvos que existem nas opções (evita erro no default do multiselect)."""
+    if not isinstance(valores, list):
+        return []
+    return [v for v in valores if v in opcoes]
 
 
 ###########################################################################################################
@@ -567,6 +623,18 @@ if not editar_cadastro:
                 unsafe_allow_html=True
             )
 
+    # ---------- CATEGORIA ----------
+
+    financeiro = projeto.get("financeiro")
+    categoria = financeiro.get("categoria_projeto") if isinstance(financeiro, dict) else None
+
+    if not isinstance(categoria, str) or not categoria.strip():
+        st.markdown(
+            "**Categoria:** <span style='color:#c46a00; font-style:italic;'>não cadastrada</span>",
+            unsafe_allow_html=True
+        )
+    else:
+        st.write(f"**Categoria:** {categoria}")
 
     # ---------- RESPONSÁVEL(IS) (DERIVADO DA COLEÇÃO DE PESSOAS | SOMENTE BENEFICIÁRIOS) ----------
 
@@ -603,20 +671,25 @@ if not editar_cadastro:
         st.write(f"**Ponto focal:** {valor}")
 
 
+    # ---------- PROGRAMA / ÁREA ----------
+
+    programas = obter_lista_projeto(df_projeto, "programas")
+
+    if programas:
+        st.write(f"**Programa / Área:** {', '.join(programas)}")
+    else:
+        st.markdown(
+            "**Programa / Área:** <span style='color:#c46a00; font-style:italic;'>não cadastrado</span>",
+            unsafe_allow_html=True
+        )
 
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
 
 
     # ---------- Linhas Temáticas ----------
 
-    if "direcoes_estrategicas" in df_projeto.columns:
-
-        direcoes = df_projeto["direcoes_estrategicas"].values[0]
-
-    else:
-        direcoes = None
-
+    direcoes = obter_lista_projeto(df_projeto, "direcoes_estrategicas")
 
     if direcoes:
 
@@ -641,25 +714,15 @@ if not editar_cadastro:
                     st.write(f"- {item}")
 
     else:
-        st.markdown(
+        col1.markdown(
             "**Linhas temáticas:** <span style='color:#c46a00; font-style:italic;'>não cadastradas</span>",
             unsafe_allow_html=True
         )
 
 
-    # Beneficiários
+    # ---------- PÚBLICOS ----------
 
-
-    # ---------- BENEFICIÁRIOS ----------
-
-
-    if "publicos" in df_projeto.columns:
-
-        publicos = df_projeto["publicos"].values[0]
-
-    else:
-        publicos = None
-
+    publicos = obter_lista_projeto(df_projeto, "publicos")
 
     if publicos:
 
@@ -711,8 +774,44 @@ if not editar_cadastro:
                         st.write(row["publico"])
 
     else:
-        st.markdown(
-            "**Público:** <span style='color:#c46a00; font-style:italic;'>não cadastrados</span>",
+        col2.markdown(
+            "**Público:** <span style='color:#c46a00; font-style:italic;'>não cadastrado</span>",
+            unsafe_allow_html=True
+        )
+
+
+    # ---------- BIOMAS ----------
+
+    biomas = obter_lista_projeto(df_projeto, "biomas")
+
+    if biomas:
+
+        with col3.popover("**Bioma**", type="tertiary"):
+
+            for bioma in biomas:
+                st.write(f"**{bioma}**")
+
+    else:
+        col3.markdown(
+            "**Bioma:** <span style='color:#c46a00; font-style:italic;'>não cadastrado</span>",
+            unsafe_allow_html=True
+        )
+
+
+    # ---------- TEMAS ----------
+
+    temas = obter_lista_projeto(df_projeto, "temas")
+
+    if temas:
+
+        with col4.popover("**Temas**", type="tertiary"):
+
+            for tema in temas:
+                st.write(f"**{tema}**")
+
+    else:
+        col4.markdown(
+            "**Temas:** <span style='color:#c46a00; font-style:italic;'>não cadastrados</span>",
             unsafe_allow_html=True
         )
 
@@ -1792,7 +1891,8 @@ else:
                     key="data_fim_contrato",
                     placeholder="dd/mm/aaaa"
                 )
-
+                
+            col1, col2 = st.columns(2)
 
             # ---------- RESPONSÁVEL(IS) (VINCULADO ÀS PESSOAS) ----------
 
@@ -1812,7 +1912,7 @@ else:
                 )
             ]["nome_completo"].tolist()
 
-            responsavel = st.multiselect(
+            responsavel = col1.multiselect(
                 "Responsável",
                 options=lista_beneficiarios,
                 default=responsaveis_atuais
@@ -1832,13 +1932,40 @@ else:
                 )
             ]["nome_completo"].tolist()
 
-            padrinho_madrinha = st.multiselect(
+            padrinho_madrinha = col2.multiselect(
                 "Ponto focal",
                 options=opcoes_pontos_focais,
                 default=padrinhos_atuais
             )
+            
+            # ---------- PROGRAMAS ----------
 
+            programas = st.multiselect(
+                "Programa / Área",
+                options=lista_programas,
+                default=valores_salvos_validos(projeto.get("programas"), lista_programas),
+                placeholder=""
+            )
 
+            col1, col2 = st.columns(2)
+
+            # ---------- BIOMAS ----------
+
+            biomas = col1.multiselect(
+                "Bioma",
+                options=LISTA_BIOMAS,
+                default=valores_salvos_validos(projeto.get("biomas"), LISTA_BIOMAS),
+                placeholder=""
+            )
+
+            # ---------- TEMAS ----------
+
+            temas = col2.multiselect(
+                "Temas",
+                options=LISTA_TEMAS,
+                default=valores_salvos_validos(projeto.get("temas"), LISTA_TEMAS),
+                placeholder=""
+            )
 
 
             # ---------- MARCADORES DO PROJETO ----------
@@ -1970,6 +2097,9 @@ else:
                                 "primeiro_vida": primeiro_vida,
                                 "adaptacao": adaptacao,
                                 "mitigacao": mitigacao,
+                                "programas": programas,
+                                "biomas": biomas,
+                                "temas": temas,
                             }
 
                             # =============================================================================

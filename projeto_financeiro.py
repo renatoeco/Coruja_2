@@ -172,6 +172,23 @@ projeto = df_projeto.iloc[0]
 # Capturando o financeiro no banco de dados
 financeiro = projeto.get("financeiro", {})
 
+# --------------------------------------------------
+# Moeda e categoria do projeto
+# --------------------------------------------------
+# A chave é exatamente o valor salvo no banco (financeiro.moeda)
+MOEDAS = {
+    "real":  {"simbolo": "R$"},
+    "dólar": {"simbolo": "US$"},
+    "euro":  {"simbolo": "€"},
+}
+
+CATEGORIAS_PROJETO = ["Microprojeto", "Pequeno", "Consolidação", "Estratégico"]
+
+moeda_atual = financeiro.get("moeda") or "real"
+if moeda_atual not in MOEDAS:
+    moeda_atual = "real"
+
+SIMBOLO_MOEDA = MOEDAS[moeda_atual]["simbolo"]
 
 # Organizações
 
@@ -186,23 +203,42 @@ mapa_org_id_nome = {
     for _, row in df_organizacoes.iterrows()
 }
 
+
 ###########################################################################################################
 # FUNÇÕES
 ###########################################################################################################
 
+
 # -----------------------------------
-# Formata float para moeda R$
+# Formata float na moeda do projeto
+# escapar=True protege o "$" em st.write/st.markdown
+# (evita que dois "$" virem LaTeX)
 # -----------------------------------
-def format_brl(valor):
+def format_moeda(valor, escapar=False):
     if valor is None or pd.isna(valor):
         return ""
 
-    return (
-        f"R$ {float(valor):,.2f}"
+    texto = (
+        f"{SIMBOLO_MOEDA} {float(valor):,.2f}"
         .replace(",", "X")
         .replace(".", ",")
         .replace("X", ".")
     )
+    return texto.replace("$", "\\$") if escapar else texto
+
+
+# Mantém compatibilidade com as chamadas existentes (e-mails, orçamento etc.)
+format_brl = format_moeda
+
+
+# -----------------------------------
+# Remove qualquer símbolo de moeda de um texto digitado
+# -----------------------------------
+def remover_simbolo_moeda(texto):
+    texto = str(texto)
+    for m in MOEDAS.values():
+        texto = texto.replace(m["simbolo"], "")
+    return texto.replace("$", "").strip()
 
 
 # Função para notificar os usuários internos quando os valores das parcelas ficam desatualizados
@@ -1397,7 +1433,7 @@ def dialog_relatos_fin():
                 linha3_col2.write(lanc.get("cpf_cnpj", "-"))
 
                 linha4_col1, linha4_col2 = st.columns([1, 3])
-                linha4_col1.write("**Valor (R$):**")
+                linha4_col1.write(f"**Valor ({SIMBOLO_MOEDA}):**")
                 linha4_col2.write(valor_br)
 
             with col_anexos:
@@ -1552,7 +1588,7 @@ def dialog_contrapartida_fin():
                 linha3_col2.write(lanc.get("cpf_cnpj", "-"))
 
                 linha4_col1, linha4_col2 = st.columns([1, 3])
-                linha4_col1.write("**Valor (R$):**")
+                linha4_col1.write(f"**Valor ({SIMBOLO_MOEDA}):**")
                 linha4_col2.write(valor_br)
 
             with col_anexos:
@@ -1707,7 +1743,7 @@ def dialog_contrapartida_nao_fin():
                 linha3_col2.write(lanc.get("cpf_cnpj", "-"))
 
                 linha4_col1, linha4_col2 = st.columns([1, 3])
-                linha4_col1.write("**Valor (R$):**")
+                linha4_col1.write(f"**Valor ({SIMBOLO_MOEDA}):**")
                 linha4_col2.write(valor_br)
 
             with col_anexos:
@@ -1943,8 +1979,7 @@ with cron_desemb:
             linhas_cronograma.append(
                 {
                     "evento": f"Parcela {numero}",
-                    # "Entregas": "",
-                    "Valor R$": (
+                    f"Valor {SIMBOLO_MOEDA}": (
                         f"{valor:,.2f}".replace(",", "X")
                         .replace(".", ",")
                         .replace("X", ".")
@@ -1973,7 +2008,7 @@ with cron_desemb:
                 {
                     "evento": f"Relatório {numero}",
 
-                    "Valor R$": "",
+                    f"Valor {SIMBOLO_MOEDA}": "",
                     # "Percentual": "",
                     "Data prevista": pd.to_datetime(
                         data_prevista, errors="coerce"
@@ -2067,61 +2102,71 @@ with cron_desemb:
         # -------------------------------------------------------
         if opcao_editar_cron == "Valor do projeto":
 
-            col1, col2 = st.columns(2)
+            col1, col2 = st.columns([2, 1])
 
             # -----------------------------------
             # Recuperar valores atuais do banco
             # -----------------------------------
             valor_aditivo_atual = financeiro.get("valor_aditivo", 0.0)
-            #valor_devolucao_atual = financeiro.get("valor_devolucao", 0.0)
+            categoria_atual = financeiro.get("categoria_projeto")
 
-            # -----------------------------------
-            # Coluna 1: Inputs
-            # -----------------------------------
             with col1:
 
                 with st.form("form_valor_total", border=False):
 
                     st.markdown("#### Valor inicial do projeto")
 
+                    c_valor, c_moeda, c_categoria = st.columns([2, 1, 1.4])
+
                     # -----------------------------------
-                    # Input valor total
+                    # Valor total
                     # -----------------------------------
-                    valor_total = st.number_input(
-                        "Valor total do projeto (R$)",
-                        min_value=0.0,
-                        step=1000.0,
-                        format="%.2f",
-                        value=float(valor_atual) if valor_atual is not None else 0.0,
-                        width=300
-                    )
+                    with c_valor:
+                        valor_total = st.number_input(
+                            f"Valor total do projeto ({SIMBOLO_MOEDA})",
+                            min_value=0.0,
+                            step=1000.0,
+                            format="%.2f",
+                            value=float(valor_atual) if valor_atual is not None else 0.0,
+                        )
+
+                    # -----------------------------------
+                    # Moeda
+                    # -----------------------------------
+                    with c_moeda:
+                        moeda_sel = st.selectbox(
+                            "Moeda",
+                            options=list(MOEDAS.keys()),
+                            index=list(MOEDAS.keys()).index(moeda_atual),
+                        )
+
+                    # -----------------------------------
+                    # Categoria
+                    # -----------------------------------
+                    with c_categoria:
+                        categoria_sel = st.selectbox(
+                            "Categoria",
+                            options=CATEGORIAS_PROJETO,
+                            index=(
+                                CATEGORIAS_PROJETO.index(categoria_atual)
+                                if categoria_atual in CATEGORIAS_PROJETO
+                                else None
+                            ),
+                            placeholder="Selecione",
+                        )
 
                     st.write('')
                     st.write('')
 
                     st.markdown("#### Ajustes financeiros")
 
-                    # -----------------------------------
-                    # Layout em duas colunas para aditivo e devolução
-                    # -----------------------------------
-                    #col_aditivo, col_devolucao = st.columns(2)
-                  
                     valor_aditivo = st.number_input(
-                        "Aditivo (R$)",
+                        f"Aditivo ({SIMBOLO_MOEDA})",
                         step=100.0,
                         format="%.2f",
                         value=float(valor_aditivo_atual) if valor_aditivo_atual is not None else 0.0,
                         width=300
                     )
-
-                    # with col_devolucao:
-                    #     valor_devolucao = st.number_input(
-                    #         "Devolução (R$)",
-                    #         step=100.0,
-                    #         format="%.2f",
-                    #         value=float(valor_devolucao_atual) if valor_devolucao_atual is not None else 0.0,
-                    #         width=300
-                    #     )
 
                     st.write('')
 
@@ -2142,7 +2187,8 @@ with cron_desemb:
                                 "$set": {
                                     "financeiro.valor_total": float(valor_total),
                                     "financeiro.valor_aditivo": float(valor_aditivo),
-                                    #"financeiro.valor_devolucao": float(valor_devolucao)
+                                    "financeiro.moeda": moeda_sel,
+                                    "financeiro.categoria_projeto": categoria_sel,
                                 }
                             }
                         )
@@ -2152,38 +2198,19 @@ with cron_desemb:
                         st.rerun()
 
             # -----------------------------------
-            # Coluna 2: Exibição do valor final
+            # Coluna 2: valor final com aditivo
             # -----------------------------------
             with col2:
 
-                # -----------------------------------
-                # Garantir valores base
-                # -----------------------------------
                 valor_total_base = float(valor_atual) if valor_atual is not None else 0.0
-
                 valor_aditivo = valor_aditivo_atual or 0.0
-                #valor_devolucao = valor_devolucao_atual or 0.0
-
-                # -----------------------------------
-                # Calcular valor final atualizado
-                # -----------------------------------
                 valor_atualizado = valor_total_base + valor_aditivo
 
-                # -----------------------------------
-                # Exibir apenas se houver ajuste
-                # -----------------------------------
                 if valor_aditivo != 0:
-
                     st.metric(
                         "Valor final com Aditivo / Devolução",
-                        value=format_brl(valor_atualizado),
+                        value=format_moeda(valor_atualizado),
                     )
-
-
-
-
-
-
 
 
         # -------------------------------------------------------
@@ -2262,13 +2289,7 @@ with cron_desemb:
             # -----------------------------------
             # Formatar valor para exibição no editor
             # -----------------------------------
-            df_parcelas["valor_fmt"] = df_parcelas["valor"].apply(
-                lambda x: f"R$ {x:,.2f}"
-                .replace(",", "X")
-                .replace(".", ",")
-                .replace("X", ".")
-                if pd.notna(x) else ""
-            )
+            df_parcelas["valor_fmt"] = df_parcelas["valor"].apply(format_moeda)
 
             # -----------------------------------
             # Editor de parcelas
@@ -2292,7 +2313,7 @@ with cron_desemb:
                         width=60
                     ),
                     "valor_fmt": st.column_config.TextColumn(
-                        "Valor (R$)",
+                        f"Valor ({SIMBOLO_MOEDA})",
                         width=150
                     ),
                     "percentual": st.column_config.NumberColumn(
@@ -2317,17 +2338,15 @@ with cron_desemb:
             # -----------------------------------
             def parse_brl(valor):
                 """
-                Converte string no formato monetário brasileiro para float.
+                Converte string monetária (qualquer moeda do projeto) para float.
                 """
-                if not valor:
+                if valor is None or pd.isna(valor) or str(valor).strip() == "":
                     return 0.0
 
                 return float(
-                    str(valor)
-                    .replace("R$", "")
+                    remover_simbolo_moeda(valor)
                     .replace(".", "")
                     .replace(",", ".")
-                    .strip()
                 )
 
             # -----------------------------------
@@ -2359,28 +2378,12 @@ with cron_desemb:
             # -----------------------------------
             soma_valores = df_parcelas["valor"].sum()
 
-            # Formatação
-            soma_fmt = (
-                f"R$ {soma_valores:,.2f}"
-                .replace(",", "X")
-                .replace(".", ",")
-                .replace("X", ".")
-            )
+            # Formatação (já com escape do $)
+            soma_fmt = format_moeda(soma_valores, escapar=True)
+            total_fmt = format_moeda(valor_total, escapar=True)
 
-            total_fmt = (
-                f"R$ {valor_total:,.2f}"
-                .replace(",", "X")
-                .replace(".", ",")
-                .replace("X", ".")
-            )
-
-            # Exibir valores (com escape do $)
-            st.write(
-                f"**Total das parcelas:** {soma_fmt.replace('$', '\\$')}"
-            )
-            st.write(
-                f"**Valor total do projeto:** {total_fmt.replace('$', '\\$')}"
-            )
+            st.write(f"**Total das parcelas:** {soma_fmt}")
+            st.write(f"**Valor total do projeto:** {total_fmt}")
 
             # -----------------------------------
             # Salvar
@@ -2422,22 +2425,11 @@ with cron_desemb:
                 soma_valores = df_salvar["valor"].sum()
 
                 if round(soma_valores, 2) != round(valor_total, 2):
-                    soma_fmt = (
-                        f"R$ {soma_valores:,.2f}"
-                        .replace(",", "X")
-                        .replace(".", ",")
-                        .replace("X", ".")
-                    )
-
-                    total_fmt = (
-                        f"R$ {valor_total:,.2f}"
-                        .replace(",", "X")
-                        .replace(".", ",")
-                        .replace("X", ".")
-                    )
+                    soma_fmt = format_moeda(soma_valores, escapar=True)
+                    total_fmt = format_moeda(valor_total, escapar=True)
 
                     st.error(
-                        f"Erro: A soma das parcelas ({soma_fmt.replace('$', '\\$')}) deve ser igual ao valor total do projeto ({total_fmt.replace('$', '\\$')}).",
+                        f"Erro: A soma das parcelas ({soma_fmt}) deve ser igual ao valor total do projeto ({total_fmt}).",
                         icon=":material/error:"
                     )
 
@@ -2818,20 +2810,8 @@ with orcamento:
 
                 if round(soma_orcamento, 2) != round(valor_total_projeto, 2):
 
-                    soma_fmt = (
-                        f"R\\$ {soma_orcamento:,.2f}"
-                        .replace(",", "X")
-                        .replace(".", ",")
-                        .replace("X", ".")
-                    )
-
-                    total_fmt = (
-                        f"R\\$ {valor_total_projeto:,.2f}"
-                        .replace(",", "X")
-                        .replace(".", ",")
-                        .replace("X", ".")
-                    )
-
+                    soma_fmt = format_moeda(soma_orcamento, escapar=True)
+                    total_fmt = format_moeda(valor_total_projeto, escapar=True)
 
                     st.warning(
                         f"O total do orçamento ({soma_fmt}) é diferente do valor total do projeto ({total_fmt}).",
@@ -2895,24 +2875,20 @@ with orcamento:
 
         col1.metric(
             label="Valor solicitado ao Fundo Ecos",
-            value=f"R$ {valor_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            value=format_moeda(valor_total)
         )
 
         col2.metric(
             label="Gasto",
-            value=f"R$ {gasto_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            value=format_moeda(gasto_total)
         )
 
         col3.metric(
             label="Saldo",
-            value=f"R$ {saldo_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+            value=format_moeda(saldo_total),
             delta=None if saldo_total >= 0 else "Negativo",
             delta_color="inverse" if saldo_total < 0 else "normal"
         )
-
-
-
-
 
         # --------------------------------------------------
         # BARRAS DE PROGRESSO: recebido x gasto
@@ -2949,11 +2925,7 @@ with orcamento:
         # -----------------------------
         st.progress(
             pct_recebido,
-            text=(
-                f"Valor recebido: R$ {valor_recebido:,.2f}"
-                .replace(",", "X").replace(".", ",").replace("X", ".")
-                # + f"  ({pct_recebido*100:.1f}%)"
-            )
+            text=f"Valor recebido: {format_moeda(valor_recebido)}"
         )
 
         # -----------------------------
@@ -2961,11 +2933,7 @@ with orcamento:
         # -----------------------------
         st.progress(
             pct_gasto,
-            text=(
-                f"Valor gasto: R$ {gasto_total:,.2f}"
-                .replace(",", "X").replace(".", ",").replace("X", ".")
-                # + f"  ({pct_gasto*100:.1f}%)"
-            )
+            text=f"Valor gasto: {format_moeda(gasto_total)}"
         )
 
 
@@ -3085,7 +3053,7 @@ with orcamento:
         def fmt_moeda(x):
             if x in [None, ""]:
                 return ""
-            return f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            return format_moeda(x)
 
         df_orcamento["Valor solicitado"] = df_orcamento["valor_total"].apply(fmt_moeda)
         df_orcamento["Contrapartida financeira"] = df_orcamento["contrapartida_financeira"].apply(fmt_moeda)
@@ -3289,7 +3257,7 @@ with orcamento:
                         width=140,
                         min_value=0,
                         max_value=float(df_cat["valor_total"].max()),
-                        format="R$ %.2f",
+                        format=f"{SIMBOLO_MOEDA} %.2f",
                     ),
                     "Saldo": st.column_config.TextColumn(width=120),
                 }
@@ -3421,7 +3389,7 @@ with orcamento:
                         width=140,
                         min_value=0,
                         max_value=float(df_contr_fin["valor_previsto"].max()),
-                        format="R$ %.2f",
+                        format=f"{SIMBOLO_MOEDA} %.2f",
                     ),
                 },
                 selection_mode="single-row",
@@ -3541,7 +3509,7 @@ with orcamento:
                         width=140,
                         min_value=0,
                         max_value=float(df_contr_nao_fin["valor_previsto"].max()),
-                        format="R$ %.2f",
+                        format=f"{SIMBOLO_MOEDA} %.2f",
                     ),
                 },
                 selection_mode="single-row",
@@ -3906,7 +3874,7 @@ with orcamento:
             if isinstance(valor, (int, float)):
                 return float(valor)
 
-            texto = texto.replace("R$", "").strip()
+            texto = remover_simbolo_moeda(texto)
 
             if "," in texto:
                 texto = texto.replace(".", "").replace(",", ".")
@@ -4542,12 +4510,7 @@ with remanejamentos:
 
                 saldo = valor_total - gasto
 
-                saldo_fmt = (
-                    f"R$ {saldo:,.2f}"
-                    .replace(",", "X")
-                    .replace(".", ",")
-                    .replace("X", ".")
-                )
+                saldo_fmt = format_moeda(saldo)
 
                 label = f"{nome} (saldo: {saldo_fmt})"
 
@@ -4628,8 +4591,7 @@ with remanejamentos:
                             saldo_final = saldo - valor if tipo == "reduzir" else saldo + valor
 
                             st.markdown(
-                                f"Saldo final:  \nR$ {saldo_final:,.2f}"
-                                .replace(",", "X").replace(".", ",").replace("X", ".")
+                                f"Saldo final:  \n{format_moeda(saldo_final)}"
                             )
 
                         total += valor
@@ -4686,7 +4648,7 @@ with remanejamentos:
                 st.write('**Resumo do remanejamento**')
                 st.write('')
 
-                fmt = lambda v: f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                fmt = format_moeda
 
                 st.metric(":material/arrow_downward: Total reduzido", fmt(total_reduzido))
                 st.metric(":material/arrow_upward: Total aumentado", fmt(total_aumentado))
@@ -4744,7 +4706,7 @@ with remanejamentos:
                                         'color:green; 
                                         font-size:220%
                                     '>
-                                        R$ {saldo_remanejamento:,.2f} 
+                                        {format_moeda(saldo_remanejamento)} 
                                     </span>
                                     """
                                     , unsafe_allow_html=True)
@@ -4767,7 +4729,7 @@ with remanejamentos:
                                         'color:red; 
                                         font-size:220%
                                     '>
-                                        R$ {saldo_remanejamento:,.2f} 
+                                        {format_moeda(saldo_remanejamento)}
                                     </span>
                                     """
                                     , unsafe_allow_html=True)
@@ -5145,9 +5107,7 @@ with remanejamentos:
                     else:
                         for r in reduzidas:
                             st.write(
-                                f"- {r['nome_despesa']}: "
-                                + f"R$ {r['valor_reduzido']:,.2f}"
-                                .replace(",", "X").replace(".", ",").replace("X", ".")
+                                f"- {r['nome_despesa']}: {format_moeda(r['valor_reduzido'])}"
                             )
 
 
@@ -5165,9 +5125,7 @@ with remanejamentos:
                     else:
                         for a in aumentadas:
                             st.write(
-                                f"- {a['nome_despesa']}: "
-                                + f"R$ {a['valor_aumentado']:,.2f}"
-                                .replace(",", "X").replace(".", ",").replace("X", ".")
+                                f"- {a['nome_despesa']}: {format_moeda(a['valor_aumentado'])}"
                             )
 
 
