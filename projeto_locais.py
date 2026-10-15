@@ -17,7 +17,8 @@ from funcoes_auxiliares import (
     obter_pasta_locais,
     obter_pasta_projeto,
     enviar_arquivo_drive,
-    gerar_link_drive
+    gerar_link_drive,
+    conectar_mongo_portal_ispn
 )
 
 
@@ -92,11 +93,13 @@ db = conectar_mongo_coruja()
 # Coleção de projetos
 col_projetos = db["projetos"]
 
-# Coleção de UFs e Municípios
-col_ufs_munic = db["ufs_municipios"]
-
 # Coleção de organizações
 col_organizacoes = db["organizacoes"] 
+
+db_jatai = conectar_mongo_portal_ispn()
+
+# Coleção de UFs e Municípios
+col_ufs_munic = db_jatai["ufs_municipios"]
 
 
 ###########################################################################################################
