@@ -183,13 +183,78 @@ edital = col_editais.find_one({"codigo_edital": projeto["edital"]})
 
 tipo_usuario = st.session_state.get("tipo_usuario")
 
+# --------------------------------------------------
+# Moeda do projeto (salva em financeiro.moeda como "real", "dólar" ou "euro")
+# --------------------------------------------------
+MOEDAS = {
+    "real":  {"simbolo": "R$",  "singular": "real",  "plural": "reais"},
+    "dólar": {"simbolo": "US$", "singular": "dólar", "plural": "dólares"},
+    "euro":  {"simbolo": "€",   "singular": "euro",  "plural": "euros"},
+}
 
+financeiro_projeto = projeto.get("financeiro")
+if not isinstance(financeiro_projeto, dict):
+    financeiro_projeto = {}
+
+MOEDA_PROJETO = financeiro_projeto.get("moeda") or "real"
+if MOEDA_PROJETO not in MOEDAS:
+    MOEDA_PROJETO = "real"
+
+SIMBOLO_MOEDA = MOEDAS[MOEDA_PROJETO]["simbolo"]
 
 
 
 ###########################################################################################################
 # FUNÇÕES
 ###########################################################################################################
+
+
+# --------------------------------------------------
+# Formata valor na moeda do projeto (ex.: "US$ 1.234,56")
+# --------------------------------------------------
+def formatar_moeda(valor):
+    try:
+        valor = float(valor or 0)
+    except (TypeError, ValueError):
+        valor = 0.0
+
+    numero = f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"{SIMBOLO_MOEDA} {numero}"
+
+
+# --------------------------------------------------
+# Valor por extenso na moeda do projeto
+# (real usa o num2words, como antes; dólar e euro são montados manualmente)
+# --------------------------------------------------
+def valor_por_extenso_moeda(valor):
+    valor = round(float(valor or 0), 2)
+
+    if MOEDA_PROJETO == "real":
+        return num2words(valor, lang="pt_BR", to="currency")
+
+    forma = MOEDAS[MOEDA_PROJETO]
+    inteiro = int(valor)
+    centavos = int(round((valor - inteiro) * 100))
+
+    partes = []
+
+    if inteiro > 0:
+        nome = forma["singular"] if inteiro == 1 else forma["plural"]
+
+        # "um milhão de dólares", "dois bilhões de euros"
+        if inteiro >= 1_000_000 and inteiro % 1_000_000 == 0:
+            nome = f"de {nome}"
+
+        partes.append(f"{num2words(inteiro, lang='pt_BR')} {nome}")
+
+    if centavos > 0:
+        nome_cent = "centavo" if centavos == 1 else "centavos"
+        partes.append(f"{num2words(centavos, lang='pt_BR')} {nome_cent}")
+
+    if not partes:
+        return f"zero {forma['plural']}"
+
+    return " e ".join(partes)
 
 
 def calcular_saldo_parcela():
@@ -842,11 +907,11 @@ def render_registro_despesa(
         with col2:
 
             valor = st.number_input(
-                "Valor (reais) *",
-                min_value=0.0,
-                format="%.2f",
-                key=f"desp_valor_{tipo_salvo}_{form_key}"
-            )
+                f"Valor ({SIMBOLO_MOEDA}) *",
+                    min_value=0.0,
+                    format="%.2f",
+                    key=f"desp_valor_{tipo_salvo}_{form_key}"
+                )
             
         # --------------------------------------------------
         # DESCRIÇÃO
@@ -917,7 +982,7 @@ def render_registro_despesa(
                 erros_campos.append("Data da despesa")
 
             if not valor or valor <= 0:
-                erros_campos.append("Valor (reais)")
+                erros_campos.append(f"Valor ({SIMBOLO_MOEDA})")
                 
             if not descricao or not descricao.strip():
                 erros_campos.append("Descrição da despesa")
@@ -2194,19 +2259,9 @@ def gerar_certificado_relatorio(relatorio, projeto):
 
         valor = parcela.get("valor", 0)
 
-        valor_formatado = (
-            f"R$ {valor:,.2f}"
-            .replace(",", "X")
-            .replace(".", ",")
-            .replace("X", ".")
-        )
+        valor_formatado = formatar_moeda(valor)
 
-        # Caso utilize num2words
-        valor_extenso = num2words(
-            valor,
-            lang="pt_BR",
-            to="currency"
-        )
+        valor_extenso = valor_por_extenso_moeda(valor)
 
         texto = (
             f"Certifico que o projeto "
@@ -2791,7 +2846,7 @@ def _secao_despesas(projeto, numero, est):
                         detalhes.append(("Fornecedor", lanc.get("fornecedor")))
                     if lanc.get("cpf_cnpj"):
                         detalhes.append(("CPF/CNPJ", lanc.get("cpf_cnpj")))
-                    detalhes.append(("Valor (R$)", _valor_br(lanc.get("valor_despesa"))))
+                    detalhes.append((f"Valor ({SIMBOLO_MOEDA})", _valor_br(lanc.get("valor_despesa"))))
 
                     for label, valor in detalhes:
                         f.append(Paragraph(f"<b>{label}:</b> {_txt(valor)}", est["item"]))
@@ -2810,7 +2865,7 @@ def _secao_despesas(projeto, numero, est):
                     # Separação entre lançamentos
                     f.append(Spacer(1, 14))
 
-        f.append(Paragraph(f"<b>Total {titulo.lower()}:</b> R$ {_valor_br(total_bloco)}", est["texto"]))
+        f.append(Paragraph(f"<b>Total {titulo.lower()}:</b> {formatar_moeda(total_bloco)}", est["texto"]))
         f.append(Spacer(1, 10))
 
     return f
@@ -4539,7 +4594,7 @@ if step_selecionado == "Despesas":
 
                                 valor = lanc.get("valor_despesa", 0)
                                 valor_br = f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                                linha("Valor (R$)", valor_br)
+                                linha(f"Valor ({SIMBOLO_MOEDA})", valor_br)
 
 
                             with col2:
@@ -4668,7 +4723,7 @@ if step_selecionado == "Despesas":
 
                             with col2:
                                 valor = st.number_input(
-                                    "Valor total (R$) *",
+                                    f"Valor total ({SIMBOLO_MOEDA}) *",
                                     min_value=0.0,
                                     value=float(lanc.get("valor_despesa", 0)),
                                     format="%.2f",
@@ -4772,7 +4827,7 @@ if step_selecionado == "Despesas":
                                             erros_campos.append("Data da despesa")
 
                                         if not valor or valor <= 0:
-                                            erros_campos.append("Valor total (R$)")
+                                            erros_campos.append(f"Valor total ({SIMBOLO_MOEDA})")
                                             
                                         if not descricao or not descricao.strip():
                                             erros_campos.append("Descrição da despesa")
