@@ -108,10 +108,10 @@ col_editais = db["editais"]
 col_publicos = db["publicos"]
 col_organizacoes = db["organizacoes"]   
 
-db = conectar_mongo_portal_ispn()
+db_jatai = conectar_mongo_portal_ispn()
 
 # Coleção de programas/áreas do portal ISPN
-col_programas_areas = db["programas_areas"]
+col_programas_areas = db_jatai["programas_areas"]
 
 # ###########################################################################################################
 # # REGISTRO DE ESTATÍSTICA -  CONTABILIZAÇÃO DE VISITA
