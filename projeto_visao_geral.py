@@ -324,6 +324,14 @@ lista_programas = sorted(
     if isinstance(p, str) and p.strip()
 )
 
+# Categorias
+LISTA_CATEGORIAS = [
+    "Microprojeto",
+    "Pequeno",
+    "Consolidação",
+    "Estratégico",
+]
+
 # Biomas
 LISTA_BIOMAS = [
     "Amazônia",
@@ -353,13 +361,13 @@ LISTA_TEMAS = [
     "Fogo",
     "Gestão Territorial",
     "Manejo da biodiversidade",
-    "Outro",
     "Pesquisa",
     "Plantas medicinais",
     "Política Pública",
     "Recuperação de áreas degradadas",
     "Sistemas Agroflorestais - SAFs",
     "Turismo",
+    "Outro"
 ]
 
 
@@ -625,8 +633,7 @@ if not editar_cadastro:
 
     # ---------- CATEGORIA ----------
 
-    financeiro = projeto.get("financeiro")
-    categoria = financeiro.get("categoria_projeto") if isinstance(financeiro, dict) else None
+    categoria = projeto.get("categoria")
 
     if not isinstance(categoria, str) or not categoria.strip():
         st.markdown(
@@ -669,19 +676,6 @@ if not editar_cadastro:
         )
     else:
         st.write(f"**Ponto focal:** {valor}")
-
-
-    # ---------- PROGRAMA / ÁREA ----------
-
-    programas = obter_lista_projeto(df_projeto, "programas")
-
-    if programas:
-        st.write(f"**Programa / Área:** {', '.join(programas)}")
-    else:
-        st.markdown(
-            "**Programa / Área:** <span style='color:#c46a00; font-style:italic;'>não cadastrado</span>",
-            unsafe_allow_html=True
-        )
 
 
     col1, col2, col3, col4 = st.columns(4)
@@ -1938,9 +1932,25 @@ else:
                 default=padrinhos_atuais
             )
             
+            # ---------- CATEGORIA ----------
+
+            col1, col2 = st.columns(2)
+
+            categoria_atual = projeto.get("categoria")
+
+            categoria = col1.selectbox(
+                "Categoria",
+                options=LISTA_CATEGORIAS,
+                index=(
+                    LISTA_CATEGORIAS.index(categoria_atual)
+                    if categoria_atual in LISTA_CATEGORIAS else None
+                ),
+                placeholder=""
+            )
+
             # ---------- PROGRAMAS ----------
 
-            programas = st.multiselect(
+            programas = col2.multiselect(
                 "Programa / Área",
                 options=lista_programas,
                 default=valores_salvos_validos(projeto.get("programas"), lista_programas),
@@ -2093,6 +2103,7 @@ else:
                                 "nome_do_projeto": nome,
                                 "objetivo_geral": objetivo,
                                 "duracao": duracao,
+                                "categoria": categoria,
                                 "primeiro_f_ecos": primeiro_f_ecos,
                                 "primeiro_vida": primeiro_vida,
                                 "adaptacao": adaptacao,
@@ -2639,12 +2650,5 @@ else:
                 on_change=salvar_perguntas_relatorio,
                 args=(perguntas_edital, ObjectId(projeto["_id"]))
             )
-
-
-
-
-
-
-
 
 
