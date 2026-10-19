@@ -2420,7 +2420,7 @@ def gerar_relatorio_monitoramento_docx(
     )
 
     perguntas_monitoramento = sorted(
-        edital.get("perguntas_monitoramento", []),
+        (edital or {}).get("perguntas_monitoramento", []),
         key=lambda x: x.get("ordem", 0)
     )
     
@@ -3271,6 +3271,8 @@ liberar_proximo_relatorio(projeto["codigo"], relatorios)
 projeto = col_projetos.find_one({"codigo": projeto["codigo"]})
 relatorios = projeto.get("relatorios", [])
 
+codigo_edital = projeto.get("edital")
+edital = col_editais.find_one({"codigo_edital": codigo_edital}) if codigo_edital else None
 
 
 
@@ -5174,7 +5176,7 @@ if step_selecionado == "Indicadores":
     # --------------------------------------------------
     mapa_indicadores = {
         item["_id"]: item["indicador"]
-        for item in edital.get("indicadores", [])
+        for item in (edital or {}).get("indicadores", [])
     }
 
     indicadores = projeto.get("indicadores", [])
@@ -6539,7 +6541,7 @@ if step_selecionado == "Beneficiários":
 #     # BUSCA DADOS
 #     # ============================
 
-#     pesquisas = edital.get("pesquisas_relatorio", []) if edital else []
+#     pesquisas = (edital or {}).get("pesquisas_relatorio", []) if edital else []
 
 #     if not pesquisas:
 #         st.caption("Nenhuma pesquisa cadastrada.")
@@ -6795,7 +6797,7 @@ if step_selecionado == "Formulário":
         st.error("Edital não encontrado para este projeto.")
         st.stop()
 
-    perguntas = edital.get("perguntas_relatorio", [])
+    perguntas = (edital or {}).get("perguntas_relatorio", [])
 
     if not perguntas:
         st.write('')
@@ -7331,7 +7333,7 @@ if step_selecionado == "Enviar":
                     )
 
                     perguntas_monitoramento = sorted(
-                        edital.get("perguntas_monitoramento", []),
+                        (edital or {}).get("perguntas_monitoramento", []),
                         key=lambda x: x.get("ordem", 0)
                     )
 
@@ -7635,7 +7637,7 @@ if step_selecionado == "Enviar":
                     )
 
                     perguntas_monitoramento = sorted(
-                        edital.get("perguntas_monitoramento", []),
+                        (edital or {}).get("perguntas_monitoramento", []),
                         key=lambda x: x.get("ordem", 0)
                     )
 
@@ -7828,7 +7830,7 @@ if step_selecionado == "Avaliação":
     )
 
     perguntas_monitoramento = sorted(
-        edital.get("perguntas_monitoramento", []),
+        (edital or {}).get("perguntas_monitoramento", []),
         key=lambda x: x.get("ordem", 0)
     )
     
