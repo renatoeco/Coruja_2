@@ -763,6 +763,80 @@ def gerar_id_lanc_despesa(projeto):
 
 
 # ==================================================
+# OPÇÕES "CATEGORIA | DESPESA" DO ORÇAMENTO
+# ==================================================
+def montar_opcoes_orcamento(projeto):
+    """
+    Retorna (opcoes, mapa_opcoes) no formato "Categoria | Nome da despesa",
+    usado no registro e na edição de despesas.
+    """
+    opcoes = []
+    mapa_opcoes = {}
+
+    for o in projeto.get("financeiro", {}).get("orcamento", []):
+
+        categoria_id = str(o.get("categoria"))
+        nome_categoria = categorias_map.get(categoria_id, "Categoria não encontrada")
+
+        label = f"{nome_categoria} | {o.get('nome_despesa', '')}"
+
+        opcoes.append(label)
+        mapa_opcoes[label] = {
+            "categoria_id": categoria_id,
+            "nome_despesa": o.get("nome_despesa", ""),
+            "nome_categoria": nome_categoria
+        }
+
+    opcoes = sorted(opcoes, key=lambda x: x.lower())
+
+    return opcoes, mapa_opcoes
+
+
+# ==================================================
+# MOVE UM LANÇAMENTO PARA OUTRA CATEGORIA / DESPESA
+# (altera apenas o objeto em memória; a persistência
+#  é feita por quem chama)
+# ==================================================
+def mover_lancamento_despesa(projeto, id_despesa, categoria_destino, nome_despesa_destino):
+
+    orcamento = projeto.get("financeiro", {}).get("orcamento", [])
+
+    item_destino = next(
+        (
+            d for d in orcamento
+            if str(d.get("categoria")) == str(categoria_destino)
+            and d.get("nome_despesa") == nome_despesa_destino
+        ),
+        None
+    )
+
+    if item_destino is None:
+        return False
+
+    lanc_movido = None
+
+    for d in orcamento:
+        lancamentos = d.get("lancamentos", [])
+        encontrado = next(
+            (l for l in lancamentos if l.get("id_lanc_despesa") == id_despesa),
+            None
+        )
+        if encontrado:
+            lanc_movido = encontrado
+            d["lancamentos"] = [
+                l for l in lancamentos
+                if l.get("id_lanc_despesa") != id_despesa
+            ]
+            break
+
+    if lanc_movido is None:
+        return False
+
+    item_destino.setdefault("lancamentos", []).append(lanc_movido)
+    return True
+
+
+# ==================================================
 # REGISTRO DE DESPESA (EXPANDER)
 # ==================================================
 def render_registro_despesa(
@@ -883,7 +957,6 @@ def render_registro_despesa(
         # ==================================================
         # DADOS DO LANÇAMENTO
         # ==================================================
-        id_despesa = gerar_id_lanc_despesa(projeto)
 
         col1, col2 = st.columns(2)
 
@@ -1060,6 +1133,8 @@ def render_registro_despesa(
             with area_notif_despesas.spinner(
                 "Salvando despesa..."
             ):
+                # Gera o ID somente no momento de salvar
+                id_despesa = gerar_id_lanc_despesa(projeto)
 
                 novo_lancamento = {
                     "id_lanc_despesa": id_despesa,
@@ -1328,8 +1403,6 @@ def salvar_relato():
     # Próximo número disponível
     novo_numero = maior_numero + 1
     id_relato = f"relato_{novo_numero:03d}"
-
-
 
 
     # --------------------------------------------------
@@ -4687,12 +4760,6 @@ if step_selecionado == "Despesas":
                                         st.session_state["despesa_editando_id"] = id_despesa
                                         st.rerun()
 
-
-
-
-
-
-
                         # ==================================================
                         # MODO EDIÇÃO INLINE DA DESPESA
                         # ==================================================
@@ -4701,15 +4768,36 @@ if step_selecionado == "Despesas":
                             st.markdown(f"**Editando {id_despesa.upper()}**")
 
                             # --------------------------------------------------
+                            # CATEGORIA / DESPESA
+                            # --------------------------------------------------
+                            opcoes_edit, mapa_opcoes_edit = montar_opcoes_orcamento(projeto)
+
+                            label_atual = next(
+                                (
+                                    lbl for lbl, info in mapa_opcoes_edit.items()
+                                    if info["categoria_id"] == categoria_id
+                                    and info["nome_despesa"] == nome_despesa
+                                ),
+                                None
+                            )
+
+                            escolha_edit = st.selectbox(
+                                "Categoria / Despesa *",
+                                options=opcoes_edit,
+                                index=(
+                                    opcoes_edit.index(label_atual)
+                                    if label_atual in opcoes_edit else 0
+                                ),
+                                key=f"edit_cat_{id_despesa}"
+                            )
+
+                            destino = mapa_opcoes_edit[escolha_edit]
+
+                            # --------------------------------------------------
                             # CAMPOS PRINCIPAIS
                             # --------------------------------------------------
                             col1, col2 = st.columns(2)
 
-
-
-                            # --------------------------------------------------
-                            # DATA
-                            # --------------------------------------------------
                             with col1:
                                 data = date_picker(
                                     label="Data da despesa *",
@@ -4720,7 +4808,6 @@ if step_selecionado == "Despesas":
                                     one_tap=True
                                 )
 
-
                             with col2:
                                 valor = st.number_input(
                                     f"Valor total ({SIMBOLO_MOEDA}) *",
@@ -4729,7 +4816,7 @@ if step_selecionado == "Despesas":
                                     format="%.2f",
                                     key=f"edit_valor_{id_despesa}"
                                 )
-                                
+
                             descricao = st.text_area(
                                 "Descrição da despesa *",
                                 value=lanc.get("descricao_despesa", ""),
@@ -4782,250 +4869,122 @@ if step_selecionado == "Despesas":
 
                             st.divider()
 
-
-
-
-
-
                             # --------------------------------------------------
                             # AÇÕES
                             # --------------------------------------------------
                             with st.container(horizontal=True):
 
+                                if st.button(
+                                    "Cancelar",
+                                    key=f"btn_cancel_desp_{id_despesa}"
+                                ):
+                                    st.session_state["despesa_editando_id"] = None
+                                    st.session_state.pop(f"edit_cat_{id_despesa}", None)
+                                    st.rerun()
 
-                                with st.container(horizontal=True):
+                                if st.button(
+                                    "Salvar alterações",
+                                    key=f"btn_save_desp_{id_despesa}",
+                                    type="primary",
+                                    icon=":material/save:"
+                                ):
 
+                                    # ==================================================
+                                    # VALIDAÇÕES
+                                    # ==================================================
+                                    erros_campos = []
 
-                                    if st.button(
-                                        "Cancelar",
-                                        key=f"btn_cancel_desp_{id_despesa}"
-                                    ):
-                                        st.session_state["despesa_editando_id"] = None
-                                        st.rerun()
+                                    if not data:
+                                        erros_campos.append("Data da despesa")
 
+                                    if not valor or valor <= 0:
+                                        erros_campos.append(f"Valor total ({SIMBOLO_MOEDA})")
 
+                                    if not descricao or not descricao.strip():
+                                        erros_campos.append("Descrição da despesa")
 
-                                    if st.button(
-                                        "Salvar alterações",
-                                        key=f"btn_save_desp_{id_despesa}",
-                                        type="primary",
-                                        icon=":material/save:"
-                                    ):
+                                    if not fornecedor or not fornecedor.strip():
+                                        erros_campos.append("Fornecedor")
 
-                                        # ==================================================
-                                        # VALIDAÇÕES
-                                        # ==================================================
+                                    qtd_restantes = len(anexos_existentes) - len(anexos_remover)
+                                    qtd_novos = len(novos_anexos) if novos_anexos else 0
 
-                                        erros_campos = []
-                                        erro_consistencia = None
+                                    if qtd_restantes + qtd_novos <= 0:
+                                        erros_campos.append("Anexos (mínimo de 1 arquivo)")
 
-                                        # -------------------------------
-                                        # CAMPOS OBRIGATÓRIOS
-                                        # -------------------------------
+                                    if erros_campos:
+                                        campos = ", ".join(erros_campos)
+                                        st.warning(f"Preencha os seguintes campos obrigatórios: {campos}")
+                                        st.stop()
 
-                                        if not data:
-                                            erros_campos.append("Data da despesa")
+                                    # ==================================================
+                                    # SALVAR
+                                    # ==================================================
+                                    with st.spinner("Salvando alterações..."):
 
-                                        if not valor or valor <= 0:
-                                            erros_campos.append(f"Valor total ({SIMBOLO_MOEDA})")
-                                            
-                                        if not descricao or not descricao.strip():
-                                            erros_campos.append("Descrição da despesa")
+                                        lanc.update({
+                                            "data_despesa": data.strftime("%d/%m/%Y"),
+                                            "descricao_despesa": descricao,
+                                            "fornecedor": fornecedor,
+                                            "cpf_cnpj": cpf_cnpj,
+                                            "valor_despesa": valor
+                                        })
 
-                                        if not fornecedor or not fornecedor.strip():
-                                            erros_campos.append("Fornecedor")
+                                        # Remove anexos marcados
+                                        if anexos_remover:
+                                            lanc["anexos"] = [
+                                                a for a in lanc.get("anexos", [])
+                                                if a not in anexos_remover
+                                            ]
 
-                                        # if not cpf_cnpj or not cpf_cnpj.strip():
-                                        #     erros_campos.append("CPF / CNPJ")
+                                        # Upload de novos anexos
+                                        if novos_anexos:
+                                            servico = obter_servico_drive()
+                                            pasta_proj = obter_pasta_projeto(
+                                                servico,
+                                                projeto["codigo"],
+                                                projeto["sigla"]
+                                            )
+                                            pasta_fin = obter_pasta_relatos_financeiros(servico, pasta_proj)
+                                            pasta_lanc = obter_ou_criar_pasta(servico, id_despesa, pasta_fin)
 
+                                            lanc.setdefault("anexos", [])
 
-                                        # ==================================================
-                                        # VALIDAÇÃO DE ANEXOS (COM REMOÇÃO + NOVOS)
-                                        # ==================================================
+                                            for arq in novos_anexos:
+                                                id_drive = enviar_arquivo_drive(servico, pasta_lanc, arq)
+                                                lanc["anexos"].append({
+                                                    "nome_arquivo": arq.name,
+                                                    "id_arquivo": id_drive
+                                                })
 
-                                        # Regra:
-                                        # - Se NÃO for taxa bancária → precisa ter pelo menos 1 anexo no final
+                                        # --------------------------------------------------
+                                        # MUDANÇA DE CATEGORIA / DESPESA
+                                        # --------------------------------------------------
+                                        mudou_categoria = (
+                                            destino["categoria_id"] != categoria_id
+                                            or destino["nome_despesa"] != nome_despesa
+                                        )
 
-                                        categoria_nome_lower = nome_categoria.lower()
-                                        # is_taxa_bancaria = "taxas bancárias" in categoria_nome_lower
-
-                                        # if not is_taxa_bancaria:
-
-                                        anexos_existentes = lanc.get("anexos", [])
-
-                                        # Quantos permanecem após remoção
-                                        qtd_restantes = len(anexos_existentes) - len(anexos_remover)
-
-                                        # Quantos novos serão adicionados
-                                        qtd_novos = len(novos_anexos) if novos_anexos else 0
-
-                                        total_final = qtd_restantes + qtd_novos
-
-                                        if total_final <= 0:
-                                            erros_campos.append("Anexos (mínimo de 1 arquivo)")
-
-
-
-
-                                        # ==================================================
-                                        # EXIBE ERROS
-                                        # ==================================================
-
-                                        if erros_campos:
-                                            campos = ", ".join(erros_campos)
-                                            st.warning(f"Preencha os seguintes campos obrigatórios: {campos}")
-
-                                        if erro_consistencia:
-                                            st.warning(erro_consistencia)
-
-                                        if erros_campos or erro_consistencia:
-                                            st.stop()
-
-                                        # ==================================================
-                                        # SALVAR
-                                        # ==================================================
-                                        with st.spinner("Salvando alterações..."):
-
-                                            lanc.update({
-                                                "data_despesa": data.strftime("%d/%m/%Y"),
-                                                "descricao_despesa": descricao,
-                                                "fornecedor": fornecedor,
-                                                "cpf_cnpj": cpf_cnpj,
-                                                "valor_despesa": valor
-                                            })
-
-
-
-                                            # Remove anexos marcados
-                                            if anexos_remover:
-                                                lanc["anexos"] = [
-                                                    a for a in lanc.get("anexos", [])
-                                                    if a not in anexos_remover
-                                                ]
-
-                                            # Upload de novos anexos
-                                            if novos_anexos:
-                                                servico = obter_servico_drive()
-                                                pasta_proj = obter_pasta_projeto(
-                                                    servico,
-                                                    projeto["codigo"],
-                                                    projeto["sigla"]
-                                                )
-                                                pasta_fin = obter_pasta_relatos_financeiros(servico, pasta_proj)
-                                                pasta_lanc = obter_ou_criar_pasta(servico, id_despesa, pasta_fin)
-
-                                                lanc.setdefault("anexos", [])
-
-                                                for arq in novos_anexos:
-                                                    id_drive = enviar_arquivo_drive(servico, pasta_lanc, arq)
-                                                    lanc["anexos"].append({
-                                                        "nome_arquivo": arq.name,
-                                                        "id_arquivo": id_drive
-                                                    })
-
-                                            # Persistência no Mongo
-                                            col_projetos.update_one(
-                                                {"codigo": projeto["codigo"]},
-                                                {"$set": {"financeiro.orcamento": projeto["financeiro"]["orcamento"]}}
+                                        if mudou_categoria:
+                                            mover_lancamento_despesa(
+                                                projeto,
+                                                id_despesa,
+                                                destino["categoria_id"],
+                                                destino["nome_despesa"]
                                             )
 
-                                        # Limpa estado
-                                        st.session_state["despesa_editando_id"] = None
-                                        st.success("Despesa atualizada com sucesso!", icon=":material/check:")
-                                        time.sleep(3)
-                                        st.rerun()
+                                        # Persistência no Mongo
+                                        col_projetos.update_one(
+                                            {"codigo": projeto["codigo"]},
+                                            {"$set": {"financeiro.orcamento": projeto["financeiro"]["orcamento"]}}
+                                        )
 
-                            
-                                with st.container(horizontal=True):
-
-
-
-                                    # ==================================================
-                                    # BOTÃO EXCLUIR DESPESA (SOMENTE SE STATUS = ABERTO)
-                                    # ==================================================
-
-                                    status_despesa_db = lanc.get("status_despesa")
-
-                                    # Controle de estado da confirmação
-                                    confirm_delete_key = f"confirm_delete_despesa_{id_despesa}"
-
-                                    if confirm_delete_key not in st.session_state:
-                                        st.session_state[confirm_delete_key] = False
-
-                                    # Só permite excluir se estiver aberto
-                                    if status_despesa_db == "aberto":
-
-                                        with st.container(horizontal=True, horizontal_alignment="right"):
-
-                                            # Botão inicial (ícone de lixeira)
-                                            if not st.session_state[confirm_delete_key]:
-                                                if st.button(
-                                                    "",
-                                                    key=f"btn_delete_{id_despesa}",
-                                                    icon=":material/delete:",
-                                                    type="secondary"
-                                                ):
-                                                    # Ativa confirmação
-                                                    st.session_state[confirm_delete_key] = True
-                                                    st.rerun()
-
-                                            # ==================================================
-                                            # CONFIRMAÇÃO DE EXCLUSÃO
-                                            # ==================================================
-                                            else:
-
-                                                with st.container(horizontal=True):
-
-                                                    st.warning("Deseja realmente excluir esta despesa?")
-
-                                                    # col1, col2 = st.columns(2)
-
-                                                    # Botão CONFIRMAR
-                                                    if st.button(
-                                                        "Sim, excluir",
-                                                        key=f"btn_confirm_delete_{id_despesa}",
-                                                        type="primary",
-                                                        icon=":material/delete:"
-                                                    ):
-                                                        with st.spinner("Excluindo despesa..."):
-
-                                                            # Remove o lançamento da estrutura
-                                                            for d in projeto["financeiro"]["orcamento"]:
-                                                                if str(d["categoria"]) == categoria_id and d["nome_despesa"] == nome_despesa:
-                                                                    d["lancamentos"] = [
-                                                                        l for l in d.get("lancamentos", [])
-                                                                        if l.get("id_lanc_despesa") != id_despesa
-                                                                    ]
-                                                                    break
-
-                                                            # Salva no Mongo
-                                                            col_projetos.update_one(
-                                                                {"codigo": projeto["codigo"]},
-                                                                {"$set": {"financeiro.orcamento": projeto["financeiro"]["orcamento"]}}
-                                                            )
-
-                                                        # Limpa estados
-                                                        st.session_state["despesa_editando_id"] = None
-                                                        st.session_state.pop(confirm_delete_key, None)
-
-                                                        st.success("Despesa excluída com sucesso!", icon=":material/check:")
-                                                        time.sleep(3)
-                                                        st.rerun()
-
-                                                    # Botão CANCELAR
-                                                    if st.button(
-                                                        "Cancelar",
-                                                        key=f"btn_cancel_delete_{id_despesa}"
-                                                    ):
-                                                        st.session_state[confirm_delete_key] = False
-                                                        st.rerun()
-
-
-
-
-
-
-
+                                    # Limpa estado
+                                    st.session_state["despesa_editando_id"] = None
+                                    st.session_state.pop(f"edit_cat_{id_despesa}", None)
+                                    st.success("Despesa atualizada com sucesso!", icon=":material/check:")
+                                    time.sleep(3)
+                                    st.rerun()
 
 
                         # ==================================================
