@@ -1,8 +1,6 @@
 import streamlit as st
 from funcoes_auxiliares import conectar_mongo_coruja, safe_col, safe_get, validar_df
 import pandas as pd
-import time
-import datetime
 
 
 st.set_page_config(page_title="Fases Operacionais", page_icon=":material/analytics:")
@@ -51,6 +49,26 @@ mapa_id_para_codigo_edital = {
     for _, row in df_editais.iterrows()
 }
 
+codigos_editais_validos = set(mapa_id_para_codigo_edital.values())
+
+def para_lista(valor):
+    """Normaliza um campo de ids (lista, id único ou vazio) para lista de strings."""
+    if isinstance(valor, (list, tuple, set)):
+        return [str(v) for v in valor if v is not None]
+    if valor is None or (isinstance(valor, float) and pd.isna(valor)):
+        return []
+    return [str(valor)]
+
+
+def edital_do_projeto_para_codigo(valor):
+    """O "edital" do projeto é o ObjectId do edital; aceita também o código antigo."""
+    for v in para_lista(valor):
+        if v in mapa_id_para_codigo_edital:
+            return mapa_id_para_codigo_edital[v]
+        if v in codigos_editais_validos:
+            return v
+    return None
+
 col_projetos = db["projetos"]
 df_projetos = pd.DataFrame(list(col_projetos.find()))
 
@@ -75,10 +93,10 @@ if "doadores" in df_ciclos.columns:
 # Converte ids das fases operacionais para códigos
 if "ciclo_investimento" in df_editais.columns:
     df_editais["ciclo_investimento"] = df_editais["ciclo_investimento"].apply(
-        lambda lista: [
-            mapa_id_para_codigo_ciclo.get(str(x), str(x))
-            for x in lista
-        ] if isinstance(lista, list) else []
+            lambda lista: [
+        mapa_id_para_codigo_ciclo.get(x, x)
+        for x in para_lista(lista)
+            ]
     )
 
 # Renomear as colunas de df_ciclos
@@ -182,7 +200,11 @@ def agregar_metricas_projetos(df_projetos, df_editais_original, df_ciclos_origin
     df = df_projetos.copy()
 
     # Garante comparação consistente: "edital" agora é o _id (ObjectId) do edital
-    df["edital"] = df["edital"].astype(str)
+    # "edital" é o ObjectId do edital: converte para o código
+    df["codigo_edital"] = (
+        df["edital"].apply(edital_do_projeto_para_codigo)
+        if "edital" in df.columns else None
+    )
 
     # Valor investido
     df["valor_investido_num"] = df["financeiro"].apply(
@@ -194,7 +216,7 @@ def agregar_metricas_projetos(df_projetos, df_editais_original, df_ciclos_origin
     # MÉTRICAS POR EDITAL
     # ==========================================================
     metricas_editais = (
-        df.groupby("edital")
+        df.groupby("codigo_edital")
         .agg(
             **{
                 "Número de iniciativas apoiadas": ("_id", "count"),
@@ -205,22 +227,14 @@ def agregar_metricas_projetos(df_projetos, df_editais_original, df_ciclos_origin
     )
 
     # Converte o _id do edital para o código (para casar com df_editais, que usa "Código")
-    metricas_editais["Código"] = metricas_editais["edital"].map(mapa_id_para_codigo_edital)
-    metricas_editais = metricas_editais.drop(columns=["edital"])
+    metricas_editais = metricas_editais.rename(columns={"codigo_edital": "Código"})
 
     # ==========================================================
     # CRUZAMENTO COM EDITAIS PARA PEGAR CICLOS
     # ==========================================================
-    df_editais_aux = df_editais_original[["_id", "ciclo_investimento"]].copy()
-    df_editais_aux["_id"] = df_editais_aux["_id"].astype(str)
-    df_editais_aux = df_editais_aux.rename(columns={"_id": "_id_edital"})  # evita colisão
+    df_editais_aux = df_editais_original[["codigo_edital", "ciclo_investimento"]].copy()
 
-    df = df.merge(
-        df_editais_aux,
-        left_on="edital",
-        right_on="_id_edital",
-        how="left"
-    )
+    df = df.merge(df_editais_aux, on="codigo_edital", how="left")
 
     # ==========================================================
     # MÉTRICAS POR FASE OPERACIONAL
@@ -296,10 +310,10 @@ df_ciclos_metricas = pd.DataFrame(list(col_ciclos.find()))
 
 # Converte ids das fases para códigos
 df_editais_metricas["ciclo_investimento"] = df_editais_metricas["ciclo_investimento"].apply(
-    lambda lista: [
-        mapa_id_para_codigo_ciclo.get(str(x), str(x))
-        for x in lista
-    ] if isinstance(lista, list) else []
+        lambda lista: [
+        mapa_id_para_codigo_ciclo.get(x, x)
+        for x in para_lista(lista)
+    ]
 )
 
 # Converte ids dos doadores para siglas
