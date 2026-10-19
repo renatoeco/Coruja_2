@@ -182,8 +182,6 @@ MOEDAS = {
     "euro":  {"simbolo": "€"},
 }
 
-CATEGORIAS_PROJETO = ["Microprojeto", "Pequeno", "Consolidação", "Estratégico"]
-
 moeda_atual = financeiro.get("moeda") or "real"
 if moeda_atual not in MOEDAS:
     moeda_atual = "real"
@@ -2108,7 +2106,6 @@ with cron_desemb:
             # Recuperar valores atuais do banco
             # -----------------------------------
             valor_aditivo_atual = financeiro.get("valor_aditivo", 0.0)
-            categoria_atual = financeiro.get("categoria_projeto")
 
             with col1:
 
@@ -2116,19 +2113,7 @@ with cron_desemb:
 
                     st.markdown("#### Valor inicial do projeto")
 
-                    c_valor, c_moeda, c_categoria = st.columns([2, 1, 1.4])
-
-                    # -----------------------------------
-                    # Valor total
-                    # -----------------------------------
-                    with c_valor:
-                        valor_total = st.number_input(
-                            f"Valor total do projeto ({SIMBOLO_MOEDA})",
-                            min_value=0.0,
-                            step=1000.0,
-                            format="%.2f",
-                            value=float(valor_atual) if valor_atual is not None else 0.0,
-                        )
+                    c_moeda , c_valor = st.columns([0.5, 2])
 
                     # -----------------------------------
                     # Moeda
@@ -2141,18 +2126,15 @@ with cron_desemb:
                         )
 
                     # -----------------------------------
-                    # Categoria
+                    # Valor total
                     # -----------------------------------
-                    with c_categoria:
-                        categoria_sel = st.selectbox(
-                            "Categoria",
-                            options=CATEGORIAS_PROJETO,
-                            index=(
-                                CATEGORIAS_PROJETO.index(categoria_atual)
-                                if categoria_atual in CATEGORIAS_PROJETO
-                                else None
-                            ),
-                            placeholder="Selecione",
+                    with c_valor:
+                        valor_total = st.number_input(
+                            f"Valor total do projeto",
+                            min_value=0.0,
+                            step=1000.0,
+                            format="%.2f",
+                            value=float(valor_atual) if valor_atual is not None else 0.0,
                         )
 
                     st.write('')
@@ -2161,7 +2143,7 @@ with cron_desemb:
                     st.markdown("#### Ajustes financeiros")
 
                     valor_aditivo = st.number_input(
-                        f"Aditivo ({SIMBOLO_MOEDA})",
+                        f"Aditivo",
                         step=100.0,
                         format="%.2f",
                         value=float(valor_aditivo_atual) if valor_aditivo_atual is not None else 0.0,
@@ -2188,7 +2170,6 @@ with cron_desemb:
                                     "financeiro.valor_total": float(valor_total),
                                     "financeiro.valor_aditivo": float(valor_aditivo),
                                     "financeiro.moeda": moeda_sel,
-                                    "financeiro.categoria_projeto": categoria_sel,
                                 }
                             }
                         )
