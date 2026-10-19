@@ -3365,11 +3365,10 @@ with indicadores:
                 nome_indicador = ind["indicador"]
 
                 dados_atual = estado_projeto.get(
-                dados_atual = estado_projeto.get(
                     id_indicador,
                     {
                         "valor": 0, "descricao": "", "marco_zero": 0,
-                        "resultado_final": 0, "observacoes": "", "lancamentos": []
+                        "resultado_final": 0, "observacoes": "", "lancamentos": [],
                         "valor": 0, "descricao": "", "marco_zero": 0,
                         "resultado_final": 0, "observacoes": "", "lancamentos": []
                     }
