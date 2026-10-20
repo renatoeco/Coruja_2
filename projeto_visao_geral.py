@@ -10,7 +10,8 @@ from funcoes_auxiliares import (
     obter_ou_criar_pasta,
     obter_pasta_projeto,
     enviar_arquivo_drive,
-    gerar_link_drive
+    gerar_link_drive,
+    conectar_mongo_portal_ispn
 )
 import pandas as pd
 import streamlit_shadcn_ui as ui
@@ -91,15 +92,10 @@ section[data-testid="stFileUploaderDropzone"] button[data-testid="stBaseButton-s
 """, unsafe_allow_html=True)
 
 
-
-
-
-
-
-
 ###########################################################################################################
 # CONEXÃO COM O BANCO DE DADOS
 ###########################################################################################################
+
 
 # Conexão com MongoDB
 db = conectar_mongo_coruja()
@@ -112,9 +108,10 @@ col_editais = db["editais"]
 col_publicos = db["publicos"]
 col_organizacoes = db["organizacoes"]   
 
+db_jatai = conectar_mongo_portal_ispn()
 
-
-
+# Coleção de programas/áreas do portal ISPN
+col_programas_areas = db_jatai["programas_areas"]
 
 # ###########################################################################################################
 # # REGISTRO DE ESTATÍSTICA -  CONTABILIZAÇÃO DE VISITA
@@ -181,6 +178,14 @@ if not st.session_state["ultimo_acesso_atualizado"]:
 def email_valido(email):
     padrao = r"^[\w\.-]+@[\w\.-]+\.\w+$"
     return re.match(padrao, email) is not None
+
+
+def obter_lista_projeto(df, campo):
+    """Retorna o valor do campo como lista (ou lista vazia se não existir / estiver vazio)."""
+    if campo not in df.columns:
+        return []
+    valor = df[campo].values[0]
+    return valor if isinstance(valor, list) else []
 
 
 def salvar_perguntas_relatorio(perguntas, projeto_id):
@@ -313,6 +318,65 @@ mapa_publicos = dict(
 # Organizações
 df_organizacoes = pd.DataFrame(list(col_organizacoes.find()))
 
+# Programas (db portal ispn)
+lista_programas = sorted(
+    p for p in col_programas_areas.distinct("nome_programa_area")
+    if isinstance(p, str) and p.strip()
+)
+
+# Categorias
+LISTA_CATEGORIAS = [
+    "Microprojeto",
+    "Pequeno",
+    "Consolidação",
+    "Estratégico",
+]
+
+# Biomas
+LISTA_BIOMAS = [
+    "Amazônia",
+    "Caatinga",
+    "Cerrado",
+    "Mata Atlântica",
+    "Pampa",
+    "Pantanal",
+]
+
+# Temas
+LISTA_TEMAS = [
+    "Agroecologia",
+    "Agroextrativismo - Beneficiamento e Comercialização",
+    "Água",
+    "Apicultura e meliponicultura",
+    "Artesanato",
+    "Articulação",
+    "Capacitação",
+    "Certificação",
+    "Conservação da biodiversidade",
+    "Criação de animais",
+    "Cultura",
+    "Educação Ambiental",
+    "Energia Renovável",
+    "Fauna",
+    "Fogo",
+    "Gestão Territorial",
+    "Manejo da biodiversidade",
+    "Pesquisa",
+    "Plantas medicinais",
+    "Política Pública",
+    "Recuperação de áreas degradadas",
+    "Sistemas Agroflorestais - SAFs",
+    "Turismo",
+    "Outro"
+]
+
+
+def valores_salvos_validos(valores, opcoes):
+    """Retorna só os valores salvos que existem nas opções (evita erro no default do multiselect)."""
+    if not isinstance(valores, list):
+        return []
+    return [v for v in valores if v in opcoes]
+
 
 ###########################################################################################################
 # MAPA ID -> NOME DA ORGANIZAÇÃO
@@ -324,8 +388,15 @@ mapa_org_id_nome = {
     for _, row in df_organizacoes.iterrows()
 }
 
+###########################################################################################################
+# MAPA ID -> CÓDIGO DO EDITAL
+###########################################################################################################
 
-
+# cria um dicionário para acessar rapidamente o código do edital pelo _id
+mapa_edital_id_codigo = {
+    row["_id"]: row["codigo_edital"]
+    for _, row in df_editais.iterrows()
+}
 
 ###########################################################################################################
 # NORMALIZAÇÃO DE IDs
@@ -465,10 +536,10 @@ if not contratos:
     pendencias.append("Contrato não cadastrado")
 
 # Perguntas do relatório
-edital_codigo = projeto.get("edital")
+edital_id = projeto.get("edital")
 
 edital = col_editais.find_one({
-    "codigo_edital": edital_codigo
+    "_id": edital_id
 })
 
 perguntas_edital = edital.get(
@@ -530,7 +601,7 @@ if not editar_cadastro:
     # EXIBIÇÃO DOS DADOS DO PROJETO
     ###########################################################################################################
 
-    st.write(f"**Edital:** {df_projeto['edital'].values[0]}")
+    st.write(f"**Edital:** {mapa_edital_id_codigo.get(df_projeto['edital'].values[0], '')}")
     st.write(f"**Organização:** {nome_org}")
     st.write(f"**Nome do projeto:** {df_projeto['nome_do_projeto'].values[0]}")
     st.write(f"**Objetivo geral:** {df_projeto['objetivo_geral'].values[0]}")
@@ -560,6 +631,17 @@ if not editar_cadastro:
                 unsafe_allow_html=True
             )
 
+    # ---------- CATEGORIA ----------
+
+    categoria = projeto.get("categoria")
+
+    if not isinstance(categoria, str) or not categoria.strip():
+        st.markdown(
+            "**Categoria:** <span style='color:#c46a00; font-style:italic;'>não cadastrada</span>",
+            unsafe_allow_html=True
+        )
+    else:
+        st.write(f"**Categoria:** {categoria}")
 
     # ---------- RESPONSÁVEL(IS) (DERIVADO DA COLEÇÃO DE PESSOAS | SOMENTE BENEFICIÁRIOS) ----------
 
@@ -596,20 +678,12 @@ if not editar_cadastro:
         st.write(f"**Ponto focal:** {valor}")
 
 
-
-
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
 
 
     # ---------- Linhas Temáticas ----------
 
-    if "direcoes_estrategicas" in df_projeto.columns:
-
-        direcoes = df_projeto["direcoes_estrategicas"].values[0]
-
-    else:
-        direcoes = None
-
+    direcoes = obter_lista_projeto(df_projeto, "direcoes_estrategicas")
 
     if direcoes:
 
@@ -634,25 +708,15 @@ if not editar_cadastro:
                     st.write(f"- {item}")
 
     else:
-        st.markdown(
+        col1.markdown(
             "**Linhas temáticas:** <span style='color:#c46a00; font-style:italic;'>não cadastradas</span>",
             unsafe_allow_html=True
         )
 
 
-    # Beneficiários
+    # ---------- PÚBLICOS ----------
 
-
-    # ---------- BENEFICIÁRIOS ----------
-
-
-    if "publicos" in df_projeto.columns:
-
-        publicos = df_projeto["publicos"].values[0]
-
-    else:
-        publicos = None
-
+    publicos = obter_lista_projeto(df_projeto, "publicos")
 
     if publicos:
 
@@ -704,8 +768,44 @@ if not editar_cadastro:
                         st.write(row["publico"])
 
     else:
-        st.markdown(
-            "**Público:** <span style='color:#c46a00; font-style:italic;'>não cadastrados</span>",
+        col2.markdown(
+            "**Público:** <span style='color:#c46a00; font-style:italic;'>não cadastrado</span>",
+            unsafe_allow_html=True
+        )
+
+
+    # ---------- BIOMAS ----------
+
+    biomas = obter_lista_projeto(df_projeto, "biomas")
+
+    if biomas:
+
+        with col3.popover("**Bioma**", type="tertiary"):
+
+            for bioma in biomas:
+                st.write(f"**{bioma}**")
+
+    else:
+        col3.markdown(
+            "**Bioma:** <span style='color:#c46a00; font-style:italic;'>não cadastrado</span>",
+            unsafe_allow_html=True
+        )
+
+
+    # ---------- TEMAS ----------
+
+    temas = obter_lista_projeto(df_projeto, "temas")
+
+    if temas:
+
+        with col4.popover("**Temas**", type="tertiary"):
+
+            for tema in temas:
+                st.write(f"**{tema}**")
+
+    else:
+        col4.markdown(
+            "**Temas:** <span style='color:#c46a00; font-style:italic;'>não cadastrados</span>",
             unsafe_allow_html=True
         )
 
@@ -1684,19 +1784,19 @@ else:
             col1, col2, col3 = st.columns(3)
 
             # ---------- EDITAL ----------
-            lista_editais = df_editais["codigo_edital"].tolist()
+            lista_editais_ids = list(mapa_edital_id_codigo.keys())
 
-            # Garante que o valor atual exista na lista
             edital_atual = projeto.get("edital")
-            if edital_atual in lista_editais:
-                index_edital = lista_editais.index(edital_atual)
+            if edital_atual in lista_editais_ids:
+                index_edital = lista_editais_ids.index(edital_atual)
             else:
                 index_edital = 0  
 
-            edital = col1.selectbox(    # Coluna 1
+            edital = col1.selectbox(
                 "Edital",
-                options=lista_editais,
-                index=index_edital
+                options=lista_editais_ids,
+                index=index_edital,
+                format_func=lambda x: mapa_edital_id_codigo[x]  # exibe código do edital
             )
             
             # ---------- CÓDIGO ----------
@@ -1785,7 +1885,8 @@ else:
                     key="data_fim_contrato",
                     placeholder="dd/mm/aaaa"
                 )
-
+                
+            col1, col2 = st.columns(2)
 
             # ---------- RESPONSÁVEL(IS) (VINCULADO ÀS PESSOAS) ----------
 
@@ -1805,7 +1906,7 @@ else:
                 )
             ]["nome_completo"].tolist()
 
-            responsavel = st.multiselect(
+            responsavel = col1.multiselect(
                 "Responsável",
                 options=lista_beneficiarios,
                 default=responsaveis_atuais
@@ -1825,13 +1926,56 @@ else:
                 )
             ]["nome_completo"].tolist()
 
-            padrinho_madrinha = st.multiselect(
+            padrinho_madrinha = col2.multiselect(
                 "Ponto focal",
                 options=opcoes_pontos_focais,
                 default=padrinhos_atuais
             )
+            
+            # ---------- CATEGORIA ----------
 
+            col1, col2 = st.columns(2)
 
+            categoria_atual = projeto.get("categoria")
+
+            categoria = col1.selectbox(
+                "Categoria",
+                options=LISTA_CATEGORIAS,
+                index=(
+                    LISTA_CATEGORIAS.index(categoria_atual)
+                    if categoria_atual in LISTA_CATEGORIAS else None
+                ),
+                placeholder=""
+            )
+
+            # ---------- PROGRAMAS ----------
+
+            programas = col2.multiselect(
+                "Programa / Área",
+                options=lista_programas,
+                default=valores_salvos_validos(projeto.get("programas"), lista_programas),
+                placeholder=""
+            )
+
+            col1, col2 = st.columns(2)
+
+            # ---------- BIOMAS ----------
+
+            biomas = col1.multiselect(
+                "Bioma",
+                options=LISTA_BIOMAS,
+                default=valores_salvos_validos(projeto.get("biomas"), LISTA_BIOMAS),
+                placeholder=""
+            )
+
+            # ---------- TEMAS ----------
+
+            temas = col2.multiselect(
+                "Temas",
+                options=LISTA_TEMAS,
+                default=valores_salvos_validos(projeto.get("temas"), LISTA_TEMAS),
+                placeholder=""
+            )
 
 
             # ---------- MARCADORES DO PROJETO ----------
@@ -1959,10 +2103,14 @@ else:
                                 "nome_do_projeto": nome,
                                 "objetivo_geral": objetivo,
                                 "duracao": duracao,
+                                "categoria": categoria,
                                 "primeiro_f_ecos": primeiro_f_ecos,
                                 "primeiro_vida": primeiro_vida,
                                 "adaptacao": adaptacao,
                                 "mitigacao": mitigacao,
+                                "programas": programas,
+                                "biomas": biomas,
+                                "temas": temas,
                             }
 
                             # =============================================================================
@@ -2116,8 +2264,8 @@ else:
             # BUSCA LINHAS DO EDITAL
             # --------------------------------------------------
 
-            edital_nome = projeto.get("edital")
-            edital = col_editais.find_one({"codigo_edital": edital_nome})
+            edital_id = projeto.get("edital")
+            edital = col_editais.find_one({"_id": edital_id})
 
             direcoes_edital = edital.get("direcoes_estrategicas", []) if edital else []
 
@@ -2429,10 +2577,10 @@ else:
         # RECUPERA EDITAL DO PROJETO
         # --------------------------------------------------
 
-        edital_codigo = projeto.get("edital")
-
+        edital_id = projeto.get("edital")
+        
         edital = col_editais.find_one({
-            "codigo_edital": edital_codigo
+            "_id": edital_id
         })
 
         perguntas_edital = edital.get(
@@ -2502,12 +2650,5 @@ else:
                 on_change=salvar_perguntas_relatorio,
                 args=(perguntas_edital, ObjectId(projeto["_id"]))
             )
-
-
-
-
-
-
-
 
 

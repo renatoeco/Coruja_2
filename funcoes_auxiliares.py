@@ -50,11 +50,6 @@ def limpar_e_validar_cep(cep_str):
     return cep_limpo, False
 
 
-
-
-
-
-
 def registrar_estatistica_sessao(db):
 
     ###########################################################################################################
@@ -751,6 +746,14 @@ def conectar_mongo_coruja():
     cliente = MongoClient(st.secrets["senhas"]["senha_mongo_coruja"])
     db_coruja_mongo = cliente["Coruja"] 
     return db_coruja_mongo
+
+
+@st.cache_resource
+def conectar_mongo_portal_ispn():
+    cliente = MongoClient(
+    st.secrets["senhas"]["senha_mongo_portal_ispn"])
+    db_portal_ispn = cliente["ISPN_Hub"]                   
+    return db_portal_ispn
 
 
 def ajustar_altura_dataframe(

@@ -17,7 +17,8 @@ from funcoes_auxiliares import (
     obter_pasta_locais,
     obter_pasta_projeto,
     enviar_arquivo_drive,
-    gerar_link_drive
+    gerar_link_drive,
+    conectar_mongo_portal_ispn
 )
 
 
@@ -92,11 +93,13 @@ db = conectar_mongo_coruja()
 # Coleção de projetos
 col_projetos = db["projetos"]
 
-# Coleção de UFs e Municípios
-col_ufs_munic = db["ufs_municipios"]
-
 # Coleção de organizações
 col_organizacoes = db["organizacoes"] 
+
+db_jatai = conectar_mongo_portal_ispn()
+
+# Coleção de UFs e Municípios
+col_ufs_munic = db_jatai["ufs_municipios"]
 
 
 ###########################################################################################################
@@ -243,25 +246,43 @@ def dialog_editar_estados():
         st.rerun()
 
 
-
-
-
 @st.dialog("Editar Municípios", width="medium")
 def dialog_editar_municipios():
 
     st.write("")
 
     # --------------------------------------------------
-    # LISTA DE MUNICÍPIOS DISPONÍVEIS (Nome - UF)
+    # MAPA "Nome - UF" -> código do município
     # --------------------------------------------------
-    nomes_municipios = sorted(
-        [
-            f"{m['nome_municipio']} - {sigla_por_codigo_uf.get(str(m['codigo_municipio'])[:2], '')}"
-            for m in lista_municipios
-        ],
-        key=lambda x: x.lower()
+    codigo_por_nome = {
+        f"{m['nome_municipio']} - {sigla_por_codigo_uf.get(str(m['codigo_municipio'])[:2], '')}":
+            int(m["codigo_municipio"])
+        for m in lista_municipios
+    }
+
+    nomes_municipios = sorted(codigo_por_nome.keys(), key=lambda x: x.lower())
+
+    # --------------------------------------------------
+    # MUNICÍPIO PRINCIPAL
+    # --------------------------------------------------
+    principal_atual = (locais.get("municipio_principal") or {}).get("nome_municipio")
+
+    index_principal = (
+        nomes_municipios.index(principal_atual)
+        if principal_atual in nomes_municipios
+        else None
     )
 
+    municipio_principal = st.selectbox(
+        "Município principal",
+        options=nomes_municipios,
+        index=index_principal,
+        placeholder="Selecione o município principal"
+    )
+
+    # --------------------------------------------------
+    # DEMAIS MUNICÍPIOS
+    # --------------------------------------------------
     municipios_default = [
         m["nome_municipio"]
         for m in locais.get("municipios", [])
@@ -283,24 +304,32 @@ def dialog_editar_municipios():
         key="salvar_municipios_dialogo"
     ):
 
-        municipios_para_salvar = []
+        # Garante que o município principal também esteja na lista de municípios
+        if municipio_principal and municipio_principal not in municipios_selecionados:
+            municipios_selecionados.append(municipio_principal)
 
-        for m in lista_municipios:
-            nome_formatado = (
-                f"{m['nome_municipio']} - "
-                f"{sigla_por_codigo_uf.get(str(m['codigo_municipio'])[:2], '')}"
-            )
+        municipios_para_salvar = [
+            {
+                "codigo_municipio": codigo_por_nome[nome],
+                "nome_municipio": nome
+            }
+            for nome in municipios_selecionados
+        ]
 
-            if nome_formatado in municipios_selecionados:
-                municipios_para_salvar.append({
-                    "codigo_municipio": int(m["codigo_municipio"]),
-                    "nome_municipio": nome_formatado
-                })
+        principal_para_salvar = (
+            {
+                "codigo_municipio": codigo_por_nome[municipio_principal],
+                "nome_municipio": municipio_principal
+            }
+            if municipio_principal
+            else None
+        )
 
         col_projetos.update_one(
             {"_id": id_projeto_atual},
             {
                 "$set": {
+                    "locais.municipio_principal": principal_para_salvar,
                     "locais.municipios": municipios_para_salvar
                 }
             }

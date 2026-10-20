@@ -105,18 +105,28 @@ col1, col2, col3 = st.columns(3)
 # EDITAL (FORA DO FORM)
 ###########################################################################################################
 
+
 editais = list(col_editais.find().sort("data_lancamento", -1))
-lista_editais = [e["codigo_edital"] for e in editais]
+
+# mapa id -> código do edital (para exibição no selectbox)
+mapa_edital_id_codigo = {
+    e["_id"]: e["codigo_edital"]
+    for e in editais
+}
+
+# lista de ids dos editais (será usada no selectbox)
+lista_editais_ids = list(mapa_edital_id_codigo.keys())
 
 edital = col1.selectbox(
     "Edital",
-    lista_editais,
-    index=lista_editais.index(st.session_state.form_projeto["edital"])
-    if st.session_state.form_projeto["edital"] in lista_editais else 0,
+    lista_editais_ids,
+    index=lista_editais_ids.index(st.session_state.form_projeto["edital"])
+    if st.session_state.form_projeto["edital"] in lista_editais_ids else 0,
+    format_func=lambda x: mapa_edital_id_codigo[x],  # exibe código do edital
 )
 
 # pega o documento do edital selecionado
-edital_doc = next((e for e in editais if e["codigo_edital"] == edital), {})
+edital_doc = next((e for e in editais if e["_id"] == edital), {})
 
 
 ###########################################################################################################

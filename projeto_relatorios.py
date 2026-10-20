@@ -16,6 +16,20 @@ from num2words import num2words
 
 from zoneinfo import ZoneInfo 
 
+import os
+import re
+from xml.sax.saxutils import escape
+
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.units import cm, inch
+from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.platypus.flowables import HRFlowable
 
 from funcoes_auxiliares import (
     conectar_mongo_coruja,
@@ -169,13 +183,78 @@ edital = col_editais.find_one({"codigo_edital": projeto["edital"]})
 
 tipo_usuario = st.session_state.get("tipo_usuario")
 
+# --------------------------------------------------
+# Moeda do projeto (salva em financeiro.moeda como "real", "dólar" ou "euro")
+# --------------------------------------------------
+MOEDAS = {
+    "real":  {"simbolo": "R$",  "singular": "real",  "plural": "reais"},
+    "dólar": {"simbolo": "US$", "singular": "dólar", "plural": "dólares"},
+    "euro":  {"simbolo": "€",   "singular": "euro",  "plural": "euros"},
+}
 
+financeiro_projeto = projeto.get("financeiro")
+if not isinstance(financeiro_projeto, dict):
+    financeiro_projeto = {}
+
+MOEDA_PROJETO = financeiro_projeto.get("moeda") or "real"
+if MOEDA_PROJETO not in MOEDAS:
+    MOEDA_PROJETO = "real"
+
+SIMBOLO_MOEDA = MOEDAS[MOEDA_PROJETO]["simbolo"]
 
 
 
 ###########################################################################################################
 # FUNÇÕES
 ###########################################################################################################
+
+
+# --------------------------------------------------
+# Formata valor na moeda do projeto (ex.: "US$ 1.234,56")
+# --------------------------------------------------
+def formatar_moeda(valor):
+    try:
+        valor = float(valor or 0)
+    except (TypeError, ValueError):
+        valor = 0.0
+
+    numero = f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"{SIMBOLO_MOEDA} {numero}"
+
+
+# --------------------------------------------------
+# Valor por extenso na moeda do projeto
+# (real usa o num2words, como antes; dólar e euro são montados manualmente)
+# --------------------------------------------------
+def valor_por_extenso_moeda(valor):
+    valor = round(float(valor or 0), 2)
+
+    if MOEDA_PROJETO == "real":
+        return num2words(valor, lang="pt_BR", to="currency")
+
+    forma = MOEDAS[MOEDA_PROJETO]
+    inteiro = int(valor)
+    centavos = int(round((valor - inteiro) * 100))
+
+    partes = []
+
+    if inteiro > 0:
+        nome = forma["singular"] if inteiro == 1 else forma["plural"]
+
+        # "um milhão de dólares", "dois bilhões de euros"
+        if inteiro >= 1_000_000 and inteiro % 1_000_000 == 0:
+            nome = f"de {nome}"
+
+        partes.append(f"{num2words(inteiro, lang='pt_BR')} {nome}")
+
+    if centavos > 0:
+        nome_cent = "centavo" if centavos == 1 else "centavos"
+        partes.append(f"{num2words(centavos, lang='pt_BR')} {nome_cent}")
+
+    if not partes:
+        return f"zero {forma['plural']}"
+
+    return " e ".join(partes)
 
 
 def calcular_saldo_parcela():
@@ -684,6 +763,80 @@ def gerar_id_lanc_despesa(projeto):
 
 
 # ==================================================
+# OPÇÕES "CATEGORIA | DESPESA" DO ORÇAMENTO
+# ==================================================
+def montar_opcoes_orcamento(projeto):
+    """
+    Retorna (opcoes, mapa_opcoes) no formato "Categoria | Nome da despesa",
+    usado no registro e na edição de despesas.
+    """
+    opcoes = []
+    mapa_opcoes = {}
+
+    for o in projeto.get("financeiro", {}).get("orcamento", []):
+
+        categoria_id = str(o.get("categoria"))
+        nome_categoria = categorias_map.get(categoria_id, "Categoria não encontrada")
+
+        label = f"{nome_categoria} | {o.get('nome_despesa', '')}"
+
+        opcoes.append(label)
+        mapa_opcoes[label] = {
+            "categoria_id": categoria_id,
+            "nome_despesa": o.get("nome_despesa", ""),
+            "nome_categoria": nome_categoria
+        }
+
+    opcoes = sorted(opcoes, key=lambda x: x.lower())
+
+    return opcoes, mapa_opcoes
+
+
+# ==================================================
+# MOVE UM LANÇAMENTO PARA OUTRA CATEGORIA / DESPESA
+# (altera apenas o objeto em memória; a persistência
+#  é feita por quem chama)
+# ==================================================
+def mover_lancamento_despesa(projeto, id_despesa, categoria_destino, nome_despesa_destino):
+
+    orcamento = projeto.get("financeiro", {}).get("orcamento", [])
+
+    item_destino = next(
+        (
+            d for d in orcamento
+            if str(d.get("categoria")) == str(categoria_destino)
+            and d.get("nome_despesa") == nome_despesa_destino
+        ),
+        None
+    )
+
+    if item_destino is None:
+        return False
+
+    lanc_movido = None
+
+    for d in orcamento:
+        lancamentos = d.get("lancamentos", [])
+        encontrado = next(
+            (l for l in lancamentos if l.get("id_lanc_despesa") == id_despesa),
+            None
+        )
+        if encontrado:
+            lanc_movido = encontrado
+            d["lancamentos"] = [
+                l for l in lancamentos
+                if l.get("id_lanc_despesa") != id_despesa
+            ]
+            break
+
+    if lanc_movido is None:
+        return False
+
+    item_destino.setdefault("lancamentos", []).append(lanc_movido)
+    return True
+
+
+# ==================================================
 # REGISTRO DE DESPESA (EXPANDER)
 # ==================================================
 def render_registro_despesa(
@@ -804,7 +957,6 @@ def render_registro_despesa(
         # ==================================================
         # DADOS DO LANÇAMENTO
         # ==================================================
-        id_despesa = gerar_id_lanc_despesa(projeto)
 
         col1, col2 = st.columns(2)
 
@@ -828,11 +980,11 @@ def render_registro_despesa(
         with col2:
 
             valor = st.number_input(
-                "Valor (reais) *",
-                min_value=0.0,
-                format="%.2f",
-                key=f"desp_valor_{tipo_salvo}_{form_key}"
-            )
+                f"Valor ({SIMBOLO_MOEDA}) *",
+                    min_value=0.0,
+                    format="%.2f",
+                    key=f"desp_valor_{tipo_salvo}_{form_key}"
+                )
             
         # --------------------------------------------------
         # DESCRIÇÃO
@@ -903,7 +1055,7 @@ def render_registro_despesa(
                 erros_campos.append("Data da despesa")
 
             if not valor or valor <= 0:
-                erros_campos.append("Valor (reais)")
+                erros_campos.append(f"Valor ({SIMBOLO_MOEDA})")
                 
             if not descricao or not descricao.strip():
                 erros_campos.append("Descrição da despesa")
@@ -981,6 +1133,8 @@ def render_registro_despesa(
             with area_notif_despesas.spinner(
                 "Salvando despesa..."
             ):
+                # Gera o ID somente no momento de salvar
+                id_despesa = gerar_id_lanc_despesa(projeto)
 
                 novo_lancamento = {
                     "id_lanc_despesa": id_despesa,
@@ -1249,8 +1403,6 @@ def salvar_relato():
     # Próximo número disponível
     novo_numero = maior_numero + 1
     id_relato = f"relato_{novo_numero:03d}"
-
-
 
 
     # --------------------------------------------------
@@ -2180,19 +2332,9 @@ def gerar_certificado_relatorio(relatorio, projeto):
 
         valor = parcela.get("valor", 0)
 
-        valor_formatado = (
-            f"R$ {valor:,.2f}"
-            .replace(",", "X")
-            .replace(".", ",")
-            .replace("X", ".")
-        )
+        valor_formatado = formatar_moeda(valor)
 
-        # Caso utilize num2words
-        valor_extenso = num2words(
-            valor,
-            lang="pt_BR",
-            to="currency"
-        )
+        valor_extenso = valor_por_extenso_moeda(valor)
 
         texto = (
             f"Certifico que o projeto "
@@ -2278,7 +2420,7 @@ def gerar_relatorio_monitoramento_docx(
     )
 
     perguntas_monitoramento = sorted(
-        edital.get("perguntas_monitoramento", []),
+        (edital or {}).get("perguntas_monitoramento", []),
         key=lambda x: x.get("ordem", 0)
     )
     
@@ -2549,6 +2691,574 @@ def gerar_relatorio_monitoramento_docx(
     return buffer
 
 
+# ==========================================================================================
+# RELATÓRIO DE ATIVIDADES (PDF)
+# ==========================================================================================
+
+def _primeiro_existente(caminhos):
+    return next((c for c in caminhos if os.path.exists(c)), None)
+
+
+def registrar_fonte_arial():
+    """
+    Registra a fonte Arial no reportlab.
+    Procura primeiro em fonts/ do projeto e depois nas pastas do sistema.
+    Se não encontrar, usa Helvetica (métricas equivalentes à Arial).
+    """
+    if "Arial" in pdfmetrics.getRegisteredFontNames():
+        return "Arial", "Arial-Bold"
+
+    normal = _primeiro_existente([
+        "fonts/Arial.ttf", "fonts/arial.ttf",
+        "/usr/share/fonts/truetype/msttcorefonts/Arial.ttf",
+        "/System/Library/Fonts/Supplemental/Arial.ttf",
+        "C:/Windows/Fonts/arial.ttf",
+    ])
+    negrito = _primeiro_existente([
+        "fonts/Arial_Bold.ttf", "fonts/arialbd.ttf",
+        "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf",
+        "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+        "C:/Windows/Fonts/arialbd.ttf",
+    ])
+
+    if normal and negrito:
+        pdfmetrics.registerFont(TTFont("Arial", normal))
+        pdfmetrics.registerFont(TTFont("Arial-Bold", negrito))
+        pdfmetrics.registerFontFamily(
+            "Arial",
+            normal="Arial", bold="Arial-Bold",
+            italic="Arial", boldItalic="Arial-Bold"
+        )
+        return "Arial", "Arial-Bold"
+
+    return "Helvetica", "Helvetica-Bold"
+
+
+def _txt(valor):
+    """Escapa texto para o Paragraph do reportlab e preserva quebras de linha."""
+    if valor in [None, "", [], {}]:
+        return "—"
+    return escape(str(valor)).replace("\n", "<br/>")
+
+
+def _link(nome, url):
+    return f'<a href="{escape(url)}" color="blue"><u>{escape(str(nome))}</u></a>'
+
+
+def _valor_br(valor):
+    try:
+        valor = float(valor or 0)
+    except (TypeError, ValueError):
+        valor = 0
+    return f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def _divider():
+    return HRFlowable(
+        width="100%", thickness=1, color=colors.grey,
+        spaceBefore=14, spaceAfter=14
+    )
+
+
+def _linha(est, label, valor):
+    return Paragraph(f"<b>{escape(label)}:</b> {_txt(valor)}", est["texto"])
+
+
+# ------------------------------------------------------------------------------------------
+# SEÇÃO: ATIVIDADES
+# ------------------------------------------------------------------------------------------
+def _secao_atividades(projeto, numero, est):
+
+    f = [Paragraph("Atividades", est["secao"])]
+    tem_relato = False
+
+    for componente in projeto.get("plano_trabalho", {}).get("componentes", []):
+        for atividade in componente.get("atividades", []) or []:
+
+            relatos = [
+                r for r in atividade.get("relatos", [])
+                if r.get("relatorio_numero") == numero
+            ]
+
+            if not relatos:
+                continue
+
+            tem_relato = True
+
+            # Título da atividade com mais espaço até o primeiro relato
+            f.append(Paragraph(_txt(atividade.get("atividade")), est["titulo_item"]))
+
+            for relato in relatos:
+
+                f.append(Paragraph(
+                    f"<b>{_txt(relato.get('id_relato', '').upper())}:</b> "
+                    f"{_txt(relato.get('relato'))}",
+                    est["texto"]
+                ))
+                f.append(_linha(est, "Data de início", relato.get("data_inicio")))
+                f.append(_linha(est, "Data de fim", relato.get("data_fim")))
+
+                if relato.get("porc_ativ_relato") is not None:
+                    f.append(_linha(
+                        est, "Progresso da atividade informado",
+                        f"{relato.get('porc_ativ_relato')}%"
+                    ))
+
+                if relato.get("anexos"):
+                    f.append(Paragraph("<b>Anexos:</b>", est["texto"]))
+                    for a in relato["anexos"]:
+                        nome = a.get("nome_arquivo", "arquivo")
+                        item = (
+                            _link(nome, gerar_link_drive(a["id_arquivo"]))
+                            if a.get("id_arquivo") else escape(nome)
+                        )
+                        f.append(Paragraph(f"• {item}", est["item"]))
+                    f.append(Spacer(1, 8))   # espaço após a lista de anexos
+
+                if relato.get("fotos"):
+                    f.append(Paragraph("<b>Fotografias:</b>", est["texto"]))
+                    for foto in relato["fotos"]:
+                        nome = foto.get("nome_arquivo", "foto")
+                        item = (
+                            _link(nome, gerar_link_drive(foto["id_arquivo"]))
+                            if foto.get("id_arquivo") else escape(nome)
+                        )
+                        if foto.get("descricao"):
+                            item += f" | {_txt(foto['descricao'])}"
+                        if foto.get("fotografo"):
+                            item += f" | {_txt(foto['fotografo'])}"
+                        f.append(Paragraph(f"• {item}", est["item"]))
+                    f.append(Spacer(1, 8))   # espaço após a lista de fotos
+
+                # Separação entre relatos
+                f.append(Spacer(1, 14))
+
+    if not tem_relato:
+        f.append(Paragraph("Nenhum relato cadastrado neste relatório.", est["texto"]))
+
+    return f
+
+
+# ------------------------------------------------------------------------------------------
+# SEÇÃO: DESPESAS
+# ------------------------------------------------------------------------------------------
+def _secao_despesas(projeto, numero, est):
+
+    f = [Paragraph("Despesas", est["secao"])]
+
+    financeiro = projeto.get("financeiro", {})
+
+    # Saldo da parcela (mesma regra da aba Despesas)
+    parcela = next(
+        (p for p in financeiro.get("parcelas", []) if p.get("numero") == numero),
+        None
+    )
+    if parcela:
+        valor_parcela = parcela.get("valor", 0) or 0
+        total_gasto = sum(
+            l.get("valor_despesa", 0) or 0
+            for d in financeiro.get("orcamento", [])
+            for l in d.get("lancamentos", [])
+            if l.get("relatorio_numero") == numero
+        )
+        saldo_pct = ((valor_parcela - total_gasto) / valor_parcela * 100) if valor_parcela > 0 else 0
+        f.append(_linha(est, "Saldo disponível da parcela", f"{saldo_pct:.1f}%".replace(".", ",")))
+        f.append(Spacer(1, 8))
+
+    # Agrupamento TIPO > CATEGORIA > NOME
+    grupo = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+
+    for despesa in financeiro.get("orcamento", []):
+        nome_categoria = categorias_map.get(str(despesa.get("categoria")), "Categoria não encontrada")
+        for lanc in despesa.get("lancamentos", []):
+            if lanc.get("relatorio_numero") != numero:
+                continue
+            tipo = lanc.get("tipo_despesa", "orçamento")
+            grupo[tipo][nome_categoria][despesa.get("nome_despesa", "")].append(lanc)
+
+    if not grupo:
+        f.append(Paragraph("Nenhuma despesa registrada neste relatório.", est["texto"]))
+        return f
+
+    blocos = [
+        ("orçamento", "Despesas do Orçamento"),
+        ("CPFin", "Contrapartida Financeira"),
+        ("CPNFin", "Contrapartida Não-Financeira"),
+    ]
+
+    for tipo, titulo in blocos:
+
+        despesas_bloco = grupo.get(tipo)
+        if not despesas_bloco:
+            continue
+
+        f.append(Paragraph(titulo, est["subtitulo"]))
+        total_bloco = 0
+
+        for nome_categoria, despesas in despesas_bloco.items():
+
+            f.append(Paragraph(f"<b>Categoria:</b> {_txt(nome_categoria)}", est["texto"]))
+
+            for nome_despesa, lancamentos in despesas.items():
+
+                # Nome da despesa com mais espaço até os lançamentos
+                f.append(Paragraph(f"Despesa: {_txt(nome_despesa)}", est["titulo_item"]))
+
+                for lanc in lancamentos:
+
+                    total_bloco += lanc.get("valor_despesa", 0) or 0
+
+                    f.append(Paragraph(
+                        f"<b>{_txt(lanc.get('id_lanc_despesa', '').upper())}:</b> "
+                        f"{_txt(lanc.get('descricao_despesa'))}",
+                        est["item"]
+                    ))
+
+                    detalhes = [("Data", lanc.get("data_despesa"))]
+                    if lanc.get("fornecedor"):
+                        detalhes.append(("Fornecedor", lanc.get("fornecedor")))
+                    if lanc.get("cpf_cnpj"):
+                        detalhes.append(("CPF/CNPJ", lanc.get("cpf_cnpj")))
+                    detalhes.append((f"Valor ({SIMBOLO_MOEDA})", _valor_br(lanc.get("valor_despesa"))))
+
+                    for label, valor in detalhes:
+                        f.append(Paragraph(f"<b>{label}:</b> {_txt(valor)}", est["item"]))
+
+                    if lanc.get("anexos"):
+                        f.append(Paragraph("<b>Anexos:</b>", est["item"]))
+                        for a in lanc["anexos"]:
+                            nome = a.get("nome_arquivo", "arquivo")
+                            item = (
+                                _link(nome, gerar_link_drive(a["id_arquivo"]))
+                                if a.get("id_arquivo") else escape(nome)
+                            )
+                            f.append(Paragraph(f"• {item}", est["item2"]))
+                        f.append(Spacer(1, 8))   # espaço após a lista de anexos
+
+                    # Separação entre lançamentos
+                    f.append(Spacer(1, 14))
+
+        f.append(Paragraph(f"<b>Total {titulo.lower()}:</b> {formatar_moeda(total_bloco)}", est["texto"]))
+        f.append(Spacer(1, 10))
+
+    return f
+
+
+# ------------------------------------------------------------------------------------------
+# SEÇÃO: INDICADORES
+# ------------------------------------------------------------------------------------------
+def _secao_indicadores(projeto, edital, numero, est):
+
+    f = [Paragraph("Indicadores", est["secao"])]
+
+    mapa_indicadores = {
+        item["_id"]: item["indicador"]
+        for item in (edital or {}).get("indicadores", [])
+    }
+
+    indicadores = projeto.get("indicadores", [])
+
+    if not indicadores:
+        f.append(Paragraph("Nenhum indicador cadastrado neste projeto.", est["texto"]))
+        return f
+
+    # Largura útil real do frame: página - margens (2,5 cm de cada lado)
+    # - padding interno do frame (6 pt de cada lado)
+    largura_util = A4[0] - 5 * cm - 12
+    largura_col = largura_util / 3
+
+    for indicador in indicadores:
+
+        nome = mapa_indicadores.get(indicador.get("id_indicador"), "Indicador não encontrado")
+
+        lanc = next(
+            (l for l in indicador.get("lancamentos", []) if l.get("relatorio_numero") == numero),
+            None
+        )
+
+        f.append(_linha(est, "Indicador", nome))
+        f.append(_linha(est, "Descrição da contribuição", indicador.get("descricao_contribuicao")))
+        f.append(Spacer(1, 4))
+
+        # --------------------------------------------------
+        # Início / Meta / Resultado lado a lado
+        # --------------------------------------------------
+        resultado = (
+            formatar_numero_br_dinamico(lanc.get("resultado_atual"))
+            if lanc else "—"
+        )
+
+        celulas = [[
+            Paragraph(
+                f"<b>Início do projeto:</b> "
+                f"{_txt(formatar_numero_br_dinamico(indicador.get('marco_zero')))}",
+                est["celula"]
+            ),
+            Paragraph(
+                f"<b>Meta:</b> "
+                f"{_txt(formatar_numero_br_dinamico(indicador.get('valor')))}",
+                est["celula"]
+            ),
+            Paragraph(
+                f"<b>Resultado atual:</b> {_txt(resultado)}",
+                est["celula"]
+            ),
+        ]]
+
+        tabela = Table(celulas, colWidths=[largura_col] * 3, hAlign="LEFT")
+        tabela.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+        ]))
+
+        f.append(tabela)
+        f.append(Spacer(1, 6))
+
+        if lanc:
+            obs = lanc.get("observacoes")
+            if obs not in [None, "", "None"]:
+                f.append(_linha(est, "Observações", obs))
+        else:
+            f.append(Paragraph("Nenhum lançamento registrado para este relatório.", est["texto"]))
+
+        # Separação entre indicadores
+        f.append(Spacer(1, 16))
+
+    return f
+
+
+# ------------------------------------------------------------------------------------------
+# SEÇÃO: BENEFICIÁRIOS
+# ------------------------------------------------------------------------------------------
+def _secao_beneficiarios(relatorio, est, fonte, fonte_b):
+
+    f = [
+        Paragraph("Beneficiários", est["secao"]),
+        Paragraph("Número de beneficiários por gênero e faixa etária", est["subtitulo"]),
+    ]
+
+    dados = relatorio.get("beneficiarios_quant") or {
+        "mulheres": {"jovens": 0, "adultas": 0, "idosas": 0},
+        "homens": {"jovens": 0, "adultos": 0, "idosos": 0},
+        "nao_binarios": {"jovens": 0, "adultos": 0, "idosos": 0},
+    }
+
+    m, h, nb = dados.get("mulheres", {}), dados.get("homens", {}), dados.get("nao_binarios", {})
+
+    linhas_faixa = [
+        ("Jovens (até 24 anos)", m.get("jovens", 0), h.get("jovens", 0), nb.get("jovens", 0)),
+        ("Adultos", m.get("adultas", 0), h.get("adultos", 0), nb.get("adultos", 0)),
+        ("Idosos (60+ anos)", m.get("idosas", 0), h.get("idosos", 0), nb.get("idosos", 0)),
+    ]
+
+    tabela = [["", "Mulheres", "Homens", "Outro gênero", "Total"]]
+    tot_m = tot_h = tot_nb = 0
+
+    for faixa, vm, vh, vnb in linhas_faixa:
+        tot_m, tot_h, tot_nb = tot_m + vm, tot_h + vh, tot_nb + vnb
+        tabela.append([faixa, str(vm), str(vh), str(vnb), str(vm + vh + vnb)])
+
+    tabela.append(["Total", str(tot_m), str(tot_h), str(tot_nb), str(tot_m + tot_h + tot_nb)])
+
+    t = Table(tabela, colWidths=[4.6 * cm, 2.6 * cm, 2.6 * cm, 3.2 * cm, 2.6 * cm])
+    t.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (-1, -1), fonte),
+        ("FONTSIZE", (0, 0), (-1, -1), 12),
+        ("FONTNAME", (0, 0), (-1, 0), fonte_b),
+        ("FONTNAME", (0, -1), (-1, -1), fonte_b),
+        ("FONTNAME", (-1, 0), (-1, -1), fonte_b),
+        ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EEEEEE")),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+
+    f.append(t)
+    return f
+
+
+# ------------------------------------------------------------------------------------------
+# SEÇÃO: FORMULÁRIO
+# ------------------------------------------------------------------------------------------
+def _secao_formulario(projeto, edital, relatorio, est):
+
+    f = [Paragraph("Formulário", est["secao"])]
+
+    excluidas = projeto.get("perguntas_relat_excluidas", [])
+
+    perguntas = sorted(
+        [
+            p for p in (edital or {}).get("perguntas_relatorio", [])
+            if p.get("id_pergunta") not in excluidas
+        ],
+        key=lambda x: x.get("ordem", 0)
+    )
+
+    if not perguntas:
+        f.append(Paragraph("O edital não possui perguntas cadastradas.", est["texto"]))
+        return f
+
+    respostas = relatorio.get("respostas_formulario", {}) or {}
+
+    for pergunta in perguntas:
+
+        tipo = pergunta.get("tipo")
+        texto = pergunta.get("pergunta")
+        resposta = respostas.get(pergunta.get("id_pergunta"), {}).get("resposta")
+
+        if tipo == "titulo":
+            f.append(Paragraph(_txt(texto), est["subtitulo"]))
+            continue
+
+        if tipo == "subtitulo":
+            f.append(Paragraph(f"<b>{_txt(texto)}</b>", est["texto"]))
+            continue
+
+        if tipo == "paragrafo":
+            f.append(Paragraph(_txt(texto), est["texto"]))
+            continue
+
+        f.append(Paragraph(f"<b>{_txt(texto)}</b>", est["texto"]))
+        f.append(Spacer(1, 8))
+
+        if tipo == "upload_arquivo":
+            if resposta:
+                for arq in resposta:
+                    nome = arq.get("nome", "Arquivo")
+                    item = _link(nome, gerar_link_drive(arq["id"])) if arq.get("id") else escape(nome)
+                    f.append(Paragraph(f"• {item}", est["item"]))
+            else:
+                f.append(Paragraph("Nenhum arquivo enviado.", est["texto"]))
+
+        else:
+            if isinstance(resposta, list):
+                resposta = ", ".join(str(r) for r in resposta)
+            elif tipo == "numero" and resposta not in [None, ""]:
+                resposta = formatar_numero_br_dinamico(resposta)
+
+            f.append(Paragraph(_txt(resposta), est["texto"]))
+
+        f.append(Spacer(1, 22))
+
+    return f
+
+
+# ------------------------------------------------------------------------------------------
+# GERADOR PRINCIPAL
+# ------------------------------------------------------------------------------------------
+def gerar_relatorio_atividades_pdf(projeto, relatorio):
+    """
+    Gera o PDF do Relatório de Atividades com o conteúdo de todas as abas
+    (Atividades, Despesas, Indicadores, Beneficiários e Formulário).
+    Retorna um BytesIO.
+    """
+
+    fonte, fonte_b = registrar_fonte_arial()
+    numero = relatorio.get("numero")
+
+    edital = col_editais.find_one({"codigo_edital": projeto["edital"]})
+
+    est = {
+        "titulo": ParagraphStyle("titulo", fontName=fonte_b, fontSize=14, leading=18,
+                                    alignment=TA_CENTER, spaceAfter=30),
+        "secao": ParagraphStyle("secao", fontName=fonte_b, fontSize=14, leading=18, spaceAfter=12),
+        "subtitulo": ParagraphStyle("subtitulo", fontName=fonte_b, fontSize=12, leading=15,
+                                    spaceBefore=8, spaceAfter=8),
+        "titulo_item": ParagraphStyle("titulo_item", fontName=fonte_b, fontSize=12, leading=15,
+                                    spaceBefore=10, spaceAfter=14,
+                                    textColor=colors.HexColor("#6AA84F")),
+        "texto": ParagraphStyle("texto", fontName=fonte, fontSize=12, leading=15,
+                                    alignment=TA_JUSTIFY, spaceAfter=4),
+        "item": ParagraphStyle("item", fontName=fonte, fontSize=12, leading=15,
+                                    leftIndent=14, spaceAfter=3),
+        "item2": ParagraphStyle("item2", fontName=fonte, fontSize=12, leading=15,
+                                    leftIndent=28, spaceAfter=3),
+        "celula": ParagraphStyle("celula", fontName=fonte, fontSize=12, leading=15),
+    }
+
+    # --------------------------------------------------------------
+    # Cabeçalho (logo centralizada, como no docx) + nº da página
+    # --------------------------------------------------------------
+    def desenhar_pagina(canvas, doc):
+        canvas.saveState()
+
+        caminho_logo = "images/logo_ISPN_2021.png"
+        if os.path.exists(caminho_logo):
+            img = ImageReader(caminho_logo)
+            iw, ih = img.getSize()
+            largura = 2 * inch
+            altura = largura * ih / iw
+            canvas.drawImage(
+                img,
+                (A4[0] - largura) / 2,
+                A4[1] - 1.2 * cm - altura,
+                width=largura, height=altura, mask="auto"
+            )
+
+        canvas.setFont(fonte, 9)
+        canvas.drawCentredString(A4[0] / 2, 1.2 * cm, f"Página {doc.page}")
+        canvas.restoreState()
+
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=2.5 * cm, rightMargin=2.5 * cm,
+        topMargin=3.5 * cm, bottomMargin=3.5 * cm,
+        title=f"Relatório de Atividades {numero}",
+    )
+
+    story = [Paragraph("Relatório de Atividades", est["titulo"])]
+
+    # Informações do projeto (mesmo padrão do docx)
+    story.append(_linha(est, "Projeto", f"{projeto.get('codigo', '')} - {projeto.get('sigla', '')}"))
+    story.append(_linha(est, "Relatório", numero))
+    if relatorio.get("data_aprovacao"):
+        story.append(_linha(est, "Data da aprovação", relatorio["data_aprovacao"]))
+    if relatorio.get("aprovado_por"):
+        story.append(_linha(est, "Aprovado por", relatorio["aprovado_por"]))
+
+    story.append(_divider())
+
+    secoes = [
+        _secao_atividades(projeto, numero, est),
+        _secao_despesas(projeto, numero, est),
+        _secao_indicadores(projeto, edital, numero, est),
+        _secao_beneficiarios(relatorio, est, fonte, fonte_b),
+        _secao_formulario(projeto, edital, relatorio, est),
+    ]
+
+    for i, secao in enumerate(secoes):
+        if i > 0:
+            story.append(_divider())
+        story.extend(secao)
+
+    doc.build(story, onFirstPage=desenhar_pagina, onLaterPages=desenhar_pagina)
+
+    buffer.seek(0)
+    return buffer
+
+
+def nome_arquivo_relatorio_atividades(projeto, numero):
+    """relatorio_de_atividades_<numero>_<sigla_organizacao>.pdf"""
+
+    org = col_organizacoes.find_one(
+        {"_id": projeto.get("id_organizacao")},
+        {"sigla_organizacao": 1, "sigla": 1}
+    ) or {}
+
+    sigla = org.get("sigla_organizacao") or org.get("sigla") or projeto.get("sigla", "")
+    sigla = re.sub(r"[^\w\-]+", "_", str(sigla)).strip("_")
+
+    return f"relatorio_de_atividades_{numero}_{sigla}.pdf"
+
+
 ###########################################################################################################
 # TRATAMENTO DOS DADOS E CONTROLES DE SESSÃO
 ###########################################################################################################
@@ -2561,6 +3271,8 @@ liberar_proximo_relatorio(projeto["codigo"], relatorios)
 projeto = col_projetos.find_one({"codigo": projeto["codigo"]})
 relatorios = projeto.get("relatorios", [])
 
+codigo_edital = projeto.get("edital")
+edital = col_editais.find_one({"codigo_edital": codigo_edital}) if codigo_edital else None
 
 
 
@@ -3957,7 +4669,7 @@ if step_selecionado == "Despesas":
 
                                 valor = lanc.get("valor_despesa", 0)
                                 valor_br = f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                                linha("Valor (R$)", valor_br)
+                                linha(f"Valor ({SIMBOLO_MOEDA})", valor_br)
 
 
                             with col2:
@@ -4050,12 +4762,6 @@ if step_selecionado == "Despesas":
                                         st.session_state["despesa_editando_id"] = id_despesa
                                         st.rerun()
 
-
-
-
-
-
-
                         # ==================================================
                         # MODO EDIÇÃO INLINE DA DESPESA
                         # ==================================================
@@ -4064,15 +4770,36 @@ if step_selecionado == "Despesas":
                             st.markdown(f"**Editando {id_despesa.upper()}**")
 
                             # --------------------------------------------------
+                            # CATEGORIA / DESPESA
+                            # --------------------------------------------------
+                            opcoes_edit, mapa_opcoes_edit = montar_opcoes_orcamento(projeto)
+
+                            label_atual = next(
+                                (
+                                    lbl for lbl, info in mapa_opcoes_edit.items()
+                                    if info["categoria_id"] == categoria_id
+                                    and info["nome_despesa"] == nome_despesa
+                                ),
+                                None
+                            )
+
+                            escolha_edit = st.selectbox(
+                                "Categoria / Despesa *",
+                                options=opcoes_edit,
+                                index=(
+                                    opcoes_edit.index(label_atual)
+                                    if label_atual in opcoes_edit else 0
+                                ),
+                                key=f"edit_cat_{id_despesa}"
+                            )
+
+                            destino = mapa_opcoes_edit[escolha_edit]
+
+                            # --------------------------------------------------
                             # CAMPOS PRINCIPAIS
                             # --------------------------------------------------
                             col1, col2 = st.columns(2)
 
-
-
-                            # --------------------------------------------------
-                            # DATA
-                            # --------------------------------------------------
                             with col1:
                                 data = date_picker(
                                     label="Data da despesa *",
@@ -4083,16 +4810,15 @@ if step_selecionado == "Despesas":
                                     one_tap=True
                                 )
 
-
                             with col2:
                                 valor = st.number_input(
-                                    "Valor total (R$) *",
+                                    f"Valor total ({SIMBOLO_MOEDA}) *",
                                     min_value=0.0,
                                     value=float(lanc.get("valor_despesa", 0)),
                                     format="%.2f",
                                     key=f"edit_valor_{id_despesa}"
                                 )
-                                
+
                             descricao = st.text_area(
                                 "Descrição da despesa *",
                                 value=lanc.get("descricao_despesa", ""),
@@ -4145,250 +4871,122 @@ if step_selecionado == "Despesas":
 
                             st.divider()
 
-
-
-
-
-
                             # --------------------------------------------------
                             # AÇÕES
                             # --------------------------------------------------
                             with st.container(horizontal=True):
 
+                                if st.button(
+                                    "Cancelar",
+                                    key=f"btn_cancel_desp_{id_despesa}"
+                                ):
+                                    st.session_state["despesa_editando_id"] = None
+                                    st.session_state.pop(f"edit_cat_{id_despesa}", None)
+                                    st.rerun()
 
-                                with st.container(horizontal=True):
+                                if st.button(
+                                    "Salvar alterações",
+                                    key=f"btn_save_desp_{id_despesa}",
+                                    type="primary",
+                                    icon=":material/save:"
+                                ):
 
+                                    # ==================================================
+                                    # VALIDAÇÕES
+                                    # ==================================================
+                                    erros_campos = []
 
-                                    if st.button(
-                                        "Cancelar",
-                                        key=f"btn_cancel_desp_{id_despesa}"
-                                    ):
-                                        st.session_state["despesa_editando_id"] = None
-                                        st.rerun()
+                                    if not data:
+                                        erros_campos.append("Data da despesa")
 
+                                    if not valor or valor <= 0:
+                                        erros_campos.append(f"Valor total ({SIMBOLO_MOEDA})")
 
+                                    if not descricao or not descricao.strip():
+                                        erros_campos.append("Descrição da despesa")
 
-                                    if st.button(
-                                        "Salvar alterações",
-                                        key=f"btn_save_desp_{id_despesa}",
-                                        type="primary",
-                                        icon=":material/save:"
-                                    ):
+                                    if not fornecedor or not fornecedor.strip():
+                                        erros_campos.append("Fornecedor")
 
-                                        # ==================================================
-                                        # VALIDAÇÕES
-                                        # ==================================================
+                                    qtd_restantes = len(anexos_existentes) - len(anexos_remover)
+                                    qtd_novos = len(novos_anexos) if novos_anexos else 0
 
-                                        erros_campos = []
-                                        erro_consistencia = None
+                                    if qtd_restantes + qtd_novos <= 0:
+                                        erros_campos.append("Anexos (mínimo de 1 arquivo)")
 
-                                        # -------------------------------
-                                        # CAMPOS OBRIGATÓRIOS
-                                        # -------------------------------
+                                    if erros_campos:
+                                        campos = ", ".join(erros_campos)
+                                        st.warning(f"Preencha os seguintes campos obrigatórios: {campos}")
+                                        st.stop()
 
-                                        if not data:
-                                            erros_campos.append("Data da despesa")
+                                    # ==================================================
+                                    # SALVAR
+                                    # ==================================================
+                                    with st.spinner("Salvando alterações..."):
 
-                                        if not valor or valor <= 0:
-                                            erros_campos.append("Valor total (R$)")
-                                            
-                                        if not descricao or not descricao.strip():
-                                            erros_campos.append("Descrição da despesa")
+                                        lanc.update({
+                                            "data_despesa": data.strftime("%d/%m/%Y"),
+                                            "descricao_despesa": descricao,
+                                            "fornecedor": fornecedor,
+                                            "cpf_cnpj": cpf_cnpj,
+                                            "valor_despesa": valor
+                                        })
 
-                                        if not fornecedor or not fornecedor.strip():
-                                            erros_campos.append("Fornecedor")
+                                        # Remove anexos marcados
+                                        if anexos_remover:
+                                            lanc["anexos"] = [
+                                                a for a in lanc.get("anexos", [])
+                                                if a not in anexos_remover
+                                            ]
 
-                                        # if not cpf_cnpj or not cpf_cnpj.strip():
-                                        #     erros_campos.append("CPF / CNPJ")
+                                        # Upload de novos anexos
+                                        if novos_anexos:
+                                            servico = obter_servico_drive()
+                                            pasta_proj = obter_pasta_projeto(
+                                                servico,
+                                                projeto["codigo"],
+                                                projeto["sigla"]
+                                            )
+                                            pasta_fin = obter_pasta_relatos_financeiros(servico, pasta_proj)
+                                            pasta_lanc = obter_ou_criar_pasta(servico, id_despesa, pasta_fin)
 
+                                            lanc.setdefault("anexos", [])
 
-                                        # ==================================================
-                                        # VALIDAÇÃO DE ANEXOS (COM REMOÇÃO + NOVOS)
-                                        # ==================================================
+                                            for arq in novos_anexos:
+                                                id_drive = enviar_arquivo_drive(servico, pasta_lanc, arq)
+                                                lanc["anexos"].append({
+                                                    "nome_arquivo": arq.name,
+                                                    "id_arquivo": id_drive
+                                                })
 
-                                        # Regra:
-                                        # - Se NÃO for taxa bancária → precisa ter pelo menos 1 anexo no final
+                                        # --------------------------------------------------
+                                        # MUDANÇA DE CATEGORIA / DESPESA
+                                        # --------------------------------------------------
+                                        mudou_categoria = (
+                                            destino["categoria_id"] != categoria_id
+                                            or destino["nome_despesa"] != nome_despesa
+                                        )
 
-                                        categoria_nome_lower = nome_categoria.lower()
-                                        # is_taxa_bancaria = "taxas bancárias" in categoria_nome_lower
-
-                                        # if not is_taxa_bancaria:
-
-                                        anexos_existentes = lanc.get("anexos", [])
-
-                                        # Quantos permanecem após remoção
-                                        qtd_restantes = len(anexos_existentes) - len(anexos_remover)
-
-                                        # Quantos novos serão adicionados
-                                        qtd_novos = len(novos_anexos) if novos_anexos else 0
-
-                                        total_final = qtd_restantes + qtd_novos
-
-                                        if total_final <= 0:
-                                            erros_campos.append("Anexos (mínimo de 1 arquivo)")
-
-
-
-
-                                        # ==================================================
-                                        # EXIBE ERROS
-                                        # ==================================================
-
-                                        if erros_campos:
-                                            campos = ", ".join(erros_campos)
-                                            st.warning(f"Preencha os seguintes campos obrigatórios: {campos}")
-
-                                        if erro_consistencia:
-                                            st.warning(erro_consistencia)
-
-                                        if erros_campos or erro_consistencia:
-                                            st.stop()
-
-                                        # ==================================================
-                                        # SALVAR
-                                        # ==================================================
-                                        with st.spinner("Salvando alterações..."):
-
-                                            lanc.update({
-                                                "data_despesa": data.strftime("%d/%m/%Y"),
-                                                "descricao_despesa": descricao,
-                                                "fornecedor": fornecedor,
-                                                "cpf_cnpj": cpf_cnpj,
-                                                "valor_despesa": valor
-                                            })
-
-
-
-                                            # Remove anexos marcados
-                                            if anexos_remover:
-                                                lanc["anexos"] = [
-                                                    a for a in lanc.get("anexos", [])
-                                                    if a not in anexos_remover
-                                                ]
-
-                                            # Upload de novos anexos
-                                            if novos_anexos:
-                                                servico = obter_servico_drive()
-                                                pasta_proj = obter_pasta_projeto(
-                                                    servico,
-                                                    projeto["codigo"],
-                                                    projeto["sigla"]
-                                                )
-                                                pasta_fin = obter_pasta_relatos_financeiros(servico, pasta_proj)
-                                                pasta_lanc = obter_ou_criar_pasta(servico, id_despesa, pasta_fin)
-
-                                                lanc.setdefault("anexos", [])
-
-                                                for arq in novos_anexos:
-                                                    id_drive = enviar_arquivo_drive(servico, pasta_lanc, arq)
-                                                    lanc["anexos"].append({
-                                                        "nome_arquivo": arq.name,
-                                                        "id_arquivo": id_drive
-                                                    })
-
-                                            # Persistência no Mongo
-                                            col_projetos.update_one(
-                                                {"codigo": projeto["codigo"]},
-                                                {"$set": {"financeiro.orcamento": projeto["financeiro"]["orcamento"]}}
+                                        if mudou_categoria:
+                                            mover_lancamento_despesa(
+                                                projeto,
+                                                id_despesa,
+                                                destino["categoria_id"],
+                                                destino["nome_despesa"]
                                             )
 
-                                        # Limpa estado
-                                        st.session_state["despesa_editando_id"] = None
-                                        st.success("Despesa atualizada com sucesso!", icon=":material/check:")
-                                        time.sleep(3)
-                                        st.rerun()
+                                        # Persistência no Mongo
+                                        col_projetos.update_one(
+                                            {"codigo": projeto["codigo"]},
+                                            {"$set": {"financeiro.orcamento": projeto["financeiro"]["orcamento"]}}
+                                        )
 
-                            
-                                with st.container(horizontal=True):
-
-
-
-                                    # ==================================================
-                                    # BOTÃO EXCLUIR DESPESA (SOMENTE SE STATUS = ABERTO)
-                                    # ==================================================
-
-                                    status_despesa_db = lanc.get("status_despesa")
-
-                                    # Controle de estado da confirmação
-                                    confirm_delete_key = f"confirm_delete_despesa_{id_despesa}"
-
-                                    if confirm_delete_key not in st.session_state:
-                                        st.session_state[confirm_delete_key] = False
-
-                                    # Só permite excluir se estiver aberto
-                                    if status_despesa_db == "aberto":
-
-                                        with st.container(horizontal=True, horizontal_alignment="right"):
-
-                                            # Botão inicial (ícone de lixeira)
-                                            if not st.session_state[confirm_delete_key]:
-                                                if st.button(
-                                                    "",
-                                                    key=f"btn_delete_{id_despesa}",
-                                                    icon=":material/delete:",
-                                                    type="secondary"
-                                                ):
-                                                    # Ativa confirmação
-                                                    st.session_state[confirm_delete_key] = True
-                                                    st.rerun()
-
-                                            # ==================================================
-                                            # CONFIRMAÇÃO DE EXCLUSÃO
-                                            # ==================================================
-                                            else:
-
-                                                with st.container(horizontal=True):
-
-                                                    st.warning("Deseja realmente excluir esta despesa?")
-
-                                                    # col1, col2 = st.columns(2)
-
-                                                    # Botão CONFIRMAR
-                                                    if st.button(
-                                                        "Sim, excluir",
-                                                        key=f"btn_confirm_delete_{id_despesa}",
-                                                        type="primary",
-                                                        icon=":material/delete:"
-                                                    ):
-                                                        with st.spinner("Excluindo despesa..."):
-
-                                                            # Remove o lançamento da estrutura
-                                                            for d in projeto["financeiro"]["orcamento"]:
-                                                                if str(d["categoria"]) == categoria_id and d["nome_despesa"] == nome_despesa:
-                                                                    d["lancamentos"] = [
-                                                                        l for l in d.get("lancamentos", [])
-                                                                        if l.get("id_lanc_despesa") != id_despesa
-                                                                    ]
-                                                                    break
-
-                                                            # Salva no Mongo
-                                                            col_projetos.update_one(
-                                                                {"codigo": projeto["codigo"]},
-                                                                {"$set": {"financeiro.orcamento": projeto["financeiro"]["orcamento"]}}
-                                                            )
-
-                                                        # Limpa estados
-                                                        st.session_state["despesa_editando_id"] = None
-                                                        st.session_state.pop(confirm_delete_key, None)
-
-                                                        st.success("Despesa excluída com sucesso!", icon=":material/check:")
-                                                        time.sleep(3)
-                                                        st.rerun()
-
-                                                    # Botão CANCELAR
-                                                    if st.button(
-                                                        "Cancelar",
-                                                        key=f"btn_cancel_delete_{id_despesa}"
-                                                    ):
-                                                        st.session_state[confirm_delete_key] = False
-                                                        st.rerun()
-
-
-
-
-
-
-
+                                    # Limpa estado
+                                    st.session_state["despesa_editando_id"] = None
+                                    st.session_state.pop(f"edit_cat_{id_despesa}", None)
+                                    st.success("Despesa atualizada com sucesso!", icon=":material/check:")
+                                    time.sleep(3)
+                                    st.rerun()
 
 
                         # ==================================================
@@ -4578,7 +5176,7 @@ if step_selecionado == "Indicadores":
     # --------------------------------------------------
     mapa_indicadores = {
         item["_id"]: item["indicador"]
-        for item in edital.get("indicadores", [])
+        for item in (edital or {}).get("indicadores", [])
     }
 
     indicadores = projeto.get("indicadores", [])
@@ -5943,7 +6541,7 @@ if step_selecionado == "Beneficiários":
 #     # BUSCA DADOS
 #     # ============================
 
-#     pesquisas = edital.get("pesquisas_relatorio", []) if edital else []
+#     pesquisas = (edital or {}).get("pesquisas_relatorio", []) if edital else []
 
 #     if not pesquisas:
 #         st.caption("Nenhuma pesquisa cadastrada.")
@@ -6199,7 +6797,7 @@ if step_selecionado == "Formulário":
         st.error("Edital não encontrado para este projeto.")
         st.stop()
 
-    perguntas = edital.get("perguntas_relatorio", [])
+    perguntas = (edital or {}).get("perguntas_relatorio", [])
 
     if not perguntas:
         st.write('')
@@ -6680,7 +7278,22 @@ if step_selecionado == "Enviar":
             projeto=projeto,
             relatorio=relatorio,
         )
+        
+        relatorio_atividades = gerar_relatorio_atividades_pdf(
+            projeto=projeto,
+            relatorio=relatorio,
+        )
+
         with st.container(horizontal=True, horizontal_alignment="right"):
+
+            st.download_button(
+                "Baixar relatório de atividades",
+                data=relatorio_atividades,
+                file_name=nome_arquivo_relatorio_atividades(projeto, relatorio_numero),
+                mime="application/pdf",
+                icon=":material/picture_as_pdf:",
+                type="tertiary"
+            )
 
             st.download_button(
                 "Baixar relatório de monitoramento",
@@ -6720,7 +7333,7 @@ if step_selecionado == "Enviar":
                     )
 
                     perguntas_monitoramento = sorted(
-                        edital.get("perguntas_monitoramento", []),
+                        (edital or {}).get("perguntas_monitoramento", []),
                         key=lambda x: x.get("ordem", 0)
                     )
 
@@ -7024,7 +7637,7 @@ if step_selecionado == "Enviar":
                     )
 
                     perguntas_monitoramento = sorted(
-                        edital.get("perguntas_monitoramento", []),
+                        (edital or {}).get("perguntas_monitoramento", []),
                         key=lambda x: x.get("ordem", 0)
                     )
 
@@ -7175,7 +7788,21 @@ if step_selecionado == "Avaliação":
             relatorio=relatorio_db,
         )
         
+        relatorio_atividades = gerar_relatorio_atividades_pdf(
+            projeto=projeto,
+            relatorio=relatorio_db,
+        )
+
         with st.container(horizontal=True, horizontal_alignment="right"):
+
+            st.download_button(
+                "Baixar relatório de atividades",
+                data=relatorio_atividades,
+                file_name=nome_arquivo_relatorio_atividades(projeto, relatorio_numero),
+                mime="application/pdf",
+                icon=":material/picture_as_pdf:",
+                type="tertiary"
+            )
 
             st.download_button(
                 "Baixar relatório de monitoramento",
@@ -7203,7 +7830,7 @@ if step_selecionado == "Avaliação":
     )
 
     perguntas_monitoramento = sorted(
-        edital.get("perguntas_monitoramento", []),
+        (edital or {}).get("perguntas_monitoramento", []),
         key=lambda x: x.get("ordem", 0)
     )
     
