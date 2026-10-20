@@ -365,6 +365,9 @@ def renderizar_badge_status(status):
     elif status == "recusado":
         badge = {"label":"Recusado","bg":"#F8D7DA","color":"#721C24"}
 
+    else:
+        badge = {"label": status or "Sem status", "bg":"#E2E3E5", "color":"#383D41"}
+
     st.markdown(
         f"""
         <span style="
@@ -489,7 +492,7 @@ def remover_linhas_vazias(df):
 # Renderiza card de remanejamento do tipo "adicionar atividade"
 # ==================================================
 
-def renderizar_card_add(item):
+def renderizar_card_add(item, idx):
 
     data_solic = item.get("data_solicit_remanej")
     data_aprov = item.get("data_aprov_remanej")
@@ -593,31 +596,7 @@ def renderizar_card_alteracao(
             st.write(f"**Data de aceite:** {data_aprov}")
 
     with col3:
-
-        if status == "aceito":
-            badge = {"label":"Aceito","bg":"#D4EDDA","color":"#155724"}
-
-        elif status == "em_analise":
-            badge = {"label":"Em análise","bg":"#FFF3CD","color":"#856404"}
-
-        elif status == "recusado":
-            badge = {"label":"Recusado","bg":"#F8D7DA","color":"#721C24"}
-
-        st.markdown(
-            f"""
-            <span style="
-                background:{badge['bg']};
-                color:{badge['color']};
-                padding:4px 10px;
-                border-radius:20px;
-                font-size:12px;
-                font-weight:600;
-            ">
-                {badge['label']}
-            </span>
-            """,
-            unsafe_allow_html=True
-        )
+        renderizar_badge_status(status)
 
     st.write("")
 
@@ -911,10 +890,6 @@ def enviar_email_remanejamento_atividade(
     enviar_email(corpo_html, destinatarios, assunto)
 
 
-
-
-
-
 # ==================================================
 # Envia e-mail quando remanejamento de alteração de atividade é aprovado
 # ==================================================
@@ -1071,11 +1046,6 @@ def enviar_email_remanejamento_atividade_aprovado(
     """
 
     enviar_email(corpo_html, destinatarios, assunto)
-
-
-
-
-
 
 
 # ==================================================
@@ -1243,13 +1213,9 @@ def enviar_email_remanejamento_atividade_recusado(
     enviar_email(corpo_html, destinatarios, assunto)
 
 
-
-
-
 # ==================================================
 # Envia e-mail quando há nova solicitação de nova atividade
 # ==================================================
-
 def enviar_email_nova_atividade(
     codigo_projeto,
     projeto,
@@ -1351,9 +1317,6 @@ def enviar_email_nova_atividade(
     """
 
     enviar_email(corpo_html, destinatarios, assunto)
-
-
-
 
 
 # ==================================================
@@ -1502,10 +1465,6 @@ def enviar_email_nova_atividade_aprovada(
     enviar_email(corpo_html, destinatarios, assunto)
 
 
-
-
-
-
 # ==================================================
 # Envia e-mail quando solicitação de NOVA atividade é recusada
 # ==================================================
@@ -1644,9 +1603,6 @@ def enviar_email_nova_atividade_recusada(
     enviar_email(corpo_html, destinatarios, assunto)
 
 
-
-
-
 # ==================================================
 # Email quando há solicitação de remoção de atividade
 # ==================================================
@@ -1756,10 +1712,6 @@ def enviar_email_remocao_atividade_solicitada(
     """
 
     enviar_email(corpo_html, destinatarios, assunto)
-
-
-
-
 
 
 # ==================================================
@@ -1875,9 +1827,6 @@ def enviar_email_remocao_atividade_aprovada(
     """
 
     enviar_email(corpo_html, destinatarios, assunto)
-
-
-
 
 
 # ==================================================
@@ -2000,20 +1949,72 @@ def enviar_email_remocao_atividade_recusada(
     enviar_email(corpo_html, destinatarios, assunto)
 
 
+# ==================================================
+# Remove o indicador do projeto no banco
+# ==================================================
+def remover_indicador_projeto(chave_checkbox, id_indicador, nome_indicador):
+
+    resultado = col_projetos.update_one(
+        {"_id": id_projeto_atual},
+        {"$pull": {"indicadores": {"id_indicador": id_indicador}}}
+    )
+
+    if resultado.modified_count > 0:
+        # Guarda a mensagem para exibir após o rerun, no lugar dos botões
+        st.session_state[f"msg_remocao_{chave_checkbox}"] = (
+            f"Indicador removido do projeto: {nome_indicador}"
+        )
 
 
+# ==================================================
+# Callback do checkbox de indicador
+# ==================================================
+def ao_alterar_checkbox_indicador(chave_checkbox, id_indicador, nome_indicador):
 
-# Função auxiliar que salva lista de impactos no banco
-# def salvar_impactos(chave, impactos, codigo_projeto):
-#     """
-#     Salva lista de impactos no banco.
-#     """
-#     resultado = col_projetos.update_one(
-#         {"codigo": codigo_projeto},
-#         {"$set": {chave: impactos}}
-#     )
+    # Se foi MARCADO, não faz nada (gravação ocorre no botão "Salvar")
+    if st.session_state.get(chave_checkbox):
+        return
 
-#     return resultado.modified_count == 1
+    # Consulta apenas o indicador em questão no projeto
+    projeto_doc = col_projetos.find_one(
+        {"_id": id_projeto_atual, "indicadores.id_indicador": id_indicador},
+        {"indicadores.$": 1}
+    )
+
+    # Indicador nunca foi salvo no projeto → nada a remover
+    if not projeto_doc:
+        return
+
+    indicador_doc = projeto_doc["indicadores"][0]
+    lancamentos = indicador_doc.get("lancamentos") or []
+
+    # Possui lançamentos → mantém marcado e pede confirmação
+    if lancamentos:
+        st.session_state[chave_checkbox] = True
+        st.session_state[f"pendente_remocao_{chave_checkbox}"] = len(lancamentos)
+        return
+
+    # Sem lançamentos → remove direto
+    remover_indicador_projeto(chave_checkbox, id_indicador, nome_indicador)
+
+
+# ==================================================
+# Callback do botão "Confirmar exclusão"
+# ==================================================
+def confirmar_remocao_indicador(chave_checkbox, id_indicador, nome_indicador):
+
+    remover_indicador_projeto(chave_checkbox, id_indicador, nome_indicador)
+
+    st.session_state[chave_checkbox] = False
+    st.session_state.pop(f"pendente_remocao_{chave_checkbox}", None)
+
+
+# ==================================================
+# Callback do botão "Cancelar"
+# ==================================================
+def cancelar_remocao_indicador(chave_checkbox):
+
+    st.session_state.pop(f"pendente_remocao_{chave_checkbox}", None)
 
 
 # DIÁLOGO: VER RELATOS 
@@ -2208,11 +2209,6 @@ if not id_projeto_atual:
 
 id_projeto_atual = ObjectId(id_projeto_atual)
 
-if not id_projeto_atual:
-    st.error("Nenhum projeto selecionado.")
-    st.stop()
-    
-
 df_projeto = pd.DataFrame(
     list(
         col_projetos.find(
@@ -2251,21 +2247,53 @@ financeiro_dict = projeto_dict.get("financeiro", {}) or {}
 #salvaguardas_dict = projeto_dict.get("salvaguardas", {}) or {}
 
 
-
-
-
 # CARREGAR INDICADORES DO EDITAL VINCULADO AO PROJETO
 
-# Obtém o nome do edital vinculado ao projeto
-nome_edital_projeto = df_projeto["edital"].values[0]
+def buscar_edital_do_projeto(valor_edital):
+    """
+    Retorna o documento do edital vinculado ao projeto.
+
+    A chave "edital" do projeto guarda o ObjectId do edital
+    na coleção "editais". Aceita ObjectId ou string, e mantém
+    um fallback por codigo_edital para projetos antigos.
+    """
+
+    if not valor_edital:
+        return None
+
+    # Caso padrão: ObjectId nativo
+    if isinstance(valor_edital, ObjectId):
+        return col_editais.find_one({"_id": valor_edital})
+
+    if isinstance(valor_edital, str):
+
+        valor_edital = valor_edital.strip()
+
+        # ObjectId salvo como string
+        if ObjectId.is_valid(valor_edital):
+            edital = col_editais.find_one({"_id": ObjectId(valor_edital)})
+            if edital:
+                return edital
+
+        # Fallback: projetos antigos que ainda guardam o código do edital
+        return col_editais.find_one({"codigo_edital": valor_edital})
+
+    return None
+
+
+# Obtém a referência do edital direto do dicionário do projeto
+# (evita KeyError caso o projeto não tenha a chave "edital")
+id_edital_projeto = projeto_dict.get("edital")
 
 # Busca o edital correspondente
-edital_doc = col_editais.find_one({"codigo_edital": nome_edital_projeto})
+edital_doc = buscar_edital_do_projeto(id_edital_projeto)
 
 # Verifica se encontrou o edital
 if not edital_doc:
     st.error("Edital vinculado ao projeto não encontrado.")
+    indicadores_edital = []
     lista_indicadores_edital = []
+
 else:
     # Extrai indicadores do edital
     indicadores_edital = edital_doc.get("indicadores", [])
@@ -2274,14 +2302,6 @@ else:
     lista_indicadores_edital = [
         ind.get("indicador") for ind in indicadores_edital
     ]
-
-# Extrai indicadores do edital
-indicadores_edital = edital_doc.get("indicadores", [])
-
-# Lista apenas os nomes dos indicadores
-lista_indicadores_edital = [
-    ind.get("indicador") for ind in indicadores_edital
-]
 
 
 
@@ -2890,9 +2910,6 @@ with plano_trabalho:
 
             if salvar:
 
-                # Limpa nomes vazios
-                remover_linhas_vazias(df_editado)
-
                 novos_componentes = []
 
                 componentes_existentes = componentes
@@ -3221,193 +3238,198 @@ with indicadores:
     #######################################################################################################
     else:
 
-
-        # Texto introdutório da seção
         st.write("*Selecione os indicadores que serão acompanhados no projeto.*")
-
-        # Aviso para o usuário lembrar de salvar
         st.markdown(
             "<span style='color:#2F5AA1;'>***Lembre-se de salvar cada indicador após editar.***</span>",
             unsafe_allow_html=True
         )
-
         st.write("")
         st.write("")
 
-
+        # --------------------------------------------------
+        # Sufixo ÚNICO por projeto — garante que os widgets
+        # de um projeto NUNCA leem o session_state de outro
+        # --------------------------------------------------
+        sufixo_proj = str(id_projeto_atual)
 
         # --------------------------------------------------
-        # INICIALIZA / NORMALIZA ESTADO
+        # Estado sempre recalculado do banco (fonte única de
+        # verdade) — não fica "grudado" entre projetos
         # --------------------------------------------------
-        # Cria o estado na sessão para armazenar os valores
-        # dos indicadores já salvos no projeto
+        indicadores_salvos = (
+            df_projeto["indicadores"].values[0]
+            if "indicadores" in df_projeto.columns
+            else []
+        )
 
-        if "valores_indicadores" not in st.session_state:
+        estado_projeto = {}
 
-            indicadores_salvos = (
-                df_projeto["indicadores"].values[0]
-                if "indicadores" in df_projeto.columns
-                else []
-            )
+        for item in indicadores_salvos:
+            lancamentos = item.get("lancamentos", [])
+            ultimo_lancamento = None
+            if lancamentos:
+                ultimo_lancamento = sorted(
+                    lancamentos, key=lambda x: x.get("relatorio_numero", 0)
+                )[-1]
 
-            estado = {}
-
-            for item in indicadores_salvos:
-                lancamentos = item.get("lancamentos", [])
-
-                ultimo_lancamento = None
-
-                if lancamentos:
-                    ultimo_lancamento = sorted(
-                        lancamentos,
-                        key=lambda x: x.get("relatorio_numero", 0)
-                    )[-1]
-
-                estado[item["id_indicador"]] = {
-                    "valor": item.get("valor", 0),
-                    "descricao": item.get("descricao_contribuicao", ""),
-                    "marco_zero": item.get("marco_zero", 0),
-                    "resultado_final": (
-                        ultimo_lancamento.get("resultado_atual", 0)
-                        if ultimo_lancamento
-                        else 0
-                    ),
-                    "observacoes": (
-                        ultimo_lancamento.get("observacoes", "")
-                        if ultimo_lancamento
-                        else ""
-                    ),
-                    "lancamentos": lancamentos
-                }
-
-            st.session_state.valores_indicadores = estado
-
-
-        # --------------------------------------------------
-        # GARANTIA DE DADOS
-        # --------------------------------------------------
-        # Verifica se existem indicadores cadastrados no edital
+            estado_projeto[item["id_indicador"]] = {
+                "valor": item.get("valor", 0),
+                "descricao": item.get("descricao_contribuicao", ""),
+                "marco_zero": item.get("marco_zero", 0),
+                "resultado_final": (
+                    ultimo_lancamento.get("resultado_atual", 0)
+                    if ultimo_lancamento else 0
+                ),
+                "observacoes": (
+                    ultimo_lancamento.get("observacoes", "")
+                    if ultimo_lancamento else ""
+                ),
+                "lancamentos": lancamentos
+            }
 
         if not indicadores_edital:
             st.caption("Não há indicadores cadastrados neste edital.")
 
         else:
 
-            # --------------------------------------------------
-            # LISTAGEM DOS INDICADORES
-            # --------------------------------------------------
-            # Cada indicador será renderizado em uma linha
+            # Controla o recarregamento após exibir a mensagem de remoção
+            recarregar_pagina = False
 
             for ind in sorted(indicadores_edital, key=lambda x: x["indicador"]):
 
                 id_indicador = ind["_id"]
                 nome_indicador = ind["indicador"]
 
-                dados_atual = st.session_state.valores_indicadores.get(
+                dados_atual = estado_projeto.get(
                     id_indicador,
                     {
-                        "valor": 0,
-                        "descricao": "",
-                        "marco_zero": 0,
-                        "resultado_final": 0,
-                        "observacoes": "",
-                        "lancamentos": []
+                        "valor": 0, "descricao": "", "marco_zero": 0,
+                        "resultado_final": 0, "observacoes": "", "lancamentos": []
                     }
                 )
 
                 # ==================================================
-                # CHECKBOX DE SELEÇÃO
+                # CHECKBOX (chave namespaced por projeto)
                 # ==================================================
+                chave_chk = f"chk_{sufixo_proj}_{id_indicador}"
+
+                # Inicializa o estado a partir do banco (sem usar value=,
+                # pois os callbacks alteram esse estado via session_state)
+                if chave_chk not in st.session_state:
+                    st.session_state[chave_chk] = id_indicador in estado_projeto
+
                 marcado = st.checkbox(
                     nome_indicador,
-                    key=f"chk_{id_indicador}",
-                    value=id_indicador in st.session_state.valores_indicadores
+                    key=chave_chk,
+                    on_change=ao_alterar_checkbox_indicador,
+                    args=(chave_chk, id_indicador, nome_indicador)
                 )
 
-                # Remove do estado se desmarcado
+                # --------------------------------------------------
+                # Confirmação de exclusão (indicador com lançamentos)
+                # --------------------------------------------------
+                chave_pendente = f"pendente_remocao_{chave_chk}"
+
+                if chave_pendente in st.session_state:
+
+                    qtd_lanc = st.session_state[chave_pendente]
+
+                    with st.container(border=True):
+
+                        st.warning(
+                            f"Este indicador possui **{qtd_lanc} lançamento(s)** registrado(s) "
+                            "em relatórios. Ao removê-lo do projeto, todo esse histórico "
+                            "será apagado permanentemente.",
+                            icon=":material/warning:"
+                        )
+
+                        with st.container(horizontal=True):
+
+                            st.button(
+                                "Confirmar exclusão",
+                                type="primary",
+                                icon=":material/delete:",
+                                key=f"confirma_del_{chave_chk}",
+                                on_click=confirmar_remocao_indicador,
+                                args=(chave_chk, id_indicador, nome_indicador)
+                            )
+
+                            st.button(
+                                "Cancelar",
+                                icon=":material/close:",
+                                key=f"cancela_del_{chave_chk}",
+                                on_click=cancelar_remocao_indicador,
+                                args=(chave_chk,)
+                            )
+
+                # --------------------------------------------------
+                # Mensagem de sucesso da remoção (exibida uma vez)
+                # --------------------------------------------------
+                msg_remocao = st.session_state.pop(f"msg_remocao_{chave_chk}", None)
+
+                if msg_remocao:
+                    st.success(msg_remocao, icon=":material/check:")
+                    recarregar_pagina = True
+
                 if not marcado:
-                    st.session_state.valores_indicadores.pop(id_indicador, None)
                     st.divider()
                     continue
 
-                # ==================================================
-                # CONTAINER DO INDICADOR SELECIONADO
-                # ==================================================
                 with st.container(border=True):
 
-                    # Inputs
-                    col_marco_zero, col_valor, col_desc, col_res_final, col_obs = st.columns([2, 2, 4, 2, 3])
+                    col_marco_zero, col_valor, col_desc, col_res_final, col_obs = st.columns(
+                        [2, 2, 4, 2, 3]
+                    )
 
                     with col_marco_zero:
                         marco_zero = st.number_input(
                             "**Marco zero**",
                             step=1.0,
-                            value=float(
-                                dados_atual.get("marco_zero", 0)
-                                if isinstance(
-                                    dados_atual.get("marco_zero"),
-                                    (int, float)
-                                )
-                                else 0
-                            ),
-                            key=f"marco_zero_{id_indicador}",
+                            value=float(dados_atual.get("marco_zero", 0) or 0),
+                            key=f"marco_zero_{sufixo_proj}_{id_indicador}",
                         )
 
                     with col_valor:
                         valor = st.number_input(
                             "**Meta**",
                             step=1.0,
-                            value=float(
-                                dados_atual.get("valor", 0)
-                                if isinstance(
-                                    dados_atual.get("valor"),
-                                    (int, float)
-                                )
-                                else 0
-                            ),
-                            key=f"num_{id_indicador}",
+                            value=float(dados_atual.get("valor", 0) or 0),
+                            key=f"num_{sufixo_proj}_{id_indicador}",
                         )
 
                     with col_desc:
                         descricao = st.text_area(
                             "**Descrição**",
                             value=dados_atual.get("descricao", ""),
-                            key=f"desc_{id_indicador}",
+                            key=f"desc_{sufixo_proj}_{id_indicador}",
                             height=100,
                         )
+
+                    sem_lancamentos = not dados_atual.get("lancamentos")
 
                     with col_res_final:
                         resultado_final = st.number_input(
                             "**Resultado final**",
                             step=1.0,
-                            value=float(
-                                dados_atual.get("resultado_final", 0)
-                                if isinstance(
-                                    dados_atual.get("resultado_final"),
-                                    (int, float)
-                                )
-                                else 0
-                            ),
-                            key=f"res_fin_{id_indicador}",
+                            value=float(dados_atual.get("resultado_final", 0) or 0),
+                            key=f"res_fin_{sufixo_proj}_{id_indicador}",
+                            disabled=sem_lancamentos,
                         )
 
                     with col_obs:
                         observacoes = st.text_area(
                             "**Observações**",
                             value=dados_atual.get("observacoes", ""),
-                            key=f"obs_{id_indicador}",
+                            key=f"obs_{sufixo_proj}_{id_indicador}",
                             height=100,
+                            disabled=sem_lancamentos,
                         )
 
-                    # Atualiza estado
-                    st.session_state.valores_indicadores[id_indicador] = {
-                        "valor": valor,
-                        "descricao": descricao,
-                        "marco_zero": marco_zero,
-                        "resultado_final": resultado_final,
-                        "observacoes": observacoes,
-                        "lancamentos": dados_atual.get("lancamentos", [])
-                    }
+                    if sem_lancamentos:
+                        st.caption(
+                            "Resultado final e observações ficam disponíveis "
+                            "após o primeiro lançamento em relatório."
+                        )
 
                     st.write("")
 
@@ -3415,7 +3437,7 @@ with indicadores:
                         "Salvar",
                         icon=":material/save:",
                         type="secondary",
-                        key=f"save_{id_indicador}",
+                        key=f"save_{sufixo_proj}_{id_indicador}",
                         width=200
                     )
 
@@ -3426,32 +3448,22 @@ with indicadores:
 
                         else:
 
-                            projeto = col_projetos.find_one(
-                                {"_id": id_projeto_atual}
-                            )
+                            projeto = col_projetos.find_one({"_id": id_projeto_atual})
 
                             indicadores_existentes = projeto.get("indicadores", [])
 
                             indicador_existente = next(
-                                (
-                                    i for i in indicadores_existentes
-                                    if i["id_indicador"] == id_indicador
-                                ),
+                                (i for i in indicadores_existentes if i["id_indicador"] == id_indicador),
                                 None
                             )
 
-                            # Preserva lançamentos existentes
                             lancamentos = indicador_existente.get("lancamentos", []) if indicador_existente else []
 
-                            # Atualiza o lançamento mais recente
                             if lancamentos:
                                 lancamentos_ordenados = sorted(
-                                    lancamentos,
-                                    key=lambda x: x.get("relatorio_numero", 0)
+                                    lancamentos, key=lambda x: x.get("relatorio_numero", 0)
                                 )
-
                                 ultimo = lancamentos_ordenados[-1]
-
                                 ultimo["resultado_atual"] = resultado_final
                                 ultimo["observacoes"] = observacoes
 
@@ -3467,31 +3479,28 @@ with indicadores:
                                 i for i in indicadores_existentes
                                 if i["id_indicador"] != id_indicador
                             ]
-
                             indicadores_filtrados.append(indicador_para_salvar)
 
                             resultado = col_projetos.update_one(
                                 {"_id": id_projeto_atual},
-                                {
-                                    "$set": {
-                                        "indicadores": indicadores_filtrados
-                                    }
-                                }
+                                {"$set": {"indicadores": indicadores_filtrados}}
                             )
 
                             if resultado.matched_count == 1:
-                                st.success(
-                                    "Indicador atualizado com sucesso!",
-                                    icon=":material/check:"
-                                )
+                                st.success("Indicador atualizado com sucesso!", icon=":material/check:")
                                 time.sleep(3)
                                 st.rerun()
-
                             else:
                                 st.error("Erro ao salvar indicador.")
 
-                # Separador visual entre indicadores
                 st.divider()
+
+            # --------------------------------------------------
+            # Recarrega a página 2 segundos após a mensagem de remoção
+            # --------------------------------------------------
+            if recarregar_pagina:
+                time.sleep(2)
+                st.rerun()
 
 
 # ###################################################################################################
@@ -4587,12 +4596,6 @@ with remanejamentos:
                         st.warning("Nenhuma alteração foi realizada.")
                         return
 
-
-
-                    # --------------------------------------------------
-                    # Só registra se houve alteração
-                    # --------------------------------------------------
-
                     if depois:
 
                         with st.spinner("Salvando alterações..."):
@@ -4626,7 +4629,6 @@ with remanejamentos:
                             )
 
 
-
                             # Enviando email para os padrinhos
                             projeto_atualizado = col_projetos.find_one({"_id": id_projeto_atual})
 
@@ -4646,14 +4648,6 @@ with remanejamentos:
                             st.session_state["mostrar_remanejamento"] = False
 
                             st.rerun()
-
-                    else:
-
-                        st.warning("Nenhuma alteração foi realizada.")
-
-
-
-
 
 
     # ===============================================================================================
@@ -4872,7 +4866,7 @@ with remanejamentos:
                                     )
 
                                     enviar_email_nova_atividade(
-                                        id_projeto_atual,
+                                        projeto_atualizado.get("codigo"),
                                         projeto_atualizado
                                     )
                                     
@@ -5010,7 +5004,7 @@ with remanejamentos:
                                         )
 
                                         enviar_email_remocao_atividade_solicitada(
-                                            id_projeto_atual,
+                                            projeto_atualizado.get("codigo"),
                                             projeto_atualizado
                                         )
                                         
@@ -5095,7 +5089,7 @@ with remanejamentos:
                     renderizar_card_alteracao(item, idx, plano_trabalho_dict)
 
                 elif tipo_rem == "adicionar_atividade":
-                    renderizar_card_add(item)
+                    renderizar_card_add(item, idx)
 
                 elif tipo_rem == "remover_atividade":
                     renderizar_card_del(item, idx)
