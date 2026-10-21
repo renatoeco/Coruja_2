@@ -110,10 +110,9 @@ section[data-testid="stFileUploaderDropzone"] button[data-testid="stBaseButton-s
 # CONEXÃO COM O BANCO DE DADOS MONGODB
 ###########################################################################################################
 
+
 # Conecta-se ao banco de dados MongoDB (usa cache automático para melhorar performance)
 db = conectar_mongo_coruja()
-
-
 
 
 ###########################################################################################################
@@ -123,6 +122,34 @@ db = conectar_mongo_coruja()
 col_projetos = db["projetos"]
 
 col_editais = db["editais"]
+
+def buscar_edital(projeto):
+    """
+    Retorna o edital do projeto.
+    O projeto guarda em "edital" o ObjectId do documento na coleção "editais".
+    Aceita também string de ObjectId e, como fallback, o código do edital
+    (para projetos antigos).
+    """
+    if projeto is None:
+        return None
+
+    ref = projeto.get("edital")
+
+    if ref is None or ref == "":
+        return None
+
+    # Caso principal: ObjectId
+    if isinstance(ref, ObjectId):
+        return col_editais.find_one({"_id": ref})
+
+    # ObjectId salvo como string
+    if isinstance(ref, str) and ObjectId.is_valid(ref):
+        edital = col_editais.find_one({"_id": ObjectId(ref)})
+        if edital:
+            return edital
+
+    # Fallback: código do edital (dados legados)
+    return col_editais.find_one({"codigo_edital": ref})
 
 col_beneficios = db["beneficios"]
 
@@ -166,20 +193,15 @@ df_projeto = pd.DataFrame(
     )
 )
 
-projeto = col_projetos.find_one(
-    {"_id": id_projeto_atual},
-    {
-        "codigo": 1,
-        "sigla": 1,
-        "locais": 1
-    }
-) or {}
+projeto = col_projetos.find_one({"_id": id_projeto_atual})
 
-projeto = df_projeto.iloc[0]
+if not projeto:
+    st.error("Projeto não encontrado.")
+    st.stop()
 
 relatorios = projeto.get("relatorios", [])
 
-edital = col_editais.find_one({"codigo_edital": projeto["edital"]})
+edital = buscar_edital(projeto)
 
 tipo_usuario = st.session_state.get("tipo_usuario")
 
@@ -207,6 +229,7 @@ SIMBOLO_MOEDA = MOEDAS[MOEDA_PROJETO]["simbolo"]
 ###########################################################################################################
 # FUNÇÕES
 ###########################################################################################################
+
 
 
 # --------------------------------------------------
@@ -2415,9 +2438,7 @@ def gerar_relatorio_monitoramento_docx(
     # --------------------------------------------------
     # Busca as perguntas de monitoramento do edital
     # --------------------------------------------------
-    edital = col_editais.find_one(
-        {"codigo_edital": projeto["edital"]}
-    )
+    edital = buscar_edital(projeto)
 
     perguntas_monitoramento = sorted(
         (edital or {}).get("perguntas_monitoramento", []),
@@ -3161,7 +3182,7 @@ def gerar_relatorio_atividades_pdf(projeto, relatorio):
     fonte, fonte_b = registrar_fonte_arial()
     numero = relatorio.get("numero")
 
-    edital = col_editais.find_one({"codigo_edital": projeto["edital"]})
+    edital = buscar_edital(projeto)
 
     est = {
         "titulo": ParagraphStyle("titulo", fontName=fonte_b, fontSize=14, leading=18,
@@ -3271,9 +3292,7 @@ liberar_proximo_relatorio(projeto["codigo"], relatorios)
 projeto = col_projetos.find_one({"codigo": projeto["codigo"]})
 relatorios = projeto.get("relatorios", [])
 
-codigo_edital = projeto.get("edital")
-edital = col_editais.find_one({"codigo_edital": codigo_edital}) if codigo_edital else None
-
+edital = buscar_edital(projeto)
 
 
 # -------------------------------------------
@@ -6789,9 +6808,7 @@ if step_selecionado == "Formulário":
     # 1. BUSCA O EDITAL CORRESPONDENTE AO PROJETO
     ###########################################################################
 
-    edital = col_editais.find_one(
-        {"codigo_edital": projeto["edital"]}
-    )
+    edital = buscar_edital(projeto)
 
     if not edital:
         st.error("Edital não encontrado para este projeto.")
@@ -7328,9 +7345,7 @@ if step_selecionado == "Enviar":
 
                     st.markdown("### Relatório de Monitoramento")
 
-                    edital = col_editais.find_one(
-                        {"codigo_edital": projeto["edital"]}
-                    )
+                    edital = buscar_edital(projeto)
 
                     perguntas_monitoramento = sorted(
                         (edital or {}).get("perguntas_monitoramento", []),
@@ -7632,9 +7647,7 @@ if step_selecionado == "Enviar":
 
                     st.markdown("### Relatório de Monitoramento")
 
-                    edital = col_editais.find_one(
-                        {"codigo_edital": projeto["edital"]}
-                    )
+                    edital = buscar_edital(projeto)
 
                     perguntas_monitoramento = sorted(
                         (edital or {}).get("perguntas_monitoramento", []),
@@ -7825,19 +7838,14 @@ if step_selecionado == "Avaliação":
         st.write("")
         st.write("")
     
-    edital = col_editais.find_one(
-        {"codigo_edital": projeto["edital"]}
-    )
+    edital = buscar_edital(projeto)
 
     perguntas_monitoramento = sorted(
         (edital or {}).get("perguntas_monitoramento", []),
         key=lambda x: x.get("ordem", 0)
     )
     
-    if not perguntas_monitoramento:
-        st.caption(
-            "Nenhuma pergunta de monitoramento foi cadastrada para este edital."
-        )
+    
     
     chave_monitoramento = f"monitoramento_{relatorio_numero}"
 
@@ -7857,6 +7865,11 @@ if step_selecionado == "Avaliação":
 
         st.write("**Relatório de Monitoramento**")
         st.write("")
+
+        if not perguntas_monitoramento:
+            st.caption(
+                "Nenhuma pergunta de monitoramento foi cadastrada para este edital."
+            )
         
         # -------------------------------------------------------------------------
         # Armazena uploads temporários em memória (evita múltiplos envios no rerun)
