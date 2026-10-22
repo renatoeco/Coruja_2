@@ -2000,12 +2000,14 @@ else:
 
                 adaptacao = st.toggle(
                     "Contribui com a adaptação às mudanças climáticas",
-                    value=projeto.get("adaptacao", False)
+                    value=projeto.get("adaptacao", False),
+                    help="**Enfrenta os efeitos da mudança do clima** - Ajuste de sistemas humanos e naturais aos efeitos do clima, para reduzir vulnerabilidades, prevenir danos e fortalecer a resiliência de territórios, populações e ecossistemas."
                 )
 
                 mitigacao = st.toggle(
                     "Contribui com a mitigação das mudanças climáticas",
-                    value=projeto.get("mitigacao", False)
+                    value=projeto.get("mitigacao", False),
+                    help="**Atua sobre as causas da mudança do clima** - Intervenções para reduzir ou evitar emissões de gases de efeito estufa e ampliar sua remoção da atmosfera, contribuindo para limitar o aquecimento global."
                 )
 
 
