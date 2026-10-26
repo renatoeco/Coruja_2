@@ -125,16 +125,17 @@ fig.update_traces(
 )
 
 
+if periodo == "Últimos 30 dias":
+    eixo_x = dict(tickformat="%d/%m/%Y", tickangle=45, tickmode="linear",
+                  tick0=df["data"].min(), dtick=86400000)
+else:
+    eixo_x = dict(tickformat="%m/%Y", tickangle=45, dtick="M1")
+
 fig.update_layout(
     xaxis_title="",
     yaxis_title="Sessões",
-    xaxis=dict(
-        tickformat="%d/%m/%Y",
-        tickangle=90
-    ),
-    yaxis=dict(
-        dtick=1
-    )
+    xaxis=eixo_x,
+    yaxis=dict(dtick=1)
 )
 
 
