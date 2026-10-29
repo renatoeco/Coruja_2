@@ -307,6 +307,11 @@ df_publicos_indigenas = (
     .sort_values("publico")
 )
 
+df_publicos_quilombolas = (
+    df_publicos[df_publicos["categoria"] == "Quilombolas"]
+    .sort_values("publico")
+)
+
 # mapa id -> nome
 mapa_publicos = dict(
     zip(
@@ -743,6 +748,10 @@ if not editar_cadastro:
                 publicos_projeto["categoria"] == "Povos Indígenas"
             ]
 
+            quilombolas = publicos_projeto[
+                publicos_projeto["categoria"] == "Quilombolas"
+            ]
+
             colunas = []
 
             if not geral.empty:
@@ -753,6 +762,9 @@ if not editar_cadastro:
 
             if not indigenas.empty:
                 colunas.append(("Povos Indígenas", indigenas))
+
+            if not quilombolas.empty:
+                colunas.append(("Quilombolas", quilombolas))
 
             cols = st.columns(len(colunas), gap="xsmall", border=True)
 
@@ -2439,10 +2451,27 @@ else:
                     placeholder=""
                 )
 
+                # ==========================
+                # QUILOMBOLAS
+                # ==========================
+
+                publicos_quilombolas = st.multiselect(
+                    "Quilombolas",
+                    options=df_publicos_quilombolas["_id"].tolist(),
+                    default=[
+                        p
+                        for p in publicos_atual
+                        if p in df_publicos_quilombolas["_id"].tolist()
+                    ],
+                    format_func=lambda x: mapa_publicos.get(x, x),
+                    placeholder=""
+                )
+
                 publicos = (
                     publicos_geral
                     + publicos_tradicionais
                     + publicos_indigenas
+                    + publicos_quilombolas
                 )
 
                 st.write('')

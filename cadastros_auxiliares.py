@@ -21,11 +21,11 @@ db = conectar_mongo_coruja()
 
 # Importa coleções e cria dataframes
 
-# Beneficiários
+# Públicos
 col_publicos = db["publicos"]
 
 # Benefícios
-col_beneficios = db["beneficios"]
+#col_beneficios = db["beneficios"]
 
 # Direções Estratégicas
 # col_direcoes = db["direcoes_estrategicas"]
@@ -37,10 +37,10 @@ col_beneficios = db["beneficios"]
 col_categorias_despesa = db["categorias_despesa"]
 
 # Corredores
-col_corredores = db["corredores"]
+#col_corredores = db["corredores"]
 
 # KBAs
-col_kbas = db["kbas"]
+#col_kbas = db["kbas"]
 
 # Editais
 col_editais = db["editais"]
@@ -1981,7 +1981,8 @@ with aba_publicos:
                     options=[
                         "Geral",
                         "Comunidades Tradicionais",
-                        "Povos Indígenas"
+                        "Povos Indígenas",
+                        "Quilombolas"
                     ],
                     required=True
                 )
@@ -2073,7 +2074,7 @@ with aba_publicos:
                             }
                         )
 
-                st.success("Beneficiários atualizados com sucesso!")
+                st.success("Públicos atualizados com sucesso!")
                 time.sleep(3)
                 st.rerun()
 
