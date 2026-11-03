@@ -1,6 +1,6 @@
 
 import streamlit as st
-from funcoes_auxiliares import conectar_mongo_coruja, limpar_e_validar_cep  # Funções personalizadas
+from funcoes_auxiliares import conectar_mongo_coruja, limpar_e_validar_cep, conectar_mongo_portal_ispn  # Funções personalizadas
 import pandas as pd
 import locale
 import re
@@ -19,6 +19,8 @@ st.set_page_config(page_title="Nova Organização", page_icon=":material/add_bus
 
 # Conecta-se ao banco de dados MongoDB (usa cache automático para melhorar performance)
 db = conectar_mongo_coruja()
+
+db2 = conectar_mongo_portal_ispn()
 
 # Importa coleções e cria dataframes
 col_pessoas = db["pessoas"]
@@ -41,7 +43,7 @@ df_publicos = pd.DataFrame(list(col_publicos.find()))
 # COLEÇÃO UF_MUNICIPIOS - DOCUMENTO DE UFs
 # -------------------------------------------------------------------------------------------------
 
-col_uf_municipios = db["ufs_municipios"]
+col_uf_municipios = db2["ufs_municipios"]
 
 # Busca especificamente o documento que possui a chave 'ufs'
 doc_ufs = col_uf_municipios.find_one({"ufs": {"$exists": True}})

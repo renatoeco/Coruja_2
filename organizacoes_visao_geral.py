@@ -1,5 +1,5 @@
 import streamlit as st
-from funcoes_auxiliares import conectar_mongo_coruja, limpar_e_validar_cep, safe_col, safe_get, validar_df
+from funcoes_auxiliares import conectar_mongo_coruja, limpar_e_validar_cep, safe_col, safe_get, validar_df, conectar_mongo_portal_ispn
 import pandas as pd
 import time
 import re
@@ -14,6 +14,8 @@ st.set_page_config(page_title="Organizações", page_icon=":material/analytics:"
 
 # Conecta-se ao banco de dados MongoDB (usa cache automático para melhorar performance)
 db = conectar_mongo_coruja()
+
+db2 = conectar_mongo_portal_ispn()
 
 
 col_projetos = db["projetos"]
@@ -57,7 +59,7 @@ else:
 
 # CARREGAMENTO DE UFs E MUNICÍPIOS
 
-col_uf_municipios = db["ufs_municipios"]
+col_uf_municipios = db2["ufs_municipios"]
 
 # Documento de UFs
 doc_ufs = col_uf_municipios.find_one({"ufs": {"$exists": True}})
