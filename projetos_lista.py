@@ -38,6 +38,25 @@ codigos_validos = set(df_projetos["codigo"].astype(str))
 col_editais = db["editais"]
 df_editais = pd.DataFrame(list(col_editais.find()))
 
+# Converte ObjectId para string
+if "_id" in df_editais.columns:
+    df_editais["_id"] = df_editais["_id"].astype(str)
+
+# Mapeamentos de editais
+if {"_id", "codigo_edital"}.issubset(df_editais.columns):
+    mapa_edital_id_para_codigo = dict(zip(df_editais["_id"], df_editais["codigo_edital"].astype(str)))
+else:
+    mapa_edital_id_para_codigo = {}
+
+if {"_id", "nome_edital"}.issubset(df_editais.columns):
+    mapa_edital_id_para_nome = dict(zip(df_editais["_id"], df_editais["nome_edital"]))
+else:
+    mapa_edital_id_para_nome = {}
+
+mapa_edital_codigo_para_id = {
+    codigo: id_edital for id_edital, codigo in mapa_edital_id_para_codigo.items()
+}
+
 # Organizações
 col_organizacoes = db["organizacoes"]
 df_organizacoes = pd.DataFrame(list(col_organizacoes.find()))
@@ -104,6 +123,30 @@ if not df_projetos.empty:
     
     # Inclulir o status no dataframe de projetos
     df_projetos = calcular_status_projetos(df_projetos)
+
+    # Normaliza o edital do projeto para o _id do edital
+    # Compatível com a estrutura nova (_id) e a antiga (código)
+    def normalizar_edital_id(valor):
+        if valor is None or (isinstance(valor, float) and pd.isna(valor)):
+            return None
+
+        valor = str(valor)
+
+        # Estrutura nova (ID)
+        if valor in mapa_edital_id_para_codigo:
+            return valor
+
+        # Estrutura antiga (código)
+        if valor in mapa_edital_codigo_para_id:
+            return mapa_edital_codigo_para_id[valor]
+
+        # Edital inexistente
+        return None
+
+    if "edital" in df_projetos.columns:
+        df_projetos["edital_id"] = df_projetos["edital"].apply(normalizar_edital_id)
+    else:
+        df_projetos["edital_id"] = None
 
 
     # Converter object_id para string
@@ -208,9 +251,11 @@ col1, col2, col3, col4 = st.columns(4)
 
 with col1:
 
-    if valido_editais:
+    if valido_editais and mapa_edital_id_para_codigo:
+        # Lista de _ids ordenada pelo código do edital
         lista_editais = sorted(
-            safe_col(df_editais, "codigo_edital", pd.Series()).dropna().unique().tolist()
+            mapa_edital_id_para_codigo.keys(),
+            key=lambda id_edital: mapa_edital_id_para_codigo[id_edital]
         )
         lista_editais = ["Todos"] + lista_editais
     else:
@@ -219,6 +264,10 @@ with col1:
     edital_selecionado = st.selectbox(
         "Selecione o edital",
         lista_editais,
+        format_func=lambda id_edital: (
+            "Todos" if id_edital == "Todos"
+            else mapa_edital_id_para_codigo.get(id_edital, id_edital)
+        ),
         width=300
     )
 
@@ -266,20 +315,16 @@ with col_titulo:
 
 
     else:
-        nome_edital = "Nome não disponível"
+        codigo_edital = mapa_edital_id_para_codigo.get(edital_selecionado, "-")
+        nome_edital = mapa_edital_id_para_nome.get(edital_selecionado, "Nome não disponível")
 
-        if valido_editais and edital_selecionado != "Todos":
-            resultado = df_editais.loc[
-                df_editais["codigo_edital"] == edital_selecionado,
-                "nome_edital"
-            ]
-            if not resultado.empty:
-                nome_edital = resultado.values[0]
-
-        st.subheader(f"{edital_selecionado} — {nome_edital}")
+        st.subheader(f"{codigo_edital} — {nome_edital}")
 
         # Contagem de projetos
-        total_projetos = len(df_projetos[df_projetos['edital'] == edital_selecionado])
+        if "edital_id" in df_projetos.columns:
+            total_projetos = int((df_projetos["edital_id"] == edital_selecionado).sum())
+        else:
+            total_projetos = 0
         st.markdown(f"##### {total_projetos} projetos")
         
 
@@ -307,8 +352,8 @@ col1, col2, col3, col4 = st.columns(4, gap="large")
 # ###########################################################################################################
 
 
-if edital_selecionado != "Todos" and "edital" in df_filtrado.columns:
-    df_filtrado = df_filtrado[df_filtrado["edital"] == edital_selecionado]
+if edital_selecionado != "Todos" and "edital_id" in df_filtrado.columns:
+    df_filtrado = df_filtrado[df_filtrado["edital_id"] == edital_selecionado]
 
 
 # Filtrar somente os projetos da pessoa logada
