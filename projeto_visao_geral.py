@@ -106,6 +106,7 @@ col_projetos = db["projetos"]
 col_editais = db["editais"]
 # col_direcoes_estrategicas = db["direcoes_estrategicas"]
 col_publicos = db["publicos"]
+col_perfis_publico = db["perfis_publico"]
 col_organizacoes = db["organizacoes"]   
 
 db_jatai = conectar_mongo_portal_ispn()
@@ -319,6 +320,25 @@ mapa_publicos = dict(
         df_publicos["publico"]
     )
 )
+
+# Perfis de público
+df_perfis_publico = pd.DataFrame(list(col_perfis_publico.find({}, {"perfil": 1})))
+
+if df_perfis_publico.empty:
+    df_perfis_publico = pd.DataFrame(columns=["_id", "perfil"])
+
+df_perfis_publico["_id"] = df_perfis_publico["_id"].astype(str)
+df_perfis_publico = df_perfis_publico.sort_values("perfil")
+
+# mapa id -> nome do perfil
+mapa_perfis_publico = dict(
+    zip(
+        df_perfis_publico["_id"],
+        df_perfis_publico["perfil"]
+    )
+)
+
+lista_perfis_publico_ids = df_perfis_publico["_id"].tolist()
 
 # Organizações
 df_organizacoes = pd.DataFrame(list(col_organizacoes.find()))
@@ -671,7 +691,6 @@ if not editar_cadastro:
         st.write(f"**Responsável:** {nomes}")
 
 
-
     # Ponto Focal
     valor = df_projeto["padrinho"].values[0]
     if pd.isna(valor) or str(valor).strip() == "":
@@ -683,7 +702,7 @@ if not editar_cadastro:
         st.write(f"**Ponto focal:** {valor}")
 
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
 
 
     # ---------- Linhas Temáticas ----------
@@ -785,6 +804,30 @@ if not editar_cadastro:
             unsafe_allow_html=True
         )
 
+    # ---------- PERFIL DE PÚBLICO ----------
+
+    perfis = obter_lista_projeto(df_projeto, "perfis_publico")
+
+    # Mantém apenas perfis que ainda existem na coleção
+    nomes_perfis = sorted(
+        mapa_perfis_publico[str(p)]
+        for p in perfis
+        if str(p) in mapa_perfis_publico
+    )
+
+    if nomes_perfis:
+
+        with col3.popover("**Perfil de público**", type="tertiary"):
+
+            for nome_perfil in nomes_perfis:
+                st.write(f"**{nome_perfil}**")
+
+    else:
+        col3.markdown(
+            "**Perfil de público:** <span style='color:#c46a00; font-style:italic;'>não cadastrado</span>",
+            unsafe_allow_html=True
+        )
+
 
     # ---------- BIOMAS ----------
 
@@ -792,13 +835,13 @@ if not editar_cadastro:
 
     if biomas:
 
-        with col3.popover("**Bioma**", type="tertiary"):
+        with col4.popover("**Bioma**", type="tertiary"):
 
             for bioma in biomas:
                 st.write(f"**{bioma}**")
 
     else:
-        col3.markdown(
+        col4.markdown(
             "**Bioma:** <span style='color:#c46a00; font-style:italic;'>não cadastrado</span>",
             unsafe_allow_html=True
         )
@@ -810,13 +853,13 @@ if not editar_cadastro:
 
     if temas:
 
-        with col4.popover("**Temas**", type="tertiary"):
+        with col5.popover("**Temas**", type="tertiary"):
 
             for tema in temas:
                 st.write(f"**{tema}**")
 
     else:
-        col4.markdown(
+        col5.markdown(
             "**Temas:** <span style='color:#c46a00; font-style:italic;'>não cadastrados</span>",
             unsafe_allow_html=True
         )
@@ -2257,14 +2300,11 @@ else:
 
     with aba_direcoes_publico:
 
-        col1, col2 = st.columns(2, gap="large")
+        col1, col2, col3 = st.columns(3, gap="large")
 
         # ======================================================
         # COLUNA 1 — Linhas Temáticas
         # ======================================================
-
-
-
 
         with col1:
 
@@ -2377,11 +2417,6 @@ else:
                 st.success("Linhas temáticas atualizadas com sucesso!", icon=":material/check:")
                 time.sleep(3)
                 st.rerun()
-
-
-
-
-
 
         # ======================================================
         # COLUNA 2 — PÚBLICOS
@@ -2498,7 +2533,54 @@ else:
                     time.sleep(3)
                     st.rerun()
 
+        # ======================================================
+        # COLUNA 3 — PERFIL DE PÚBLICO
+        # ======================================================
 
+        with col3:
+
+            st.write('')
+            st.markdown("##### Perfil de público")
+            st.write('')
+
+            with st.form("form_perfis_publico", border=False):
+
+                perfis_atual = [
+                    str(p)
+                    for p in (projeto.get("perfis_publico") or [])
+                ]
+
+                perfis_selecionados = st.multiselect(
+                    "Perfil de público",
+                    options=lista_perfis_publico_ids,
+                    default=valores_salvos_validos(perfis_atual, lista_perfis_publico_ids),
+                    format_func=lambda x: mapa_perfis_publico.get(x, x),
+                    placeholder=""
+                )
+
+                st.write('')
+
+                salvar_perfis = st.form_submit_button(
+                    "Salvar perfis",
+                    icon=":material/save:",
+                    type="primary",
+                    width="content"
+                )
+
+                if salvar_perfis:
+
+                    col_projetos.update_one(
+                        {"_id": ObjectId(projeto["_id"])},
+                        {
+                            "$set": {
+                                "perfis_publico": perfis_selecionados
+                            }
+                        }
+                    )
+
+                    st.success("Perfis de público atualizados com sucesso!", icon=":material/check:")
+                    time.sleep(3)
+                    st.rerun()
 
 
 

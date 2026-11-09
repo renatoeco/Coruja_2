@@ -24,6 +24,9 @@ db = conectar_mongo_coruja()
 # Públicos
 col_publicos = db["publicos"]
 
+# Perfis de público
+col_perfis_publico = db["perfis_publico"]
+
 # Benefícios
 #col_beneficios = db["beneficios"]
 
@@ -341,12 +344,13 @@ st.write('')
 #aba_perguntas, aba_pesquisas, aba_direcoes, aba_indicadores, aba_publicos, aba_beneficios, aba_categorias_despesa, aba_corredores, aba_kbas = st.tabs([
 #aba_perguntas, aba_pesquisas, aba_beneficiarios, aba_direcoes, aba_indicadores, aba_categorias_despesa, aba_corredores, aba_kbas, aba_tipos_manejo = st.tabs([
 
-aba_perguntas, aba_monitoramento, aba_direcoes, aba_indicadores, aba_publicos, aba_categorias_despesa = st.tabs([
+aba_perguntas, aba_monitoramento, aba_direcoes, aba_indicadores, aba_publicos, aba_perfis_publico, aba_categorias_despesa = st.tabs([
     'Perguntas do Relatório',
     'Perguntas de Monitoramento',
     'Linhas Temáticas',
     'Indicadores por Edital',
-    'Públicos',
+    'Público alvo',
+    'Perfil de público',
     'Categorias de despesa',
 ])
 
@@ -1866,20 +1870,13 @@ with aba_indicadores:
                 st.rerun()
 
 
-
-
-
-
-
-
 # ==========================================================
 # ABA BENEFICIÁRIOS
 # ==========================================================
 
-
 with aba_publicos:
 
-    st.subheader("Públicos")
+    st.subheader("Público alvo")
     st.write('')
 
     # 1) Carrega documentos da coleção (ordenados)
@@ -2079,12 +2076,138 @@ with aba_publicos:
                 st.rerun()
 
 
+# ==========================================================
+# ABA PERFIL DE PÚBLICO
+# ==========================================================
 
+with aba_perfis_publico:
 
+    st.subheader("Perfil de público")
+    st.write('')
 
+    # 1) Carrega documentos da coleção (ordenados)
+    dados_perfis = list(
+        col_perfis_publico.find({}, {"perfil": 1}).sort("perfil", 1)
+    )
 
+    df_perfis = pd.DataFrame(dados_perfis)
 
+    # Garante as colunas mesmo com a coleção vazia
+    if df_perfis.empty:
+        df_perfis = pd.DataFrame(columns=["_id", "perfil"])
 
+    if "perfil" not in df_perfis.columns:
+        df_perfis["perfil"] = ""
+
+    # Converte ObjectId para string
+    df_perfis["_id"] = df_perfis["_id"].astype(str)
+    df_perfis["perfil"] = df_perfis["perfil"].fillna("").astype(str)
+
+    editar_perfis = st.toggle("Editar", key="editar_perfis_publico")
+    st.write('')
+
+    # -------------------------
+    # MODO VISUALIZAÇÃO
+    # -------------------------
+    if not editar_perfis:
+
+        if df_perfis.empty:
+            st.caption("Nenhum perfil de público cadastrado.")
+        else:
+            st.dataframe(
+                df_perfis[["perfil"]].sort_values("perfil"),
+                hide_index=True,
+                width="stretch",
+                column_config={
+                    "perfil": st.column_config.TextColumn("Perfil")
+                },
+            )
+
+    # -------------------------
+    # MODO EDIÇÃO
+    # -------------------------
+    else:
+        st.write("Edite, adicione e exclua linhas.")
+
+        df_editor = df_perfis[["_id", "perfil"]].copy()
+
+        df_editado = st.data_editor(
+            df_editor,
+            num_rows="dynamic",
+            hide_index=True,
+            key="editor_perfis_publico",
+            width=800,
+            column_config={
+                "_id": None,
+                "perfil": st.column_config.TextColumn("Perfil")
+            }
+        )
+
+        if st.button("Salvar alterações", icon=":material/save:", type="primary", key="salvar_perfis_publico"):
+
+            if "perfil" not in df_editado.columns:
+                st.error("Nenhum dado válido para salvar.")
+                st.stop()
+
+            # Normaliza (linhas novas vêm com None) e remove vazios
+            df_editado["perfil"] = (
+                df_editado["perfil"]
+                .fillna("")
+                .astype(str)
+                .str.strip()
+            )
+            df_editado["_id"] = (
+                df_editado["_id"]
+                .fillna("")
+                .astype(str)
+                .str.strip()
+            )
+
+            df_editado = df_editado[df_editado["perfil"] != ""]
+
+            if df_editado.empty:
+                st.warning("Nenhum perfil informado.")
+                st.stop()
+
+            # ===========================
+            # VERIFICAÇÃO DE DUPLICADOS
+            # ===========================
+            lista_editada = df_editado["perfil"].tolist()
+            duplicados_local = {
+                x for x in lista_editada if lista_editada.count(x) > 1
+            }
+
+            if duplicados_local:
+                st.error(
+                    f"Existem valores duplicados na lista: {', '.join(duplicados_local)}"
+                )
+                st.stop()
+
+            # IDs existentes
+            ids_banco = {i for i in df_perfis["_id"] if i}
+            ids_editor = {i for i in df_editado["_id"] if i}
+
+            # Remove excluídos
+            for id_remover in ids_banco - ids_editor:
+                col_perfis_publico.delete_one({"_id": ObjectId(id_remover)})
+
+            # Atualiza ou cria
+            for _, row in df_editado.iterrows():
+
+                perfil = row["perfil"]
+                id_perfil = row["_id"]
+
+                if id_perfil:
+                    col_perfis_publico.update_one(
+                        {"_id": ObjectId(id_perfil)},
+                        {"$set": {"perfil": perfil}}
+                    )
+                else:
+                    col_perfis_publico.insert_one({"perfil": perfil})
+
+            st.success("Perfis de público atualizados com sucesso!")
+            time.sleep(3)
+            st.rerun()
 
 
 # ==========================================================
